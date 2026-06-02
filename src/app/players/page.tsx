@@ -62,6 +62,9 @@ export default function PlayersPage() {
     )
   }
 
+  // Filter out system accounts from the list to avoid accidental editing
+  const displayPlayers = players.filter(p => p.email !== 'kasse@kickoff.de')
+
   const handleAddPlayer = () => {
     if (!newName || !newEmail) {
       toast({ variant: "destructive", title: "Fehler", description: "Bitte fülle alle Felder aus." })
@@ -196,7 +199,7 @@ export default function PlayersPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {players.map((player) => (
+            {displayPlayers.map((player) => (
               <Card key={player.id} className="border-none shadow-md hover:shadow-lg transition-all rounded-2xl overflow-hidden bg-white group">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -253,6 +256,11 @@ export default function PlayersPage() {
                 </CardContent>
               </Card>
             ))}
+            {displayPlayers.length === 0 && (
+              <div className="col-span-full py-20 text-center text-muted-foreground italic">
+                Noch keine weiteren Spieler registriert.
+              </div>
+            )}
           </div>
         </div>
 

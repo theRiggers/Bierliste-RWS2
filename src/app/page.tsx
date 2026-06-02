@@ -46,11 +46,17 @@ export default function Dashboard() {
   const handleOnboarding = () => {
     if (!onboardingName.trim()) return
     
-    // Wenn es noch keine Spieler gibt, wird der erste Nutzer automatisch Kassenprüfer (Admin)
+    // Check if this is the absolute first registration in the DB
     const isFirstUser = players.length === 0
-    const role = isFirstUser ? 'auditor' : 'player'
     
-    addPlayer(onboardingName.trim(), user.email!, role)
+    if (isFirstUser) {
+      // Create the Master Admin Account
+      addPlayer(onboardingName.trim(), user.email!, 'auditor')
+      // Automatically create the virtual Team Cash Register account
+      addPlayer('Mannschaftskasse', 'kasse@kickoff.de', 'player')
+    } else {
+      addPlayer(onboardingName.trim(), user.email!, 'player')
+    }
   }
 
   // Onboarding view for new users without a profile
@@ -72,7 +78,7 @@ export default function Dashboard() {
             </CardTitle>
             <CardDescription>
               {isFirstUser 
-                ? "Du bist der erste Nutzer und wirst automatisch als Kassenprüfer (Administrator) registriert." 
+                ? "Du bist der erste Nutzer und wirst als Kassenprüfer (Administrator) registriert. Die Mannschaftskasse wird ebenfalls initialisiert." 
                 : `Dein Konto (${user.email}) ist neu. Gib deinen Namen ein, um dein Profil zu erstellen.`
               }
             </CardDescription>
@@ -99,12 +105,6 @@ export default function Dashboard() {
             >
               {isFirstUser ? "Als Admin starten" : "Profil erstellen & Starten"}
             </Button>
-            <p className="text-[10px] text-center text-muted-foreground italic">
-              {isFirstUser 
-                ? "Du hast danach Zugriff auf alle Verwaltungsfunktionen." 
-                : "Du wirst automatisch als Spieler registriert."
-              }
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -163,7 +163,9 @@ export default function Dashboard() {
                 )}>
                   {currentUserProfile.balance.toFixed(2)} €
                 </h2>
-                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Offene Beträge</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
+                  {currentUserProfile.balance < 0 ? 'Du schuldest der Kasse Geld' : 'Dein Guthaben'}
+                </p>
               </CardContent>
             </Card>
 
@@ -178,14 +180,14 @@ export default function Dashboard() {
                 <h2 className="text-2xl md:text-3xl font-bold text-emerald-600">
                   {teamKasse.balance.toFixed(2)} €
                 </h2>
-                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Verfügbares Guthaben</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Aktueller Kassenstand</p>
               </CardContent>
             </Card>
 
             <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Dein Konsum (Monat)</p>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Konsum (Monat)</p>
                   <div className="p-2 bg-amber-100 rounded-full text-amber-600">
                     <Beer className="h-4 w-4" />
                   </div>
@@ -211,8 +213,8 @@ export default function Dashboard() {
               <CardContent className="p-0">
                 <div className="divide-y divide-border">
                   {expenses.slice(0, 10).map((expense) => (
-                    <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-muted/30 active:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3 md:gap-4">
+                    <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center gap-3">
                         <div className={cn(
                           "h-10 w-10 rounded-full flex items-center justify-center text-white",
                           expense.itemType === 'beer' ? 'bg-amber-400' : 'bg-primary'
@@ -221,12 +223,12 @@ export default function Dashboard() {
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-foreground truncate">{expense.playerName}</p>
-                          <p className="text-[10px] md:text-xs text-muted-foreground truncate">
+                          <p className="text-[10px] text-muted-foreground">
                             {formatDate(expense.date, 'dd.MM. HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kasten'}
                           </p>
                         </div>
                       </div>
-                      <span className="font-bold text-destructive whitespace-nowrap ml-2">
+                      <span className="font-bold text-destructive">
                         - {expense.cost.toFixed(2)} €
                       </span>
                     </div>

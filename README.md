@@ -8,40 +8,35 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 - **KI-Berichte**: Automatische Analysen und Zahlungserinnerungen für den Kassenprüfer.
 - **Mobile First**: Optimiert für die Nutzung als App auf dem Homescreen.
 
-## Installation auf dem Handy (WICHTIG!)
-Die Bierliste ist eine **Progressive Web App (PWA)**. Das bedeutet, man muss sie nicht im App Store suchen, sondern installiert sie direkt über den Browser:
+## WICHTIG: Entwicklung vs. Live
+Die URL, die auf `.cloudworkstations.dev` endet, ist **privat**. Sie funktioniert nur auf deinem Rechner/Browser, wo du eingeloggt bist. Andere Personen (Spieler) erhalten dort den Fehler **"401: Permission Denied"**.
+
+**Um die App zu teilen:**
+1. Klicke in Firebase Studio oben rechts auf den blauen **"Publish"** Button.
+2. Nach dem erfolgreichen Deployment erhältst du eine öffentliche URL (z.B. `dein-projekt.web.app`).
+3. **Nur diese öffentliche URL** funktioniert auf den Handys der Spieler.
+
+## Installation auf dem Handy
+Die Bierliste ist eine **Progressive Web App (PWA)**.
 
 ### iPhone (Safari)
-1. Öffne die URL deiner App in **Safari**.
+1. Öffne die **öffentliche URL** in **Safari**.
 2. Tippe unten auf das **Teilen-Symbol** (Quadrat mit Pfeil nach oben).
 3. Wähle **"Zum Home-Bildschirm"**.
-4. Die App erscheint nun mit Logo auf deinem Homescreen.
 
 ### Android (Chrome)
 1. Öffne die URL in **Chrome**.
 2. Tippe oben rechts auf die **drei Punkte**.
-3. Wähle **"App installieren"** oder **"Zum Startbildschirm hinzufügen"**.
+3. Wähle **"App installieren"**.
 
 ## Fehlerbehebung: "Publish" Error
-Wenn beim Veröffentlichen (Publish) der Fehler **"There was an error enabling firebaseapphosting.googleapis.com"** erscheint:
-1. **Kurz warten**: Manchmal braucht Google Cloud einen Moment, um die API-Aktivierung zu verarbeiten. Versuche es nach 5 Minuten erneut.
-2. **Blaze-Plan**: Firebase App Hosting benötigt zwingend den **Blaze-Plan** (Pay-as-you-go). In deinem Screenshot ist ein Billing-Account verknüpft, das ist schon mal gut.
-3. **Berechtigungen**: Stelle sicher, dass du in der Firebase Console als **Inhaber (Owner)** eingetragen bist.
-4. **Manueller Check**: Gehe in die Google Cloud Console (console.cloud.google.com) für dein Projekt und suche nach "APIs & Dienste". Suche dort nach "Firebase App Hosting API" und versuche sie manuell zu aktivieren.
-
-## Kosten & Betrieb
-Die App nutzt den **Firebase Spark Plan** für die Datenbank und **App Hosting** für den Betrieb.
-- **Datenbank**: Dauerhaft kostenlos bis zu hohen Limits.
-- **App Hosting**: Nutzt den Blaze-Plan, bleibt aber innerhalb der kostenlosen Kontingente für kleine Teams meist kostenfrei.
+Wenn beim Veröffentlichen der Fehler **"There was an error enabling firebaseapphosting.googleapis.com"** erscheint:
+1. **Blaze-Plan**: Firebase App Hosting benötigt zwingend den **Blaze-Plan** (Pay-as-you-go). Dieser ist für kleine Apps kostenlos, muss aber in der Firebase Console aktiviert werden.
+2. **Kurz warten**: Die Aktivierung der Google-Dienste kann bis zu 10 Minuten dauern.
+3. **Manuelle Aktivierung**: Gehe in die Firebase Console unter "Build" -> "App Hosting" und klicke auf "Get Started".
 
 ## Konfiguration
-In der Datei `src/lib/store.tsx` findest du die folgenden wichtigen Einstellungen:
-- `BEER_PRICE`: Preis für ein einzelnes Bier.
-- `CRATE_PRICE`: Preis für eine ganze Kiste.
-- `PAYPAL_ME_LINK`: Der offizielle PayPal-Account der Kasse (Jamie Rigden).
-
-## Fehlerbehebung: Login
-Falls beim Login "Domain nicht autorisiert" erscheint:
-1. Kopiere die URL deiner App.
-2. Gehe in die Firebase Console unter **Authentication > Settings > Authorized Domains**.
-3. Füge die URL dort hinzu.
+In der Datei `src/lib/store.tsx`:
+- `BEER_PRICE`: Preis für ein Bier.
+- `CRATE_PRICE`: Preis für eine Kiste.
+- `PAYPAL_ME_LINK`: Der PayPal-Account (Jamie Rigden).

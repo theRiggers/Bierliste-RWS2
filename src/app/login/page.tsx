@@ -13,7 +13,7 @@ import { useAuth, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Beer, Mail, Lock, Loader2, AlertCircle, Copy } from "lucide-react"
+import { Beer, Mail, Lock, Loader2, AlertCircle, Copy, ExternalLink } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -35,7 +35,6 @@ export default function LoginPage() {
     }
   }, [])
 
-  // Wenn ein User erkannt wird, sofort zum Dashboard
   useEffect(() => {
     if (user && !authLoading) {
       router.replace("/")
@@ -47,9 +46,7 @@ export default function LoginPage() {
     setError(null)
     const provider = new GoogleAuthProvider()
     try {
-      // Popup ist stabiler in Desktop-Browsern und Cloud-Umgebungen
       await signInWithPopup(auth, provider)
-      // Der useEffect oben kümmert sich um die Weiterleitung
     } catch (err: any) {
       console.error("Login Error:", err)
       if (err.code === 'auth/unauthorized-domain') {
@@ -65,7 +62,7 @@ export default function LoginPage() {
       } else {
         setError({
           code: err.code,
-          message: "Fehler beim Google-Login: " + (err.message || "Unbekannter Fehler")
+          message: "Fehler beim Login: " + (err.message || "Unbekannter Fehler")
         })
       }
       setLoading(false)
@@ -80,23 +77,19 @@ export default function LoginPage() {
       if (password.length < 6) {
         throw new Error("Passwort muss mindestens 6 Zeichen lang sein.")
       }
-      if (email && password) {
-        // Firebase Auth
-        try {
-          await signInWithEmailAndPassword(auth, email, password)
-        } catch (signInErr: any) {
-          if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-            await createUserWithEmailAndPassword(auth, email, password)
-            toast({ title: "Konto erstellt", description: "Willkommen!" })
-          } else {
-            throw signInErr
-          }
+      try {
+        await signInWithEmailAndPassword(auth, email, password)
+      } catch (signInErr: any) {
+        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+          await createUserWithEmailAndPassword(auth, email, password)
+          toast({ title: "Konto erstellt", description: "Willkommen!" })
+        } else {
+          throw signInErr
         }
       }
     } catch (err: any) {
       let msg = "Fehler bei der Anmeldung."
       if (err.code === 'auth/invalid-credential') msg = "E-Mail oder Passwort falsch."
-      if (err.code === 'auth/email-already-in-use') msg = "E-Mail bereits registriert."
       setError({ code: err.code || "error", message: err.message || msg })
       setLoading(false)
     }
@@ -110,22 +103,15 @@ export default function LoginPage() {
   if (authLoading) {
     return (
       <div className="flex h-svh items-center justify-center bg-background p-4">
-        <div className="text-center space-y-6 max-w-xs w-full">
-          <div className="relative mx-auto h-20 w-20">
-            <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
-            <div className="relative bg-white p-4 rounded-3xl shadow-xl flex items-center justify-center h-full w-full">
-              <Beer className="h-10 w-10 text-primary" />
-            </div>
-          </div>
-          <p className="text-xl font-bold text-primary font-headline">Bierliste RWS2</p>
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Laden...
-          </div>
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="font-bold text-primary">Bierliste RWS2 lädt...</p>
         </div>
       </div>
     )
   }
+
+  const isPrivateDevUrl = hostname.includes('cloudworkstations.dev')
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
@@ -138,19 +124,28 @@ export default function LoginPage() {
           <CardDescription className="text-white/80">Eure digitale Mannschaftskasse</CardDescription>
         </CardHeader>
         <CardContent className="pt-8 space-y-6">
+          {isPrivateDevUrl && (
+            <Alert className="bg-amber-50 border-amber-200 text-amber-800 rounded-xl">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="font-bold text-xs uppercase">Privater Vorschaumodus</AlertTitle>
+              <AlertDescription className="text-xs">
+                Diese URL ist privat. Um die App mit Spielern zu teilen, klicke in Studio auf <strong>Publish</strong>.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {error && (
-            <Alert variant="destructive" className="rounded-xl border-2 animate-in fade-in zoom-in">
+            <Alert variant="destructive" className="rounded-xl border-2">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="font-bold">Anmeldefehler</AlertTitle>
               <AlertDescription className="text-xs space-y-4">
                 <p>{error.message}</p>
                 {error.code === 'auth/unauthorized-domain' && (
                   <div className="mt-2 space-y-2">
-                    <p className="font-semibold text-foreground">Lösung:</p>
-                    <p>Füge diese Domain in der Firebase Console unter "Authorized Domains" hinzu:</p>
-                    <div className="p-2 bg-muted rounded-lg flex items-center justify-between gap-2 overflow-hidden border">
-                      <code className="text-[10px] font-mono truncate flex-1">{hostname}</code>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={copyHostname}>
+                    <p>Füge diese Domain in der Firebase Console hinzu:</p>
+                    <div className="p-2 bg-muted rounded-lg flex items-center justify-between gap-2 border">
+                      <code className="text-[10px] font-mono truncate">{hostname}</code>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={copyHostname}>
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -162,7 +157,7 @@ export default function LoginPage() {
 
           <Button 
             variant="outline" 
-            className="w-full h-14 rounded-xl border-2 hover:bg-muted font-bold transition-all flex items-center justify-center gap-3" 
+            className="w-full h-14 rounded-xl border-2 font-bold flex items-center justify-center gap-3" 
             onClick={handleGoogleLogin}
             disabled={loading}
           >
@@ -189,7 +184,7 @@ export default function LoginPage() {
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input type="password" placeholder="Passwort (min. 6 Zeichen)" className="h-12 rounded-xl pl-10" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input type="password" placeholder="Passwort" className="h-12 rounded-xl pl-10" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={loading}>
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Anmelden / Registrieren"}
@@ -197,8 +192,8 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="pb-8 justify-center">
-          <p className="text-xs text-muted-foreground text-center px-4">
-            E-Mail Login erstellt automatisch ein neues Konto, falls noch keines existiert.
+          <p className="text-xs text-muted-foreground text-center">
+            Die öffentliche URL findest du nach dem <strong>Publish</strong>.
           </p>
         </CardFooter>
       </Card>

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -29,6 +30,15 @@
     --chart-3: 199 20% 30%;
     --chart-4: 182 73% 40%;
     --chart-5: 199 50% 60%;
+    
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 199 50% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 182 73% 94%;
+    --sidebar-accent-foreground: 199 50% 25%;
+    --sidebar-border: 199 20% 88%;
+    --sidebar-ring: 199 50% 45%;
   }
 }
 

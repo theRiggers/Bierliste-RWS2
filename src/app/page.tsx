@@ -1,5 +1,7 @@
+
 "use client"
 
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -12,6 +14,11 @@ import { cn } from "@/lib/utils"
 export default function Dashboard() {
   const currentUser = MOCK_PLAYERS[0] // Lukas Müller (Auditor)
   const teamKasse = MOCK_PLAYERS[2] // Mannschaftskasse
+  const [currentDateFormatted, setCurrentDateFormatted] = useState<string>("")
+
+  useEffect(() => {
+    setCurrentDateFormatted(format(new Date(), 'EEEE, d. MMMM', { locale: de }))
+  }, [])
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -21,7 +28,7 @@ export default function Dashboard() {
         <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-muted-foreground">{format(new Date(), 'EEEE, d. MMMM', { locale: de })}</span>
+            <span className="text-sm font-medium text-muted-foreground">{currentDateFormatted}</span>
           </div>
         </header>
 

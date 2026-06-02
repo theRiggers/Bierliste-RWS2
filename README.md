@@ -23,18 +23,23 @@ Es gibt zwei verschiedene Standorte in deinem Projekt:
 1. **Firestore (Datenbank)**: Hier liegen deine Daten (Spieler, Stände). Dieser Ort ist fest (z.B. `europe-west`).
 2. **App Hosting (Web-Server)**: Das ist der Ort, von dem die Webseite geladen wird. 
 
-**Warum steht beim Publish "us-central"?**
-Das App Hosting Backend wird beim ersten Mal oft standardmäßig in den USA erstellt. Da deine Datenbank aber in Europa liegt, "reist" jede Anfrage über den Atlantik. 
+### Warum steht beim Publish "us-central"?
+Das App Hosting Backend wird beim ersten Mal oft standardmäßig in den USA erstellt. Da deine Datenbank aber in Europa liegt, "reist" jede Anfrage über den Atlantik, was die App etwas langsamer machen kann.
 
-**So verschiebst du den Web-Server nach Deutschland:**
-1. Gehe in die [Firebase Console](https://console.firebase.google.com/).
-2. Navigiere zu **App Hosting**.
-3. Lösche das bestehende Backend (falls es in `us-central` liegt).
-4. Erstelle ein neues Backend und wähle im Setup-Prozess als Region **`europe-west3` (Frankfurt)**.
-5. Verbinde es erneut mit deinem GitHub/Repository. Danach ist auch der Web-Server in Deutschland.
+### So verschiebst du den Web-Server nach Deutschland (Frankfurt):
+Da die Region nach der Erstellung nicht mehr geändert werden kann, musst du das Hosting-Backend einmal neu anlegen:
+
+1.  Gehe in die [Firebase Console](https://console.firebase.google.com/).
+2.  Wähle dein Projekt aus.
+3.  Navigiere im Menü links zu **App Hosting**.
+4.  Klicke bei deinem aktuellen Backend auf die drei Punkte (rechts) und wähle **Backend löschen**. (Keine Sorge: Deine Daten in der Datenbank bleiben erhalten!)
+5.  Klicke auf **Get Started** oder **Neues Backend erstellen**.
+6.  Verbinde dein GitHub-Repository erneut.
+7.  **WICHTIG**: Im Schritt "Region auswählen" (meist der zweite oder dritte Schritt), wähle **`europe-west3` (Frankfurt)** aus der Liste aus.
+8.  Schließe das Setup ab. Nach ein paar Minuten ist deine App nun auf einem Server in Deutschland gehostet.
 
 ## Installation auf dem Handy
-Die Bierliste ist eine **Progressive Web App (PWA)**.
+Die Bierliste ist eine **Progressive Web App (PWA)平衡**.
 
 ### iPhone (Safari)
 1. Öffne die **öffentliche URL** in **Safari**.

@@ -39,7 +39,6 @@ export default function Dashboard() {
 
   if (!user) return null
 
-  // Wenn der Benutzer eingeloggt ist, aber kein Profil in Firestore hat
   if (!currentUserProfile) {
     return (
       <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">

@@ -2,15 +2,13 @@
 
 Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
-## 🚀 Projekt zu GitHub exportieren
+## 🚀 Projekt zu GitHub exportieren (Initial)
 
-### 1. Terminal öffnen
-Da die Tastenkombinationen im Browser oft von Chrome abgefangen werden, nutze diesen Weg:
+Da die Tastenkombinationen im Browser oft von Chrome abgefangen werden, nutze diesen Weg um das Terminal zu öffnen:
 1. Drücke **`F1`** (oder `Strg` + `Shift` + `P`).
 2. Tippe oben im Suchfeld **"Terminal"** ein.
 3. Wähle **"Terminal: Create New Terminal"**.
 
-### 2. Befehle eingeben
 Kopiere diese Befehle **einzeln** in das Terminal und bestätige jeden mit **Enter**:
 
 1. `git init`
@@ -20,9 +18,17 @@ Kopiere diese Befehle **einzeln** in das Terminal und bestätige jeden mit **Ent
 5. `git remote add origin https://github.com/theRiggers/Bierliste-RWS2`
 6. `git push -u origin main`
 
-### ⚠️ Troubleshooting
-- **"command not found"**: Falls eine Meldung wie `__vsc_prompt_cmd_original` erscheint, **ignoriere sie**. Das ist ein Anzeigefehler. Wenn `{main}` im Terminal steht, hat es funktioniert.
-- **Authentifizierung**: Wenn GitHub nach einem Passwort fragt, musst du ein **Personal Access Token** verwenden, kein normales Passwort.
+*Hinweis: Falls GitHub nach einem Passwort fragt, musst du ein **Personal Access Token (PAT)** verwenden.*
+
+## 🔄 Neue Änderungen zu GitHub übertragen (Update-Workflow)
+
+Wenn wir neue Features eingebaut haben, musst du sie manuell zu GitHub "pushen", damit die App aktualisiert wird:
+
+1. `git add .`
+2. `git commit -m "Beschreibung der Änderung"`
+3. `git push`
+
+Nach dem `git push` startet Firebase automatisch das Deployment der neuen Version.
 
 ## 🌍 Hosting nach Frankfurt verschieben (europe-west3)
 Standardmäßig wird die App oft in den USA gehostet. So ziehst du um:

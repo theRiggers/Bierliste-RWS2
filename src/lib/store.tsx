@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -56,6 +56,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const { user, loading: authLoading } = useUser();
 
+  // Memoize queries to avoid infinite re-renders
   const playersQuery = useMemo(() => {
     if (!db) return null;
     return collection(db, 'players');
@@ -110,6 +111,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       date: new Date().toISOString(),
     };
 
+    // Record the expense
     addDoc(collection(db, 'expenses'), expenseData).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'expenses',
@@ -118,22 +120,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
     });
 
+    // Update player balance
     const playerRef = doc(db, 'players', playerId);
-    setDoc(playerRef, { balance: (player.balance || 0) - cost }, { merge: true }).catch(async () => {
+    const newPlayerBalance = (player.balance || 0) - cost;
+    setDoc(playerRef, { balance: newPlayerBalance }, { merge: true }).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: playerRef.path,
         operation: 'update',
-        requestResourceData: { balance: (player.balance || 0) - cost }
+        requestResourceData: { balance: newPlayerBalance }
       }));
     });
 
+    // Update team kasse balance
     if (teamKasse) {
       const kasseRef = doc(db, 'players', teamKasse.id);
-      setDoc(kasseRef, { balance: (teamKasse.balance || 0) + cost }, { merge: true }).catch(async () => {
+      const newKasseBalance = (teamKasse.balance || 0) + cost;
+      setDoc(kasseRef, { balance: newKasseBalance }, { merge: true }).catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: kasseRef.path,
           operation: 'update',
-          requestResourceData: { balance: (teamKasse.balance || 0) + cost }
+          requestResourceData: { balance: newKasseBalance }
         }));
       });
     }
@@ -161,11 +167,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
 
     const playerRef = doc(db, 'players', playerId);
-    setDoc(playerRef, { balance: (player.balance || 0) + amount }, { merge: true }).catch(async () => {
+    const newBalance = (player.balance || 0) + amount;
+    setDoc(playerRef, { balance: newBalance }, { merge: true }).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: playerRef.path,
         operation: 'update',
-        requestResourceData: { balance: (player.balance || 0) + amount }
+        requestResourceData: { balance: newBalance }
       }));
     });
   };

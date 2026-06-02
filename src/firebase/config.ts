@@ -3,14 +3,17 @@
 
 /**
  * Firebase Konfiguration.
- * WICHTIG: Die Werte sollten idealerweise über Umgebungsvariablen (NEXT_PUBLIC_...) gesetzt werden.
- * Wenn du die Firebase Console nutzt, kopiere die Werte hierher.
+ * 
+ * ANLEITUNG:
+ * 1. Gehe zu https://console.firebase.google.com/
+ * 2. Wähle dein Projekt -> Projekteinstellungen (Zahnrad) -> Deine Apps.
+ * 3. Kopiere die Werte aus dem 'firebaseConfig' Objekt hier hinein.
  */
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "env-api-key",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "env-auth-domain",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "env-project-id",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "env-storage-bucket",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "env-messaging-sender-id",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "env-app-id"
+  apiKey: "DEIN_API_KEY_HIER",
+  authDomain: "DEIN_PROJEKT.firebaseapp.com",
+  projectId: "DEIN_PROJEKT_ID",
+  storageBucket: "DEIN_PROJEKT.appspot.com",
+  messagingSenderId: "DEINE_SENDER_ID",
+  appId: "DEINE_APP_ID"
 };

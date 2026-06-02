@@ -168,12 +168,12 @@ Bierliste RWS2 (Schatzmeister)`;
     window.open(paypalUrl, '_blank');
   }
 
-  const TreasuryDialog = () => (
+  const TreasuryDialog = ({ variant = "default" }: { variant?: "default" | "mobile" }) => (
     <Dialog open={isTreasuryOpen} onOpenChange={setIsTreasuryOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="rounded-xl border-primary text-primary hover:bg-primary/5 h-10">
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Team-Ausgabe
+        <Button variant={variant === "mobile" ? "ghost" : "outline"} size={variant === "mobile" ? "icon" : "sm"} className={cn("rounded-xl h-10", variant === "mobile" ? "text-primary hover:bg-primary/10" : "border-primary text-primary hover:bg-primary/5")}>
+          <ShoppingCart className={cn("h-4 w-4", variant === "mobile" ? "h-6 w-6" : "mr-2")} />
+          {variant !== "mobile" && "Team-Ausgabe"}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -201,7 +201,10 @@ Bierliste RWS2 (Schatzmeister)`;
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole={currentUserProfile.role} />
-      <MobileNavTrigger userRole={currentUserProfile.role} />
+      <MobileNavTrigger 
+        userRole={currentUserProfile.role} 
+        rightElement={isAuditor ? <TreasuryDialog variant="mobile" /> : null} 
+      />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
@@ -213,16 +216,8 @@ Bierliste RWS2 (Schatzmeister)`;
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 pb-20 md:pb-8">
-          <div className="md:hidden flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
-              <span className="text-[10px] font-medium text-muted-foreground">{format(new Date(), 'd. MMM', { locale: de })}</span>
-            </div>
-            {isAuditor && (
-              <div className="flex gap-2">
-                <TreasuryDialog />
-              </div>
-            )}
+          <div className="md:hidden mb-2">
+            <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           </div>
 
           <div className={cn(

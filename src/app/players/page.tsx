@@ -70,13 +70,11 @@ export default function PlayersPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
-        <p className="text-muted-foreground">Nur Kassenprüfer haben Zugriff auf diese Seite.</p>
-        <Button onClick={() => window.location.href = "/"} className="mt-4">Zurück zum Dashboard</Button>
+        <Button onClick={() => window.location.href = "/"} className="mt-4">Zurück</Button>
       </div>
     )
   }
 
-  // Filter out system accounts from the list to avoid accidental editing
   const displayPlayers = players.filter(p => p.email !== 'kasse@kickoff.de')
 
   const handleAddPlayer = async () => {
@@ -89,7 +87,7 @@ export default function PlayersPage() {
     setNewName("")
     setNewEmail("")
     setNewRole("player")
-    toast({ title: "Erfolgreich", description: "Spielerprofil wurde angelegt. Der Spieler kann sich nun mit seiner E-Mail registrieren." })
+    toast({ title: "Erfolgreich", description: "Spielerprofil wurde angelegt." })
   }
 
   const handleEditPlayer = (player: Player) => {
@@ -114,7 +112,6 @@ export default function PlayersPage() {
     }
     recordPayment(paymentPlayer.id, amount)
     setIsPaymentOpen(false)
-    toast({ title: "Zahlung erfasst", description: `${amount.toFixed(2)}€ für ${paymentPlayer.name} gutgeschrieben.` })
   }
 
   const handleQuickAdd = (playerId: string, playerName: string, type: 'beer' | 'crate') => {
@@ -133,14 +130,11 @@ export default function PlayersPage() {
       role: editRole
     })
     setIsEditOpen(false)
-    toast({ title: "Aktualisiert", description: "Spielerprofil wurde gespeichert." })
+    toast({ title: "Aktualisiert" })
   }
 
   const handleDeleteRequest = (player: Player) => {
-    if (player.id === currentUserProfile.id) {
-      toast({ variant: "destructive", title: "Fehler", description: "Du kannst dich nicht selbst löschen." })
-      return
-    }
+    if (player.id === currentUserProfile.id) return
     setPlayerToDelete(player)
     setIsDeleteConfirmOpen(true)
   }
@@ -150,97 +144,86 @@ export default function PlayersPage() {
     await deletePlayer(playerToDelete.id)
     setIsDeleteConfirmOpen(false)
     setPlayerToDelete(null)
-    toast({ title: "Gelöscht", description: "Der Spieler wurde aus der Liste entfernt." })
   }
 
   const handleDraftReminder = async (player: any) => {
     if (player.balance >= 0) return
-    
     setDrafting(player.id)
     try {
-      const result = await draftPaymentReminder({
-        playerName: player.name,
-        outstandingAmount: Math.abs(player.balance)
-      })
-      
-      toast({
-        title: `Erinnerung für ${player.name}`,
-        description: result.reminderMessage,
-      })
+      const result = await draftPaymentReminder({ playerName: player.name, outstandingAmount: Math.abs(player.balance) })
+      toast({ title: `Erinnerung für ${player.name}`, description: result.reminderMessage })
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: "KI konnte keine Nachricht entwerfen."
-      })
+      toast({ variant: "destructive", title: "KI-Fehler" })
     } finally {
       setDrafting(null)
     }
   }
 
+  const AddPlayerDialogTrigger = ({ variant = "default" }: { variant?: "default" | "mobile" }) => (
+    <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      <DialogTrigger asChild>
+        <Button size={variant === "mobile" ? "icon" : "default"} variant={variant === "mobile" ? "ghost" : "default"} className={cn("rounded-xl", variant !== "mobile" && "cyan-glow")}>
+          <UserPlus className={cn("h-4 w-4", variant === "mobile" ? "h-6 w-6" : "mr-2")} />
+          {variant !== "mobile" && "Neuer Spieler"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Neuen Spieler hinzufügen</DialogTitle>
+          <DialogDescription>Erstelle ein Profil für ein neues Teammitglied.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">Name</Label>
+            <Input id="name" value={newName} onChange={(e) => setNewName(e.target.value)} className="col-span-3" placeholder="Z.B. Max Mustermann" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="email" className="text-right">E-Mail</Label>
+            <Input id="email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="col-span-3" placeholder="spieler@beispiel.de" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="role" className="text-right">Rolle</Label>
+            <Select value={newRole} onValueChange={(v: Role) => setNewRole(v)}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Rolle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="player">Spieler</SelectItem>
+                <SelectItem value="auditor">Kassenprüfer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="bg-muted/30 p-3 rounded-xl flex gap-3 items-start col-span-4 mt-2">
+            <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Der Spieler kann sich mit dieser E-Mail registrieren.
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={handleAddPlayer} className="rounded-xl w-full">Profil anlegen</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole="auditor" />
-      <MobileNavTrigger userRole="auditor" />
+      <MobileNavTrigger 
+        userRole="auditor" 
+        rightElement={<AddPlayerDialogTrigger variant="mobile" />} 
+      />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline">Spielerverwaltung</h1>
-          
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-xl cyan-glow">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Neuer Spieler
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Neuen Spieler hinzufügen</DialogTitle>
-                <DialogDescription>Erstelle ein Profil für ein neues Teammitglied.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">Name</Label>
-                  <Input id="name" value={newName} onChange={(e) => setNewName(e.target.value)} className="col-span-3" placeholder="Z.B. Max Mustermann" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">E-Mail</Label>
-                  <Input id="email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="col-span-3" placeholder="spieler@beispiel.de" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="role" className="text-right">Rolle</Label>
-                  <Select value={newRole} onValueChange={(v: Role) => setNewRole(v)}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Wähle eine Rolle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="player">Spieler</SelectItem>
-                      <SelectItem value="auditor">Kassenprüfer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="bg-muted/30 p-3 rounded-xl flex gap-3 items-start col-span-4 mt-2">
-                  <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    <strong>Hinweis:</strong> Der Spieler meldet sich später mit dieser E-Mail an. Ein Passwort wird vom Spieler beim ersten Login selbst festgelegt.
-                  </p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleAddPlayer} className="rounded-xl w-full">Profil anlegen</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <AddPlayerDialogTrigger />
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
-          <div className="md:hidden flex justify-between items-center mb-2">
+          <div className="md:hidden mb-2">
             <h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>
-            <Button size="sm" onClick={() => setIsAddOpen(true)} className="rounded-xl cyan-glow">
-              <UserPlus className="h-4 w-4 mr-1" />
-              Neu
-            </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -256,12 +239,7 @@ export default function PlayersPage() {
                         {player.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}
                       </Badge>
                       {player.id !== currentUserProfile.id && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full"
-                          onClick={() => handleDeleteRequest(player)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full" onClick={() => handleDeleteRequest(player)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
@@ -271,21 +249,11 @@ export default function PlayersPage() {
                   <div className="mb-4 min-h-[60px]">
                     <h3 className="text-xl font-bold text-foreground truncate">{player.name}</h3>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="h-7 px-2 text-[10px] rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200"
-                        onClick={() => handleQuickAdd(player.id, player.name, 'beer')}
-                      >
-                        <Beer className="h-3 w-3 mr-1" /> Bier buchen
+                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[10px] rounded-lg bg-amber-100 text-amber-700" onClick={() => handleQuickAdd(player.id, player.name, 'beer')}>
+                        <Beer className="h-3 w-3 mr-1" /> Bier
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="h-7 px-2 text-[10px] rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
-                        onClick={() => handleQuickAdd(player.id, player.name, 'crate')}
-                      >
-                        <Package className="h-3 w-3 mr-1" /> Kiste buchen
+                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[10px] rounded-lg bg-primary/10 text-primary" onClick={() => handleQuickAdd(player.id, player.name, 'crate')}>
+                        <Package className="h-3 w-3 mr-1" /> Kiste
                       </Button>
                     </div>
                   </div>
@@ -293,36 +261,20 @@ export default function PlayersPage() {
                   <div className="flex items-center justify-between py-3 border-t border-border mt-auto">
                     <div>
                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Kontostand</p>
-                      <p className={cn(
-                        "text-lg font-bold",
-                        player.balance < 0 ? 'text-destructive' : 'text-emerald-600'
-                      )}>
+                      <p className={cn("text-lg font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600')}>
                         {player.balance.toFixed(2)} €
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        size="icon" 
-                        variant="outline" 
-                        className="rounded-xl hover:bg-emerald-500 hover:text-white h-10 w-10 border-emerald-200 text-emerald-600"
-                        onClick={() => handleOpenPayment(player)}
-                        title="Zahlung erfassen"
-                      >
+                      <Button size="icon" variant="outline" className="rounded-xl hover:bg-emerald-500 hover:text-white h-10 w-10 border-emerald-200 text-emerald-600" onClick={() => handleOpenPayment(player)}>
                         <Banknote className="h-4 w-4" />
                       </Button>
                       {player.balance < 0 && (
-                        <Button 
-                          size="icon" 
-                          variant="outline" 
-                          className="rounded-xl hover:bg-primary hover:text-white h-10 w-10"
-                          onClick={() => handleDraftReminder(player)}
-                          disabled={drafting === player.id}
-                          title="Zahlungserinnerung entwerfen"
-                        >
+                        <Button size="icon" variant="outline" className="rounded-xl hover:bg-primary hover:text-white h-10 w-10" onClick={() => handleDraftReminder(player)} disabled={drafting === player.id}>
                           <MessageCircle className={cn("h-4 w-4", drafting === player.id && "animate-pulse")} />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" className="rounded-xl h-10 w-10" onClick={() => handleEditPlayer(player)} title="Bearbeiten">
+                      <Button size="icon" variant="ghost" className="rounded-xl h-10 w-10" onClick={() => handleEditPlayer(player)}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -330,11 +282,6 @@ export default function PlayersPage() {
                 </CardContent>
               </Card>
             ))}
-            {displayPlayers.length === 0 && (
-              <div className="col-span-full py-20 text-center text-muted-foreground italic">
-                Noch keine weiteren Spieler registriert.
-              </div>
-            )}
           </div>
         </div>
 
@@ -342,8 +289,7 @@ export default function PlayersPage() {
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Spielerprofil bearbeiten</DialogTitle>
-              <DialogDescription>Verwalte die persönlichen Daten und Berechtigungen.</DialogDescription>
+              <DialogTitle>Spieler bearbeiten</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
@@ -354,24 +300,9 @@ export default function PlayersPage() {
                 <Label htmlFor="edit-email" className="text-right text-xs">E-Mail</Label>
                 <Input id="edit-email" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="col-span-3" />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-role" className="text-right text-xs">Rolle</Label>
-                <Select value={editRole} onValueChange={(v: Role) => setEditRole(v)}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Wähle eine Rolle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="player">Spieler</SelectItem>
-                    <SelectItem value="auditor">Kassenprüfer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
             <DialogFooter>
-              <Button onClick={savePlayerChanges} className="rounded-xl w-full">
-                <Save className="h-4 w-4 mr-2" />
-                Änderungen speichern
-              </Button>
+              <Button onClick={savePlayerChanges} className="rounded-xl w-full">Speichern</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -381,27 +312,15 @@ export default function PlayersPage() {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Zahlung erfassen</DialogTitle>
-              <DialogDescription>Geld für {paymentPlayer?.name} gutschreiben.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="payment-amount" className="text-right text-xs">Betrag (€)</Label>
-                <Input 
-                  id="payment-amount" 
-                  type="number" 
-                  step="0.01" 
-                  value={paymentAmount} 
-                  onChange={(e) => setPaymentAmount(e.target.value)} 
-                  className="col-span-3" 
-                  placeholder="Z.B. 20.00"
-                />
+                <Input id="payment-amount" type="number" step="0.01" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="col-span-3" />
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleRecordPayment} className="rounded-xl w-full bg-emerald-600 hover:bg-emerald-700">
-                <Banknote className="h-4 w-4 mr-2" />
-                Zahlung verbuchen
-              </Button>
+              <Button onClick={handleRecordPayment} className="rounded-xl w-full bg-emerald-600 hover:bg-emerald-700">Verbuchen</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -410,17 +329,14 @@ export default function PlayersPage() {
         <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Spieler unwiderruflich löschen?</AlertDialogTitle>
+              <AlertDialogTitle>Spieler löschen?</AlertDialogTitle>
               <AlertDialogDescription>
-                Bist du sicher, dass du <strong>{playerToDelete?.name}</strong> löschen möchtest? 
-                Alle Profildaten gehen verloren. Bereits getätigte Transaktionen im Verlauf bleiben zur Übersicht erhalten, aber das Profil wird entfernt.
+                Bist du sicher, dass du <strong>{playerToDelete?.name}</strong> löschen möchtest?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeletePlayer} className="bg-destructive hover:bg-destructive/90 text-white">
-                Spieler löschen
-              </AlertDialogAction>
+              <AlertDialogAction onClick={confirmDeletePlayer} className="bg-destructive hover:bg-destructive/90 text-white">Löschen</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

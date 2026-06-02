@@ -1,31 +1,49 @@
+
 "use client"
 
-import { useState } from "react"
-import { Sidebar } from "@/components/layout/sidebar"
-import { MOCK_PLAYERS, MOCK_EXPENSES } from "@/lib/store"
+import { useState, useEffect } from "react"
+import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
+import { useStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Sparkles, TrendingUp, AlertTriangle, FileText, Send, Loader2 } from "lucide-react"
+import { Sparkles, TrendingUp, AlertTriangle, Send, Loader2 } from "lucide-react"
 import { treasurerExpenseSummary, TreasurerExpenseSummaryOutput } from "@/ai/flows/ai-treasurer-expense-summary"
 import { highlightOverduePayments, OverduePaymentHighlightOutput } from "@/ai/flows/ai-overdue-payment-highlight-flow"
 import { Badge } from "@/components/ui/badge"
 
 export default function AiToolsPage() {
+  const [mounted, setMounted] = useState(false)
+  const { players, expenses, loading: storeLoading } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
   const [expenseSummary, setExpenseSummary] = useState<TreasurerExpenseSummaryOutput | null>(null)
   const [overdueHighlight, setOverdueHighlight] = useState<OverduePaymentHighlightOutput | null>(null)
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (storeLoading || !mounted) {
+    return (
+      <div className="flex h-svh items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  const currentUser = players[0]
+  if (!currentUser) return null
+
   const generateExpenseSummary = async () => {
     setLoading('summary')
     try {
-      const expenses = MOCK_EXPENSES.map(e => ({
+      const formattedExpenses = expenses.map(e => ({
         playerId: e.playerId,
         playerName: e.playerName,
         itemType: e.itemType,
         cost: e.cost,
         date: e.date
       }))
-      const result = await treasurerExpenseSummary({ expenses })
+      const result = await treasurerExpenseSummary({ expenses: formattedExpenses })
       setExpenseSummary(result)
     } finally {
       setLoading(null)
@@ -35,12 +53,12 @@ export default function AiToolsPage() {
   const generateOverdueHighlight = async () => {
     setLoading('overdue')
     try {
-      const players = MOCK_PLAYERS.map(p => ({
+      const formattedPlayers = players.map(p => ({
         id: p.id,
         name: p.name,
         balance: p.balance
       }))
-      const result = await highlightOverduePayments(players)
+      const result = await highlightOverduePayments(formattedPlayers)
       setOverdueHighlight(result)
     } finally {
       setLoading(null)
@@ -48,18 +66,26 @@ export default function AiToolsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole="auditor" />
+      <MobileNavTrigger userRole="auditor" />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-accent" />
             KI-Berichte & Analysen
           </h1>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 max-w-5xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-5xl mx-auto w-full">
+          <div className="md:hidden">
+            <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-accent" />
+              KI-Berichte
+            </h1>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden">
               <CardHeader className="bg-primary/5">
@@ -75,7 +101,7 @@ export default function AiToolsPage() {
                   disabled={loading === 'summary'}
                   className="w-full rounded-xl cyan-glow"
                 >
-                  {loading === 'summary' ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  {loading === 'summary' ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
                   Zusammenfassung erstellen
                 </Button>
               </CardContent>
@@ -96,7 +122,7 @@ export default function AiToolsPage() {
                   disabled={loading === 'overdue'}
                   className="w-full rounded-xl border-destructive text-destructive hover:bg-destructive hover:text-white"
                 >
-                  {loading === 'overdue' ? <Loader2 className="animate-spin mr-2" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
+                  {loading === 'overdue' ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
                   Highlights identifizieren
                 </Button>
               </CardContent>

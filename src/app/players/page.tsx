@@ -1,12 +1,12 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save } from "lucide-react"
+import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { draftPaymentReminder } from "@/ai/flows/ai-draft-payment-reminder"
 import { useToast } from "@/hooks/use-toast"
@@ -18,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function PlayersPage() {
   const { toast } = useToast()
-  const { players, addPlayer, updatePlayer } = useStore()
+  const [mounted, setMounted] = useState(false)
+  const { players, addPlayer, updatePlayer, loading } = useStore()
   const [drafting, setDrafting] = useState<string | null>(null)
   
   // States for Adding Player
@@ -33,6 +34,21 @@ export default function PlayersPage() {
   const [editName, setEditName] = useState("")
   const [editEmail, setEditEmail] = useState("")
   const [editRole, setEditRole] = useState<Role>("player")
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (loading || !mounted) {
+    return (
+      <div className="flex h-svh items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  const currentUser = players[0]
+  if (!currentUser) return null
 
   const handleAddPlayer = () => {
     if (!newName || !newEmail) {

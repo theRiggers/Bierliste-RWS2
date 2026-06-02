@@ -10,23 +10,31 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { Search } from "lucide-react"
+import { Search, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function HistoryPage() {
   const [mounted, setMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
-  const { players, expenses } = useStore()
+  const { players, expenses, loading } = useStore()
   
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  if (loading || !mounted) {
+    return (
+      <div className="flex h-svh items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   const currentUser = players[0]
+  if (!currentUser) return null
 
   const formatDate = (date: string | Date, pattern: string) => {
-    if (!mounted) return ""
     return format(new Date(date), pattern, { locale: de })
   }
 
@@ -84,7 +92,7 @@ export default function HistoryPage() {
                       <div className="min-w-0">
                         <p className="font-bold text-foreground truncate">{expense.playerName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {mounted ? formatDate(expense.date, 'dd.MM.yy HH:mm') : "--.--.-- --:--"} • {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
+                          {formatDate(expense.date, 'dd.MM.yy HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
                         </p>
                       </div>
                       <span className="font-bold text-destructive whitespace-nowrap ml-2">
@@ -114,7 +122,7 @@ export default function HistoryPage() {
                     {filteredExpenses.map((expense) => (
                       <TableRow key={expense.id} className="hover:bg-muted/20 transition-colors">
                         <TableCell className="text-muted-foreground">
-                          {mounted ? formatDate(expense.date, 'dd.MM.yyyy HH:mm') : "--.--.---- --:--"}
+                          {formatDate(expense.date, 'dd.MM.yyyy HH:mm')}
                         </TableCell>
                         <TableCell className="font-medium">{expense.playerName}</TableCell>
                         <TableCell>

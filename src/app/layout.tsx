@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { StoreProvider } from '@/lib/store';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'Kickoff Kasse',
@@ -38,10 +39,12 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased bg-background text-foreground overflow-x-hidden">
-        <StoreProvider>
-          {children}
-          <Toaster />
-        </StoreProvider>
+        <FirebaseClientProvider>
+          <StoreProvider>
+            {children}
+            <Toaster />
+          </StoreProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

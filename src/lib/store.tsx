@@ -1,7 +1,11 @@
 
-"use client"
+'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, Firestore } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export type Role = 'player' | 'auditor';
 
@@ -25,24 +29,10 @@ export interface Expense {
 export const BEER_PRICE = 1.50;
 export const CRATE_PRICE = 35.00;
 
-const INITIAL_PLAYERS: Player[] = [
-  { id: '1', name: 'Lukas Müller', email: 'lukas@example.com', role: 'auditor', balance: -15.50 },
-  { id: '2', name: 'Julian Schmidt', email: 'julian@example.com', role: 'player', balance: 0.00 },
-  { id: '3', name: 'Mannschaftskasse', email: 'kasse@kickoff.de', role: 'player', balance: 145.00 },
-  { id: '4', name: 'Finn Weber', email: 'finn@example.com', role: 'player', balance: -45.00 },
-  { id: '5', name: 'Max Power', email: 'max@example.com', role: 'player', balance: -2.50 },
-];
-
-const INITIAL_EXPENSES: Expense[] = [
-  { id: 'e1', playerId: '1', playerName: 'Lukas Müller', itemType: 'beer', cost: 1.50, date: '2024-05-20T18:30:00Z' },
-  { id: 'e2', playerId: '4', playerName: 'Finn Weber', itemType: 'crate', cost: 35.00, date: '2024-05-19T20:15:00Z' },
-  { id: 'e3', playerId: '1', playerName: 'Lukas Müller', itemType: 'crate', cost: 35.00, date: '2024-05-18T19:00:00Z' },
-  { id: 'e4', playerId: '5', playerName: 'Max Power', itemType: 'beer', cost: 1.50, date: '2024-05-17T21:45:00Z' },
-];
-
 interface StoreContextType {
   players: Player[];
   expenses: Expense[];
+  loading: boolean;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   addPlayer: (name: string, email: string, role: Role) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -51,16 +41,41 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [players, setPlayers] = useState<Player[]>(INITIAL_PLAYERS);
-  const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
+  const db = useFirestore();
+
+  // Abfrage aller Spieler
+  const playersQuery = useMemo(() => {
+    if (!db) return null;
+    return collection(db, 'players');
+  }, [db]);
+  const { data: playersData, loading: playersLoading } = useCollection<Omit<Player, 'id'>>(playersQuery);
+
+  // Abfrage der letzten 50 Ausgaben
+  const expensesQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(50));
+  }, [db]);
+  const { data: expensesData, loading: expensesLoading } = useCollection<Omit<Expense, 'id'>>(expensesQuery);
+
+  const players = useMemo(() => 
+    playersData?.map(d => ({ ...d.data, id: d.id })) || [], 
+    [playersData]
+  );
+
+  const expenses = useMemo(() => 
+    expensesData?.map(d => ({ ...d.data, id: d.id })) || [], 
+    [expensesData]
+  );
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
+    if (!db) return;
     const cost = itemType === 'beer' ? BEER_PRICE : CRATE_PRICE;
     const player = players.find(p => p.id === playerId);
+    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
+
     if (!player) return;
 
-    const newExpense: Expense = {
-      id: `e${Date.now()}`,
+    const expenseData = {
       playerId,
       playerName: player.name,
       itemType,
@@ -68,36 +83,71 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       date: new Date().toISOString(),
     };
 
-    setExpenses(prev => [newExpense, ...prev]);
+    // 1. Ausgabe hinzufügen
+    addDoc(collection(db, 'expenses'), expenseData).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'expenses',
+        operation: 'create',
+        requestResourceData: expenseData
+      }));
+    });
 
-    setPlayers(prev => prev.map(p => {
-      if (p.id === playerId) {
-        return { ...p, balance: p.balance - cost };
-      }
-      if (p.id === '3') {
-        return { ...p, balance: p.balance + cost };
-      }
-      return p;
-    }));
+    // 2. Spieler-Balance aktualisieren
+    const playerRef = doc(db, 'players', playerId);
+    setDoc(playerRef, { balance: (player.balance || 0) - cost }, { merge: true }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: playerRef.path,
+        operation: 'update',
+        requestResourceData: { balance: player.balance - cost }
+      }));
+    });
+
+    // 3. Teamkasse aktualisieren
+    if (teamKasse) {
+      const kasseRef = doc(db, 'players', teamKasse.id);
+      setDoc(kasseRef, { balance: (teamKasse.balance || 0) + cost }, { merge: true }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: kasseRef.path,
+          operation: 'update',
+          requestResourceData: { balance: teamKasse.balance + cost }
+        }));
+      });
+    }
   };
 
   const addPlayer = (name: string, email: string, role: Role) => {
-    const newPlayer: Player = {
-      id: `p${Date.now()}`,
-      name,
-      email,
-      role,
-      balance: 0.00,
-    };
-    setPlayers(prev => [...prev, newPlayer]);
+    if (!db) return;
+    const playerData = { name, email, role, balance: 0.00 };
+    addDoc(collection(db, 'players'), playerData).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'players',
+        operation: 'create',
+        requestResourceData: playerData
+      }));
+    });
   };
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
-    setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    if (!db) return;
+    const playerRef = doc(db, 'players', id);
+    setDoc(playerRef, updates, { merge: true }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: playerRef.path,
+        operation: 'update',
+        requestResourceData: updates
+      }));
+    });
   };
 
   return (
-    <StoreContext.Provider value={{ players, expenses, addExpense, addPlayer, updatePlayer }}>
+    <StoreContext.Provider value={{ 
+      players, 
+      expenses, 
+      loading: playersLoading || expensesLoading,
+      addExpense, 
+      addPlayer, 
+      updatePlayer 
+    }}>
       {children}
     </StoreContext.Provider>
   );

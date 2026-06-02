@@ -1,0 +1,43 @@
+
+{
+  "entities": {
+    "Player": {
+      "title": "Player",
+      "description": "Ein Teammitglied oder Kassenprüfer.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["player", "auditor"] },
+        "balance": { "type": "number", "description": "Aktueller Kontostand in Euro." }
+      },
+      "required": ["name", "email", "role", "balance"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Eine getätigte Getränkebuchung.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "playerName": { "type": "string" },
+        "itemType": { "type": "string", "enum": ["beer", "crate"] },
+        "cost": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["playerId", "playerName", "itemType", "cost", "date"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com", "password"]
+  },
+  "firestore": {
+    "/players/{playerId}": {
+      "schema": "Player",
+      "description": "Sammlung aller Spielerprofile."
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Verlauf aller getätigten Buchungen."
+    }
+  }
+}

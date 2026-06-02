@@ -6,24 +6,39 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { useStore } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
-  const { players, expenses } = useStore()
+  const { players, expenses, loading } = useStore()
   
-  const currentUser = players[0]
-  const teamKasse = players.find(p => p.id === '3') || players[2]
-
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  if (loading || !mounted) {
+    return (
+      <div className="flex h-svh items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  const currentUser = players[0]
+  if (!currentUser) {
+    return (
+      <div className="flex h-svh items-center justify-center bg-background p-8 text-center">
+        <p className="text-muted-foreground">Keine Spielerdaten gefunden. Bitte lege zuerst einen Spieler in der Verwaltung an.</p>
+      </div>
+    )
+  }
+
+  const teamKasse = players.find(p => p.email === 'kasse@kickoff.de') || { balance: 0 }
+
   const formatDate = (date: string | Date, pattern: string) => {
-    if (!mounted) return ""
     return format(new Date(date), pattern, { locale: de })
   }
 
@@ -43,7 +58,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-muted-foreground">
-              {mounted ? formatDate(new Date(), 'EEEE, d. MMMM') : ""}
+              {formatDate(new Date(), 'EEEE, d. MMMM')}
             </span>
           </div>
         </header>
@@ -51,7 +66,7 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">
           <div className="md:hidden pt-2">
             <p className="text-sm font-medium text-muted-foreground px-1">
-              {mounted ? formatDate(new Date(), 'EEEE, d. MMMM') : ""}
+              {formatDate(new Date(), 'EEEE, d. MMMM')}
             </p>
           </div>
 
@@ -130,7 +145,7 @@ export default function Dashboard() {
                         <div className="min-w-0">
                           <p className="font-semibold text-foreground truncate">{expense.playerName}</p>
                           <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                            {mounted ? formatDate(expense.date, 'dd.MM. HH:mm') : "--.--. --:--"} • {expense.itemType === 'beer' ? 'Bier' : 'Kasten'}
+                            {formatDate(expense.date, 'dd.MM. HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kasten'}
                           </p>
                         </div>
                       </div>

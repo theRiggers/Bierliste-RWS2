@@ -26,6 +26,7 @@ export default function LoginPage() {
   
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true)
   const [loading, setLoading] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [error, setError] = useState<{code: string, message: string} | null>(null)
@@ -42,34 +43,46 @@ export default function LoginPage() {
     const checkRedirect = async () => {
       try {
         const result = await getRedirectResult(auth)
-        if (result) {
+        if (result?.user) {
+          // Redirect successful, user is now handled by the user state hook
           router.push("/")
+          return
         }
       } catch (err: any) {
         console.error("Redirect Error:", err)
-        if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        if (err.code === 'auth/unauthorized-domain') {
           setError({
             code: err.code,
-            message: err.code === 'auth/unauthorized-domain' 
-              ? "Diese Domain ist noch nicht in Firebase autorisiert." 
-              : "Login fehlgeschlagen. Bitte versuche es erneut."
+            message: "Diese Domain ist noch nicht in Firebase autorisiert. Bitte füge sie in der Firebase Console hinzu."
+          })
+        } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+          setError({
+            code: err.code,
+            message: "Login fehlgeschlagen. Bitte versuche es erneut."
           })
         }
+      } finally {
+        setIsProcessingRedirect(false)
       }
     }
+    
     checkRedirect()
   }, [auth, router])
 
   useEffect(() => {
-    if (user && !authLoading) {
+    // If user is already logged in and we're not waiting for a redirect result
+    if (user && !authLoading && !isProcessingRedirect) {
       router.push("/")
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading, isProcessingRedirect, router])
 
-  if (authLoading) {
+  if (authLoading || isProcessingRedirect) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-sm font-medium text-muted-foreground">Prüfe Anmeldung...</p>
+        </div>
       </div>
     )
   }
@@ -79,16 +92,13 @@ export default function LoginPage() {
     setError(null)
     const provider = new GoogleAuthProvider()
     try {
-      // Use redirect instead of popup for better mobile support
       await signInWithRedirect(auth, provider)
     } catch (err: any) {
       console.error(err)
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError({
-          code: err.code,
-          message: "Login konnte nicht gestartet werden."
-        })
-      }
+      setError({
+        code: err.code,
+        message: "Login konnte nicht gestartet werden."
+      })
       setLoading(false)
     }
   }
@@ -101,10 +111,8 @@ export default function LoginPage() {
       if (isRegistering) {
         await createUserWithEmailAndPassword(auth, email, password)
         toast({ title: "Konto erstellt", description: "Willkommen bei der Bierliste RWS2!" })
-        router.push("/")
       } else {
         await signInWithEmailAndPassword(auth, email, password)
-        router.push("/")
       }
     } catch (err: any) {
       console.error(err)
@@ -141,21 +149,21 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="pt-8 space-y-6">
           {error && (
-            <Alert variant="destructive" className="rounded-xl border-2">
+            <Alert variant="destructive" className="rounded-xl border-2 animate-in fade-in zoom-in duration-300">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="font-bold">Aktion erforderlich</AlertTitle>
               <AlertDescription className="text-xs space-y-3 pt-1">
                 <p>{error.message}</p>
                 {error.code === 'auth/unauthorized-domain' && (
-                  <div className="mt-2 p-3 bg-white/10 rounded-lg border border-white/20">
+                  <div className="mt-2 p-3 bg-black/5 rounded-lg border border-black/10">
                     <p className="font-semibold mb-2">Domain für Firebase Console:</p>
-                    <div className="flex items-center justify-between gap-2 font-mono text-[11px] bg-black/5 p-2 rounded border border-black/5">
+                    <div className="flex items-center justify-between gap-2 font-mono text-[11px] bg-white p-2 rounded border border-black/5">
                       <span className="truncate select-all">{hostname}</span>
                       <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={copyHostname}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="mt-3 flex gap-2 items-start text-[10px] leading-tight">
+                    <div className="mt-3 flex gap-2 items-start text-[10px] leading-tight text-muted-foreground">
                       <Info className="h-3 w-3 mt-0.5 shrink-0" />
                       <p>
                         Gehe zu <strong>Authentication</strong> &rarr; <strong>Settings</strong> &rarr; <strong>Authorized Domains</strong> und füge diese Adresse hinzu.
@@ -194,7 +202,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-lg cyan-glow" disabled={loading}>
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-lg shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all bg-primary text-white" disabled={loading}>
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Konto erstellen" : "Anmelden")}
             </Button>
           </form>
@@ -210,7 +218,7 @@ export default function LoginPage() {
 
           <Button 
             variant="outline" 
-            className="w-full h-12 rounded-xl border-2 hover:bg-muted font-bold transition-all" 
+            className="w-full h-12 rounded-xl border-2 hover:bg-muted font-bold transition-all hover:scale-[1.02] active:scale-[0.98]" 
             onClick={handleGoogleLogin}
             disabled={loading}
           >

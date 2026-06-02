@@ -7,7 +7,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, currentUserProfile, addPlayer, addTreasuryExpense, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, currentUserProfile, addPlayer, addTreasuryExpense, addBezahlkiste, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   // Treasury Expense States
@@ -144,6 +144,11 @@ export default function Dashboard() {
     setIsTreasuryOpen(false)
     setTDesc("")
     setTAmount("")
+  }
+
+  const handleAddBezahlkisteLocal = () => {
+    addBezahlkiste();
+    toast({ title: "Bezahlkiste erfasst", description: "35€ von Teamkasse abgezogen." });
   }
 
   const handleDraftClubhouseLocal = () => {
@@ -314,6 +319,14 @@ Bierliste RWS2 (Schatzmeister)`;
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    <Button 
+                      variant="outline"
+                      onClick={handleAddBezahlkisteLocal}
+                      className="rounded-xl border-amber-600 text-amber-700 hover:bg-amber-50 flex-1 md:flex-none h-10 px-4 text-xs font-bold"
+                    >
+                      <Package className="h-3 w-3 mr-2" />
+                      Bezahlkiste (+35€)
+                    </Button>
                     <Button 
                       variant="outline"
                       onClick={handleDraftClubhouseLocal} 

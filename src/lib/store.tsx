@@ -75,6 +75,7 @@ interface StoreContextType {
   deleteMembershipFee: (feeId: string) => void;
   addTreasuryExpense: (description: string, amount: number) => void;
   deleteTreasuryExpense: (expenseId: string) => void;
+  addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   deletePlayer: (id: string) => Promise<void>;
@@ -113,17 +114,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return players.find(p => p.id === user.uid) || null;
   }, [user, players]);
 
-  // Cleanup logic: Automatically delete season 2024 (24/25) in August 2026
   useEffect(() => {
     if (db && currentUserProfile?.role === 'auditor' && !feesLoading) {
       const now = new Date();
-      // August 2026 (Month 7 because 0-indexed)
       const cleanupDate = new Date(2026, 7, 1);
       
       if (now >= cleanupDate) {
         const oldFees = membershipFees.filter(f => f.year === 2024);
         if (oldFees.length > 0) {
-          console.log("Cleaning up old season data (2024)...");
           const batch = writeBatch(db);
           oldFees.forEach(f => {
             const ref = doc(db, 'membershipFees', f.id);
@@ -148,7 +146,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const playerRef = doc(db, 'players', playerId);
     setDoc(playerRef, { balance: (player.balance || 0) - cost }, { merge: true });
 
-    if (teamKasse) {
+    if (teamKasse && playerId !== teamKasse.id) {
       const kasseRef = doc(db, 'players', teamKasse.id);
       setDoc(kasseRef, { balance: (teamKasse.balance || 0) + cost }, { merge: true });
     }
@@ -165,7 +163,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (player) {
       setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true });
     }
-    if (teamKasse) {
+    if (teamKasse && expense.playerId !== teamKasse.id) {
       setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) - expense.cost }, { merge: true });
     }
   };
@@ -230,6 +228,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const addBezahlkiste = () => {
+    if (!db || !currentUserProfile) return;
+    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
+    if (!teamKasse) return;
+
+    // 1. Record an expense for the team kasse player itself
+    const expenseData = { 
+      playerId: teamKasse.id, 
+      playerName: 'Mannschaftskasse', 
+      itemType: 'crate', 
+      cost: CRATE_PRICE, 
+      date: new Date().toISOString() 
+    };
+    addDoc(collection(db, 'expenses'), expenseData);
+
+    // 2. Deduct amount from team kasse balance
+    const kasseRef = doc(db, 'players', teamKasse.id);
+    setDoc(kasseRef, { balance: (teamKasse.balance || 0) - CRATE_PRICE }, { merge: true });
+    
+    // 3. Optional: Add a treasury record for clarity
+    const treasuryData = { 
+      description: "Bezahlkiste (für Einzelverkauf)", 
+      amount: CRATE_PRICE, 
+      date: new Date().toISOString(), 
+      recordedBy: currentUserProfile.id 
+    };
+    addDoc(collection(db, 'treasuryExpenses'), treasuryData);
+  };
+
   const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {
     if (!db) return;
     const playerData = { name, email, role, balance: 0.00 };
@@ -247,16 +274,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, 'players', id));
   };
 
-  const cleanupOldSeasons = () => {
-    // Manually trigger cleanup if needed
-  };
+  const cleanupOldSeasons = () => {};
 
   return (
     <StoreContext.Provider value={{ 
       players, expenses, payments, membershipFees, treasuryExpenses, currentUserProfile,
       loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || tExpensesLoading || authLoading,
       addExpense, deleteExpense, recordPayment, deletePayment,
-      addMembershipFee, deleteMembershipFee, addTreasuryExpense, deleteTreasuryExpense,
+      addMembershipFee, deleteMembershipFee, addTreasuryExpense, deleteTreasuryExpense, addBezahlkiste,
       addPlayer, updatePlayer, deletePlayer, cleanupOldSeasons
     }}>
       {children}

@@ -13,20 +13,25 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 ## 🚀 Projekt zu GitHub exportieren
 Da dies eine private Entwicklungsumgebung ist, musst du den Code manuell zu GitHub pushen:
 
-1. **GitHub Repository erstellen**: Gehe auf [GitHub](https://github.com/new) und erstelle ein neues, leeres Repository (ohne README oder .gitignore).
-2. **Terminal öffnen**: 
-   - Klicke oben links auf das **Menü (三)** -> **Terminal** -> **New Terminal**.
-   - Oder klicke unten in der Statusleiste auf den Reiter **Terminal**.
-3. **Befehle ausführen**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initialer Export der Bierliste"
-   git branch -M main
-   git remote add origin DEINE_GITHUB_URL_HIER
-   git push -u origin main
-   ```
-   *(Ersetze `DEINE_GITHUB_URL_HIER` mit dem Link deines neuen Repositories, z.B. `https://github.com/nutzer/bierliste.git`)*
+### 1. Terminal öffnen
+Wenn du das Terminal nicht siehst:
+- Drücke **`Strg + `** (Backtick-Taste links neben der 1) oder **`Cmd + `** auf dem Mac.
+- ODER: Klicke oben links auf das **Menü (≡)** -> **Terminal** -> **New Terminal**.
+
+### 2. GitHub Repository erstellen
+Gehe auf [GitHub](https://github.com/new) und erstelle ein neues, leeres Repository (ohne README oder .gitignore).
+
+### 3. Befehle im Terminal ausführen
+Kopiere diese Zeilen nacheinander in das schwarze Fenster unten:
+```bash
+git init
+git add .
+git commit -m "Initialer Export der Bierliste"
+git branch -M main
+git remote add origin DEINE_GITHUB_URL_HIER
+git push -u origin main
+```
+*(Ersetze `DEINE_GITHUB_URL_HIER` mit dem Link deines neuen Repositories, z.B. `https://github.com/nutzer/bierliste.git`)*
 
 ## WICHTIG: Entwicklung vs. Live
 Die URL, die auf `.cloudworkstations.dev` endet, ist **privat**. Sie funktioniert nur auf deinem Rechner/Browser, wo du eingeloggt bist. Andere Personen (Spieler) erhalten dort den Fehler **"401: Permission Denied"**.

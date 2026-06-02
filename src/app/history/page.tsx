@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { MOCK_PLAYERS, MOCK_EXPENSES } from "@/lib/store"
+import { useStore } from "@/lib/store"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,19 +17,20 @@ export default function HistoryPage() {
   const [mounted, setMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
+  const { players, expenses } = useStore()
   
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const currentUser = MOCK_PLAYERS[0]
+  const currentUser = players[0]
 
   const formatDate = (date: string | Date, pattern: string) => {
     if (!mounted) return ""
     return format(new Date(date), pattern, { locale: de })
   }
 
-  const filteredExpenses = MOCK_EXPENSES.filter(exp => {
+  const filteredExpenses = expenses.filter(exp => {
     const matchesSearch = exp.playerName.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter = filterType === "all" || exp.itemType === filterType
     return matchesSearch && matchesFilter

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent } from "@/components/ui/card"
-import { MOCK_PLAYERS, MOCK_EXPENSES } from "@/lib/store"
+import { useStore } from "@/lib/store"
 import { Wallet, Beer, Clock, ArrowUpRight } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
@@ -13,8 +13,10 @@ import { cn } from "@/lib/utils"
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
-  const currentUser = MOCK_PLAYERS[0]
-  const teamKasse = MOCK_PLAYERS[2]
+  const { players, expenses } = useStore()
+  
+  const currentUser = players[0]
+  const teamKasse = players.find(p => p.id === '3') || players[2]
 
   useEffect(() => {
     setMounted(true)
@@ -24,6 +26,12 @@ export default function Dashboard() {
     if (!mounted) return ""
     return format(new Date(date), pattern, { locale: de })
   }
+
+  // Calculate monthly consumption for current user
+  const monthlyConsumptionCount = expenses.filter(e => 
+    e.playerId === currentUser.id && 
+    new Date(e.date).getMonth() === new Date().getMonth()
+  ).length
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -56,7 +64,10 @@ export default function Dashboard() {
                     <Wallet className="h-4 w-4" />
                   </div>
                 </div>
-                <h2 className={`text-2xl md:text-3xl font-bold ${currentUser.balance < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                <h2 className={cn(
+                  "text-2xl md:text-3xl font-bold",
+                  currentUser.balance < 0 ? 'text-destructive' : 'text-emerald-600'
+                )}>
                   {currentUser.balance.toFixed(2)} €
                 </h2>
                 <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Offene Beträge</p>
@@ -86,7 +97,9 @@ export default function Dashboard() {
                     <Beer className="h-4 w-4" />
                   </div>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">12</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+                  {monthlyConsumptionCount}
+                </h2>
                 <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Getränkeeinheiten</p>
               </CardContent>
             </Card>
@@ -94,7 +107,7 @@ export default function Dashboard() {
 
           <div>
             <h3 className="text-lg font-semibold mb-4 text-foreground px-1">Getränk erfassen</h3>
-            <ExpenseActions isAdmin={currentUser.role === 'auditor'} />
+            <ExpenseActions isAdmin={currentUser.role === 'auditor'} currentUserId={currentUser.id} />
           </div>
 
           <div>
@@ -105,7 +118,7 @@ export default function Dashboard() {
             <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-white">
               <CardContent className="p-0">
                 <div className="divide-y divide-border">
-                  {MOCK_EXPENSES.map((expense) => (
+                  {expenses.slice(0, 10).map((expense) => (
                     <div key={expense.id} className="p-4 flex items-center justify-between hover:bg-muted/30 active:bg-muted/50 transition-colors">
                       <div className="flex items-center gap-3 md:gap-4">
                         <div className={cn(
@@ -126,6 +139,11 @@ export default function Dashboard() {
                       </span>
                     </div>
                   ))}
+                  {expenses.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground italic">
+                      Noch keine Buchungen vorhanden.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

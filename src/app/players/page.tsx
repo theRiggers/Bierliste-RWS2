@@ -1,22 +1,23 @@
+
 "use client"
 
 import { useState } from "react"
 import { Sidebar } from "@/components/layout/sidebar"
-import { MOCK_PLAYERS } from "@/lib/store"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useStore } from "@/lib/store"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { UserPlus, UserCircle, MessageCircle, MoreHorizontal, TrendingDown, ChevronRight } from "lucide-react"
+import { UserPlus, UserCircle, MessageCircle, ChevronRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { draftPaymentReminder } from "@/ai/flows/ai-draft-payment-reminder"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function PlayersPage() {
   const { toast } = useToast()
-  const [players, setPlayers] = useState(MOCK_PLAYERS)
+  const { players } = useStore()
   const [drafting, setDrafting] = useState<string | null>(null)
 
-  const handleDraftReminder = async (player: typeof MOCK_PLAYERS[0]) => {
+  const handleDraftReminder = async (player: any) => {
     if (player.balance >= 0) return
     
     setDrafting(player.id)
@@ -76,7 +77,10 @@ export default function PlayersPage() {
                   <div className="flex items-center justify-between py-3 border-t border-border mt-auto">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Kontostand</p>
-                      <p className={`text-lg font-bold ${player.balance < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                      <p className={cn(
+                        "text-lg font-bold",
+                        player.balance < 0 ? 'text-destructive' : 'text-emerald-600'
+                      )}>
                         {player.balance.toFixed(2)} €
                       </p>
                     </div>
@@ -89,7 +93,7 @@ export default function PlayersPage() {
                           onClick={() => handleDraftReminder(player)}
                           disabled={drafting === player.id}
                         >
-                          <MessageCircle className={`h-4 w-4 ${drafting === player.id ? 'animate-pulse' : ''}`} />
+                          <MessageCircle className={cn("h-4 w-4", drafting === player.id && "animate-pulse")} />
                         </Button>
                       )}
                       <Button size="icon" variant="ghost" className="rounded-xl">

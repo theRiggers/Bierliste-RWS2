@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -5,22 +6,30 @@ import { Beer, Package, PlusCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { BEER_PRICE, CRATE_PRICE } from "@/lib/store"
+import { BEER_PRICE, CRATE_PRICE, useStore } from "@/lib/store"
 
-export function ExpenseActions({ isAdmin = false }) {
+interface ExpenseActionsProps {
+  isAdmin?: boolean;
+  currentUserId: string;
+}
+
+export function ExpenseActions({ isAdmin = false, currentUserId }: ExpenseActionsProps) {
   const { toast } = useToast()
+  const { addExpense } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
 
   const handleAdd = (type: 'beer' | 'crate') => {
     setLoading(type)
-    // Simulate API call
+    
+    // Simulate a brief delay for better UX feel
     setTimeout(() => {
+      addExpense(currentUserId, type)
       setLoading(null)
       toast({
         title: "Erfolgreich!",
         description: `${type === 'beer' ? 'Bier' : 'Kasten'} verbucht.`,
       })
-    }, 800)
+    }, 400)
   }
 
   return (

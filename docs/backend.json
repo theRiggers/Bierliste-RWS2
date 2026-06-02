@@ -9,7 +9,7 @@
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["player", "auditor"] },
-        "balance": { "type": "number", "description": "Aktueller Kontostand in Euro." }
+        "balance": { "type": "number", "description": "Aktueller Kontostand der Getränkekasse." }
       },
       "required": ["name", "email", "role", "balance"]
     },
@@ -28,16 +28,30 @@
     },
     "Payment": {
       "title": "Payment",
-      "description": "Eine Einzahlung eines Spielers in die Kasse.",
+      "description": "Eine Einzahlung eines Spielers in die Getränkekasse.",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
         "playerName": { "type": "string" },
         "amount": { "type": "number" },
         "date": { "type": "string", "format": "date-time" },
-        "recordedBy": { "type": "string", "description": "ID des Kassenprüfers, der die Zahlung erfasst hat." }
+        "recordedBy": { "type": "string" }
       },
       "required": ["playerId", "playerName", "amount", "date", "recordedBy"]
+    },
+    "MembershipFee": {
+      "title": "MembershipFee",
+      "description": "Ein gezahlter Mitgliedsbeitrag (Monat oder Jahr).",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "type": { "type": "string", "enum": ["monthly", "annual"] },
+        "month": { "type": "number", "description": "0-11, relevant für monthly." },
+        "year": { "type": "number", "description": "Startjahr der Saison (z.B. 2024 für 24/25)." },
+        "amount": { "type": "number" },
+        "datePaid": { "type": "string", "format": "date-time" }
+      },
+      "required": ["playerId", "type", "year", "amount", "datePaid"]
     }
   },
   "auth": {
@@ -46,15 +60,19 @@
   "firestore": {
     "/players/{playerId}": {
       "schema": "Player",
-      "description": "Sammlung aller Spielerprofile."
+      "description": "Spielerprofile."
     },
     "/expenses/{expenseId}": {
       "schema": "Expense",
-      "description": "Verlauf aller getätigten Buchungen."
+      "description": "Getränkebuchungen."
     },
     "/payments/{paymentId}": {
       "schema": "Payment",
-      "description": "Verlauf aller getätigten Einzahlungen."
+      "description": "Einzahlungen Getränkekasse."
+    },
+    "/membershipFees/{feeId}": {
+      "schema": "MembershipFee",
+      "description": "Mitgliedsbeiträge."
     }
   }
 }

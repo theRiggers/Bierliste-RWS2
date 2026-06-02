@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Beer, History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote } from "lucide-react"
+import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -11,6 +11,7 @@ import { useState } from "react"
 import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { useStore } from "@/lib/store"
+import Image from "next/image"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -39,9 +40,15 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex h-16 items-center px-6 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary p-1.5 rounded-lg shadow-md">
-            <Beer className="h-6 w-6 text-white" />
+        <div className="flex items-center gap-3">
+          <div className="relative h-10 w-10 flex-shrink-0">
+            <Image 
+              src="/logo.png" 
+              alt="RW Sutthausen" 
+              fill 
+              className="object-contain"
+              priority
+            />
           </div>
           <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
         </div>
@@ -130,8 +137,10 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
               <SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle></SheetHeader>
               <div className="flex flex-col h-full">
                 <div className="flex h-16 items-center px-6 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-primary p-1.5 rounded-lg shadow-md"><Beer className="h-6 w-6 text-white" /></div>
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-8 w-8">
+                      <Image src="/logo.png" alt="Logo" fill className="object-contain" />
+                    </div>
                     <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
                   </div>
                 </div>
@@ -170,8 +179,10 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-2 ml-2">
-            <Beer className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-3 ml-2">
+            <div className="relative h-6 w-6">
+              <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" />
+            </div>
             <span className="font-bold text-lg text-primary">Bierliste RWS2</span>
           </div>
         </div>

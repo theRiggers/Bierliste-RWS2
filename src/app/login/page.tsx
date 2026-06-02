@@ -13,9 +13,10 @@ import { useAuth, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Beer, Mail, Lock, Loader2, AlertCircle, Copy, ExternalLink } from "lucide-react"
+import { Mail, Lock, Loader2, AlertCircle, Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Image from "next/image"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -117,8 +118,10 @@ export default function LoginPage() {
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
         <CardHeader className="space-y-1 bg-primary pb-8 pt-10 text-center">
-          <div className="mx-auto bg-white p-3 rounded-2xl shadow-lg w-fit mb-4">
-            <Beer className="h-8 w-8 text-primary" />
+          <div className="mx-auto bg-white p-2 rounded-2xl shadow-lg w-20 h-20 mb-4 flex items-center justify-center">
+            <div className="relative w-16 h-16">
+              <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" priority />
+            </div>
           </div>
           <CardTitle className="text-2xl font-bold font-headline text-white">Bierliste RWS2</CardTitle>
           <CardDescription className="text-white/80">Eure digitale Mannschaftskasse</CardDescription>

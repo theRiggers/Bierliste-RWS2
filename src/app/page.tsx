@@ -31,13 +31,12 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    // Nur weiterleiten, wenn wir sicher sind, dass kein User da ist
     if (mounted && !authLoading && !user) {
       router.replace("/login")
     }
   }, [mounted, authLoading, user, router])
 
-  if (!mounted || authLoading || (user && storeLoading)) {
+  if (!mounted || authLoading) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -46,6 +45,15 @@ export default function Dashboard() {
   }
 
   if (!user) return null
+
+  // Wenn Daten noch laden, zeigen wir den Spinner
+  if (storeLoading) {
+    return (
+      <div className="flex h-svh items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   const handleOnboarding = async () => {
     if (!onboardingName.trim() || isSubmitting) return

@@ -4,14 +4,12 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { 
-  signInWithRedirect, 
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  onAuthStateChanged
 } from "firebase/auth"
-import { useAuth } from "@/firebase"
+import { useAuth, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,12 +21,11 @@ export default function LoginPage() {
   const router = useRouter()
   const auth = useAuth()
   const { toast } = useToast()
+  const { user, loading: authLoading } = useUser()
   
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [initializing, setInitializing] = useState(true)
-  const [isRegistering, setIsRegistering] = useState(false)
   const [error, setError] = useState<{code: string, message: string} | null>(null)
   const [hostname, setHostname] = useState("")
 
@@ -36,56 +33,41 @@ export default function LoginPage() {
     if (typeof window !== 'undefined') {
       setHostname(window.location.hostname)
     }
+  }, [])
 
-    // 1. Zuerst prüfen, ob bereits ein User eingeloggt ist (von einer alten Session)
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/")
-      } else {
-        // Wenn kein User da ist, prüfen wir, ob wir gerade von einem Google-Redirect kommen
-        checkRedirectResult()
-      }
-    })
-
-    const checkRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth)
-        if (result?.user) {
-          router.replace("/")
-          return
-        }
-      } catch (err: any) {
-        console.error("Redirect Error:", err)
-        if (err.code === 'auth/unauthorized-domain') {
-          setError({
-            code: err.code,
-            message: "Diese Domain ist nicht autorisiert. Bitte füge sie in der Firebase Console hinzu."
-          })
-        } else {
-          setError({
-            code: err.code,
-            message: "Fehler beim Google-Login: " + err.message
-          })
-        }
-      } finally {
-        setInitializing(false)
-      }
+  // Wenn ein User erkannt wird, sofort zum Dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      router.replace("/")
     }
-
-    return () => unsubscribe()
-  }, [auth, router])
+  }, [user, authLoading, router])
 
   const handleGoogleLogin = async () => {
     setLoading(true)
     setError(null)
     const provider = new GoogleAuthProvider()
     try {
-      await signInWithRedirect(auth, provider)
+      // Popup ist stabiler in Desktop-Browsern und Cloud-Umgebungen
+      await signInWithPopup(auth, provider)
+      // Der useEffect oben kümmert sich um die Weiterleitung
     } catch (err: any) {
-      setError({
-        code: err.code,
-        message: "Login konnte nicht gestartet werden: " + err.message
-      })
+      console.error("Login Error:", err)
+      if (err.code === 'auth/unauthorized-domain') {
+        setError({
+          code: err.code,
+          message: "Diese Domain ist nicht autorisiert. Bitte füge sie in der Firebase Console hinzu."
+        })
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError({
+          code: err.code,
+          message: "Das Login-Fenster wurde geschlossen. Bitte versuche es erneut."
+        })
+      } else {
+        setError({
+          code: err.code,
+          message: "Fehler beim Google-Login: " + (err.message || "Unbekannter Fehler")
+        })
+      }
       setLoading(false)
     }
   }
@@ -95,17 +77,27 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password)
-        toast({ title: "Konto erstellt", description: "Willkommen!" })
-      } else {
-        await signInWithEmailAndPassword(auth, email, password)
+      if (password.length < 6) {
+        throw new Error("Passwort muss mindestens 6 Zeichen lang sein.")
+      }
+      if (email && password) {
+        // Firebase Auth
+        try {
+          await signInWithEmailAndPassword(auth, email, password)
+        } catch (signInErr: any) {
+          if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+            await createUserWithEmailAndPassword(auth, email, password)
+            toast({ title: "Konto erstellt", description: "Willkommen!" })
+          } else {
+            throw signInErr
+          }
+        }
       }
     } catch (err: any) {
       let msg = "Fehler bei der Anmeldung."
       if (err.code === 'auth/invalid-credential') msg = "E-Mail oder Passwort falsch."
       if (err.code === 'auth/email-already-in-use') msg = "E-Mail bereits registriert."
-      setError({ code: err.code, message: msg })
+      setError({ code: err.code || "error", message: err.message || msg })
       setLoading(false)
     }
   }
@@ -115,7 +107,7 @@ export default function LoginPage() {
     toast({ title: "Kopiert", description: "Domain in die Zwischenablage kopiert." })
   }
 
-  if (initializing) {
+  if (authLoading) {
     return (
       <div className="flex h-svh items-center justify-center bg-background p-4">
         <div className="text-center space-y-6 max-w-xs w-full">
@@ -125,12 +117,10 @@ export default function LoginPage() {
               <Beer className="h-10 w-10 text-primary" />
             </div>
           </div>
-          <div className="space-y-2">
-            <p className="text-xl font-bold text-primary font-headline">Bierliste RWS2</p>
-            <p className="text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Anmeldung wird geprüft...
-            </p>
+          <p className="text-xl font-bold text-primary font-headline">Bierliste RWS2</p>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Laden...
           </div>
         </div>
       </div>
@@ -184,7 +174,7 @@ export default function LoginPage() {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
             )}
-            {loading ? "Warten auf Google..." : "Mit Google anmelden"}
+            {loading ? "Warten..." : "Mit Google anmelden"}
           </Button>
 
           <div className="relative">
@@ -199,17 +189,17 @@ export default function LoginPage() {
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input type="password" placeholder="Passwort" className="h-12 rounded-xl pl-10" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input type="password" placeholder="Passwort (min. 6 Zeichen)" className="h-12 rounded-xl pl-10" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Registrieren" : "Anmelden")}
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Anmelden / Registrieren"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="pb-8 justify-center">
-          <Button variant="link" className="text-xs text-muted-foreground" onClick={() => setIsRegistering(!isRegistering)}>
-            {isRegistering ? "Bereits ein Konto? Login" : "Neu hier? Konto erstellen"}
-          </Button>
+          <p className="text-xs text-muted-foreground text-center px-4">
+            E-Mail Login erstellt automatisch ein neues Konto, falls noch keines existiert.
+          </p>
         </CardFooter>
       </Card>
     </div>

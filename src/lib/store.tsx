@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -46,7 +46,7 @@ interface StoreContextType {
   loading: boolean;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   recordPayment: (playerId: string, amount: number) => void;
-  addPlayer: (name: string, email: string, role: Role, uid?: string) => void;
+  addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
 }
 
@@ -56,21 +56,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const { user, loading: authLoading } = useUser();
 
-  // Abfrage aller Spieler
   const playersQuery = useMemo(() => {
     if (!db) return null;
     return collection(db, 'players');
   }, [db]);
   const { data: playersData, loading: playersLoading } = useCollection<Omit<Player, 'id'>>(playersQuery);
 
-  // Abfrage der letzten 50 Ausgaben
   const expensesQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(50));
   }, [db]);
   const { data: expensesData, loading: expensesLoading } = useCollection<Omit<Expense, 'id'>>(expensesQuery);
 
-  // Abfrage der letzten 50 Zahlungen
   const paymentsQuery = useMemo(() => {
     if (!db) return null;
     return query(collection(db, 'payments'), orderBy('date', 'desc'), limit(50));
@@ -92,7 +89,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [paymentsData]
   );
 
-  // Finde das Profil des aktuell angemeldeten Benutzers anhand der UID
   const currentUserProfile = useMemo(() => {
     if (!user || players.length === 0) return null;
     return players.find(p => p.id === user.uid) || null;
@@ -174,17 +170,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const addPlayer = (name: string, email: string, role: Role, uid?: string) => {
+  const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {
     if (!db) return;
     const playerData = { name, email, role, balance: 0.00 };
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
-    setDoc(playerRef, playerData, { merge: true }).catch(async () => {
+    
+    try {
+      await setDoc(playerRef, playerData, { merge: true });
+    } catch (err) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: playerRef.path,
         operation: 'write',
         requestResourceData: playerData
       }));
-    });
+      throw err;
+    }
   };
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {

@@ -15,10 +15,13 @@ import { useUser } from "@/firebase"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
 
 export default function Dashboard() {
   const router = useRouter()
+  const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
   const { players, expenses, currentUserProfile, addPlayer, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
@@ -43,24 +46,34 @@ export default function Dashboard() {
 
   if (!user) return null
 
-  const handleOnboarding = () => {
-    if (!onboardingName.trim()) return
+  const handleOnboarding = async () => {
+    if (!onboardingName.trim() || isSubmitting) return
     
-    // Check if any admin exists in the system
-    const hasAdmin = players.some(p => p.role === 'auditor')
-    
-    if (!hasAdmin) {
-      // Create the Master Admin Account using current User's UID
-      addPlayer(onboardingName.trim(), user.email!, 'auditor', user.uid)
-      // Automatically create the virtual Team Cash Register account (random ID is fine)
-      addPlayer('Mannschaftskasse', 'kasse@kickoff.de', 'player')
-    } else {
-      // Create normal player profile using current User's UID
-      addPlayer(onboardingName.trim(), user.email!, 'player', user.uid)
+    setIsSubmitting(true)
+    try {
+      const hasAdmin = players.some(p => p.role === 'auditor')
+      const kasseExists = players.some(p => p.email === 'kasse@kickoff.de')
+      
+      if (!hasAdmin) {
+        await addPlayer(onboardingName.trim(), user.email!, 'auditor', user.uid)
+        if (!kasseExists) {
+          await addPlayer('Mannschaftskasse', 'kasse@kickoff.de', 'player')
+        }
+      } else {
+        await addPlayer(onboardingName.trim(), user.email!, 'player', user.uid)
+      }
+      toast({ title: "Profil erstellt", description: "Willkommen in der Kickoff Kasse!" })
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "Fehler beim Speichern", 
+        description: "Bitte prüfe deine Internetverbindung oder Firebase-Berechtigungen." 
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  // Onboarding view for new users without a profile
   if (!currentUserProfile) {
     const hasAdmin = players.some(p => p.role === 'auditor')
 
@@ -79,14 +92,14 @@ export default function Dashboard() {
             </CardTitle>
             <CardDescription>
               {!hasAdmin 
-                ? "Du bist der erste Nutzer und wirst als Kassenprüfer (Administrator) registriert. Die Mannschaftskasse wird ebenfalls initialisiert." 
+                ? "Du bist der erste Nutzer und wirst als Kassenprüfer registriert." 
                 : `Dein Konto (${user.email}) ist neu. Gib deinen Namen ein, um dein Profil zu erstellen.`
               }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-4 pb-10 px-8">
             <div className="space-y-2">
-              <Label htmlFor="onboarding-name" className="text-xs uppercase font-bold text-muted-foreground ml-1">Dein Name / Anzeigename</Label>
+              <Label htmlFor="onboarding-name" className="text-xs uppercase font-bold text-muted-foreground ml-1">Dein Name</Label>
               <Input 
                 id="onboarding-name" 
                 placeholder="Z.B. Max Mustermann" 
@@ -94,6 +107,7 @@ export default function Dashboard() {
                 onChange={(e) => setOnboardingName(e.target.value)}
                 className="rounded-xl h-12 bg-muted/30 border-none text-base"
                 onKeyDown={(e) => e.key === 'Enter' && handleOnboarding()}
+                disabled={isSubmitting}
               />
             </div>
             <Button 
@@ -102,9 +116,9 @@ export default function Dashboard() {
                 !hasAdmin ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 shadow-lg" : "cyan-glow"
               )} 
               onClick={handleOnboarding}
-              disabled={!onboardingName.trim()}
+              disabled={!onboardingName.trim() || isSubmitting}
             >
-              {!hasAdmin ? "Als Admin starten" : "Profil erstellen & Starten"}
+              {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : (!hasAdmin ? "Als Admin starten" : "Profil erstellen")}
             </Button>
           </CardContent>
         </Card>

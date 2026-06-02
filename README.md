@@ -22,12 +22,17 @@ Die Bierliste ist eine **Progressive Web App (PWA)**. Das bedeutet, man muss sie
 2. Tippe oben rechts auf die **drei Punkte**.
 3. Wähle **"App installieren"** oder **"Zum Startbildschirm hinzufügen"**.
 
-## Kosten & Betrieb
-Die App nutzt den **Firebase Spark Plan**. Dieser ist **dauerhaft kostenlos**, solange die täglichen Limits (50.000 Lesezugriffe/Tag) nicht überschritten werden. Für eine Fußballmannschaft ist dies völlig ausreichend.
+## Fehlerbehebung: "Publish" Error
+Wenn beim Veröffentlichen (Publish) der Fehler **"There was an error enabling firebaseapphosting.googleapis.com"** erscheint:
+1. **Kurz warten**: Manchmal braucht Google Cloud einen Moment, um die API-Aktivierung zu verarbeiten. Versuche es nach 5 Minuten erneut.
+2. **Blaze-Plan**: Firebase App Hosting benötigt zwingend den **Blaze-Plan** (Pay-as-you-go). In deinem Screenshot ist ein Billing-Account verknüpft, das ist schon mal gut.
+3. **Berechtigungen**: Stelle sicher, dass du in der Firebase Console als **Inhaber (Owner)** eingetragen bist.
+4. **Manueller Check**: Gehe in die Google Cloud Console (console.cloud.google.com) für dein Projekt und suche nach "APIs & Dienste". Suche dort nach "Firebase App Hosting API" und versuche sie manuell zu aktivieren.
 
-### URLs & Domains
-- **Kostenlose URLs**: Firebase stellt dir automatisch Adressen wie `dein-projekt.web.app` bereit. Diese sind kostenlos.
-- **Eigene Domain**: Du kannst eine eigene Domain (z.B. `bierliste-rws2.de`) verbinden. Das Hosting bei Firebase bleibt kostenlos, du zahlst lediglich die jährliche Gebühr für die Domain an deinen Registrar (ca. 10€/Jahr).
+## Kosten & Betrieb
+Die App nutzt den **Firebase Spark Plan** für die Datenbank und **App Hosting** für den Betrieb.
+- **Datenbank**: Dauerhaft kostenlos bis zu hohen Limits.
+- **App Hosting**: Nutzt den Blaze-Plan, bleibt aber innerhalb der kostenlosen Kontingente für kleine Teams meist kostenfrei.
 
 ## Konfiguration
 In der Datei `src/lib/store.tsx` findest du die folgenden wichtigen Einstellungen:

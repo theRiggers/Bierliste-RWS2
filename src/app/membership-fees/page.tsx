@@ -23,7 +23,6 @@ export default function MembershipFeesPage() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
   
-  // Saison-Logik: Vor August (7) gehört der Monat zur Vorsaison
   const defaultSeason = currentMonth < 7 ? currentYear - 1 : currentYear;
   
   const [selectedSeason, setSelectedSeason] = useState(defaultSeason.toString())
@@ -75,6 +74,22 @@ export default function MembershipFeesPage() {
     }
   };
 
+  const SeasonSelector = () => (
+    <div className="flex items-center gap-2">
+      <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
+      <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+        <SelectTrigger className="w-32 md:w-40 rounded-xl h-10 text-xs md:text-sm">
+          <SelectValue placeholder="Saison" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={(currentYear - 2).toString()}>{currentYear - 2}/{(currentYear - 1) % 100}</SelectItem>
+          <SelectItem value={(currentYear - 1).toString()}>{currentYear - 1}/{currentYear % 100}</SelectItem>
+          <SelectItem value={currentYear.toString()}>{currentYear}/{(currentYear + 1) % 100}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole="auditor" />
@@ -84,24 +99,20 @@ export default function MembershipFeesPage() {
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Beitragskasse</h1>
-            <Badge variant="outline" className="text-xs">15€ / Monat (Aug-Mai) • 150€ / Jahr</Badge>
+            <Badge variant="outline" className="text-xs">15€ / Monat • 150€ / Jahr</Badge>
           </div>
-          <div className="flex items-center gap-3">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-              <SelectTrigger className="w-40 rounded-xl h-10">
-                <SelectValue placeholder="Saison wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={(currentYear - 2).toString()}>{currentYear - 2}/{(currentYear - 1) % 100}</SelectItem>
-                <SelectItem value={(currentYear - 1).toString()}>{currentYear - 1}/{currentYear % 100}</SelectItem>
-                <SelectItem value={currentYear.toString()}>{currentYear}/{(currentYear + 1) % 100}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <SeasonSelector />
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="md:hidden flex flex-col gap-3 mb-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-primary font-headline">Beiträge</h1>
+              <SeasonSelector />
+            </div>
+            <Badge variant="outline" className="text-[10px] w-fit">15€ / Monat • 150€ / Jahr</Badge>
+          </div>
+
           <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-white">
             <CardHeader className="bg-primary/5 pb-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -118,8 +129,8 @@ export default function MembershipFeesPage() {
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="min-w-[180px] font-bold">Spieler</TableHead>
-                    <TableHead className="text-center font-bold">Jahreszahler</TableHead>
+                    <TableHead className="min-w-[150px] font-bold">Spieler</TableHead>
+                    <TableHead className="text-center font-bold">Jahr</TableHead>
                     {FEE_MONTHS.map(m => (
                       <TableHead key={m} className="text-center font-bold px-2">{MONTH_NAMES[m]}</TableHead>
                     ))}
@@ -133,7 +144,7 @@ export default function MembershipFeesPage() {
                     
                     return (
                       <TableRow key={player.id} className="hover:bg-muted/10">
-                        <TableCell className="font-semibold py-4">{player.name}</TableCell>
+                        <TableCell className="font-semibold py-4 whitespace-nowrap">{player.name}</TableCell>
                         <TableCell className="text-center">
                           <Button 
                             variant={isAnnual ? "default" : "outline"} 
@@ -153,13 +164,13 @@ export default function MembershipFeesPage() {
                                 size="sm" 
                                 disabled={isAnnual}
                                 className={cn(
-                                  "rounded-lg h-8 w-8 p-0 transition-all",
+                                  "rounded-lg h-7 w-7 p-0 transition-all",
                                   isPaid && !isAnnual ? "bg-emerald-500 hover:bg-emerald-600 text-white" : "",
                                   isAnnual ? "bg-emerald-200 text-emerald-700 opacity-100" : "hover:bg-muted"
                                 )}
                                 onClick={() => handleToggleFee(player.id, m)}
                               >
-                                {isPaid ? <Check className="h-4 w-4" /> : <X className="h-3 w-3 text-muted-foreground/30" />}
+                                {isPaid ? <Check className="h-3 w-3" /> : <X className="h-2 w-2 text-muted-foreground/20" />}
                               </Button>
                             </TableCell>
                           );

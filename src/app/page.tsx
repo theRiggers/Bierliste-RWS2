@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -6,7 +7,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -163,10 +164,39 @@ Bierliste RWS2 (Schatzmeister)`;
   const handlePayClubhouse = () => {
     const monthName = format(new Date(), 'MMMM', { locale: de });
     const amount = monthlyCrateStats.amount.toFixed(2);
-    // Standard PayPal link for specific account and amount
     const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(CLUBHOUSE_PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=Kistenabrechnung%20RWS2%20${encodeURIComponent(monthName)}`;
     window.open(paypalUrl, '_blank');
   }
+
+  const TreasuryDialog = () => (
+    <Dialog open={isTreasuryOpen} onOpenChange={setIsTreasuryOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="rounded-xl border-primary text-primary hover:bg-primary/5 h-10">
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          Team-Ausgabe
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ausgabe der Mannschaftskasse</DialogTitle>
+          <DialogDescription>Buchung von der Teamkasse abziehen (z.B. Getränkekauf).</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="t-desc">Beschreibung</Label>
+            <Input id="t-desc" placeholder="Z.B. Einkauf Krombacher" value={tDesc} onChange={(e) => setTDesc(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="t-amount">Betrag (€)</Label>
+            <Input id="t-amount" type="number" step="0.01" value={tAmount} onChange={(e) => setTAmount(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={handleAddTreasuryExpense} className="rounded-xl w-full">Ausgabe bestätigen</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -177,40 +207,24 @@ Bierliste RWS2 (Schatzmeister)`;
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
           <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           <div className="flex items-center gap-4">
-            {isAuditor && (
-              <Dialog open={isTreasuryOpen} onOpenChange={setIsTreasuryOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="rounded-xl border-primary text-primary hover:bg-primary/5">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Team-Ausgabe
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Ausgabe der Mannschaftskasse</DialogTitle>
-                    <DialogDescription>Buchung von der Teamkasse abziehen (z.B. Getränkekauf).</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="t-desc">Beschreibung</Label>
-                      <Input id="t-desc" placeholder="Z.B. Einkauf Krombacher" value={tDesc} onChange={(e) => setTDesc(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="t-amount">Betrag (€)</Label>
-                      <Input id="t-amount" type="number" step="0.01" value={tAmount} onChange={(e) => setTAmount(e.target.value)} />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleAddTreasuryExpense} className="rounded-xl w-full">Ausgabe bestätigen</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
+            {isAuditor && <TreasuryDialog />}
             <span className="text-sm font-medium text-muted-foreground">{format(new Date(), 'EEEE, d. MMMM', { locale: de })}</span>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 pb-20 md:pb-8">
+          <div className="md:hidden flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
+              <span className="text-[10px] font-medium text-muted-foreground">{format(new Date(), 'd. MMM', { locale: de })}</span>
+            </div>
+            {isAuditor && (
+              <div className="flex gap-2">
+                <TreasuryDialog />
+              </div>
+            )}
+          </div>
+
           <div className={cn(
             "grid gap-4 md:grid-cols-2",
             isAuditor ? "lg:grid-cols-4" : "lg:grid-cols-3"
@@ -278,7 +292,6 @@ Bierliste RWS2 (Schatzmeister)`;
             </Card>
           </div>
 
-          {/* Clubhouse Section for Auditors - NO AI */}
           {isAuditor && (
             <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500 overflow-hidden">
               <CardHeader className="bg-amber-50/50 pb-2">
@@ -295,57 +308,51 @@ Bierliste RWS2 (Schatzmeister)`;
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-8">
+                  <div className="flex items-center gap-8 w-full md:w-auto">
                     <div>
-                      <p className="text-xs text-muted-foreground font-bold uppercase">Kisten verbraucht</p>
-                      <p className="text-3xl font-bold text-amber-700">{monthlyCrateStats.count}</p>
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase">Kisten</p>
+                      <p className="text-2xl md:text-3xl font-bold text-amber-700">{monthlyCrateStats.count}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground font-bold uppercase">Gesamtbetrag</p>
-                      <p className="text-3xl font-bold text-amber-700">{monthlyCrateStats.amount.toFixed(2)} €</p>
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase">Betrag</p>
+                      <p className="text-2xl md:text-3xl font-bold text-amber-700">{monthlyCrateStats.amount.toFixed(2)} €</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                  <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <Button 
                       variant="outline"
                       onClick={handleDraftClubhouseLocal} 
                       disabled={monthlyCrateStats.count === 0}
-                      className="rounded-xl border-amber-600 text-amber-700 hover:bg-amber-50 flex-1 md:flex-none h-12 px-6"
+                      className="rounded-xl border-amber-600 text-amber-700 hover:bg-amber-50 flex-1 md:flex-none h-10 px-4 text-xs"
                     >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Text entwerfen
+                      <FileText className="h-3 w-3 mr-2" />
+                      Nachricht
                     </Button>
                     <Button 
                       onClick={handlePayClubhouse} 
                       disabled={monthlyCrateStats.count === 0}
-                      className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white flex-1 md:flex-none h-12 px-6"
+                      className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white flex-1 md:flex-none h-10 px-4 text-xs"
                     >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Per PayPal zahlen
+                      <CreditCard className="h-3 w-3 mr-2" />
+                      PayPal
                     </Button>
                   </div>
                 </div>
 
                 {clubhouseDraft && (
-                  <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200 animate-in fade-in slide-in-from-top-2">
+                  <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200 animate-in fade-in slide-in-from-top-2">
                     <div className="flex justify-between items-start mb-2">
-                      <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
-                        Vorschau Abrechnungsnachricht
-                      </p>
-                      <Button variant="ghost" size="sm" className="h-6 text-[10px] text-amber-600" onClick={() => {
+                      <p className="text-[10px] font-bold text-amber-800">Vorschau</p>
+                      <Button variant="ghost" size="sm" className="h-5 text-[10px] text-amber-600" onClick={() => {
                         navigator.clipboard.writeText(clubhouseDraft);
                         toast({ title: "Kopiert", description: "Nachricht in der Zwischenablage." });
                       }}>Kopieren</Button>
                     </div>
-                    <p className="text-sm italic text-amber-900 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-xs italic text-amber-900 whitespace-pre-wrap leading-relaxed">
                       {clubhouseDraft}
                     </p>
                   </div>
                 )}
-                
-                <div className="mt-4 flex items-center gap-2 text-[10px] text-muted-foreground italic">
-                  <span>Hinterlegtes PayPal: <strong>{CLUBHOUSE_PAYPAL_EMAIL}</strong></span>
-                </div>
               </CardContent>
             </Card>
           )}
@@ -371,7 +378,7 @@ Bierliste RWS2 (Schatzmeister)`;
                           <p className="text-[10px] text-muted-foreground">{format(new Date(expense.date), 'dd.MM. HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kasten'}</p>
                         </div>
                       </div>
-                      <span className="font-bold text-destructive">- {expense.cost.toFixed(2)} €</span>
+                      <span className="font-bold text-destructive whitespace-nowrap">- {expense.cost.toFixed(2)} €</span>
                     </div>
                   ))}
                   {expenses.length === 0 && <div className="p-8 text-center text-muted-foreground italic">Noch keine Buchungen vorhanden.</div>}

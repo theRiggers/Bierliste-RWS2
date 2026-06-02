@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -130,7 +131,14 @@ export default function AiToolsPage() {
           </h1>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-5xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-5xl mx-auto w-full pb-20">
+          <div className="md:hidden mb-4">
+            <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-accent" />
+              KI-Berichte
+            </h1>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden">
               <CardHeader className="bg-primary/5">

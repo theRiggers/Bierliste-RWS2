@@ -76,6 +76,7 @@ interface StoreContextType {
   deleteTreasuryExpense: (expenseId: string) => void;
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
+  deletePlayer: (id: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -217,13 +218,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setDoc(doc(db, 'players', id), updates, { merge: true });
   };
 
+  const deletePlayer = async (id: string) => {
+    if (!db) return;
+    await deleteDoc(doc(db, 'players', id));
+  };
+
   return (
     <StoreContext.Provider value={{ 
       players, expenses, payments, membershipFees, treasuryExpenses, currentUserProfile,
       loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || tExpensesLoading || authLoading,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addTreasuryExpense, deleteTreasuryExpense,
-      addPlayer, updatePlayer 
+      addPlayer, updatePlayer, deletePlayer
     }}>
       {children}
     </StoreContext.Provider>

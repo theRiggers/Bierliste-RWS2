@@ -6,7 +6,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save, Loader2, Banknote, Beer, Package } from "lucide-react"
+import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save, Loader2, Banknote, Beer, Package, Trash2, Info } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { draftPaymentReminder } from "@/ai/flows/ai-draft-payment-reminder"
 import { useToast } from "@/hooks/use-toast"
@@ -15,11 +15,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function PlayersPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, addPlayer, updatePlayer, recordPayment, addExpense, loading, currentUserProfile } = useStore()
+  const { players, addPlayer, updatePlayer, deletePlayer, recordPayment, addExpense, loading, currentUserProfile } = useStore()
   const [drafting, setDrafting] = useState<string | null>(null)
   
   // States for Adding Player
@@ -39,6 +49,10 @@ export default function PlayersPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentPlayer, setPaymentPlayer] = useState<Player | null>(null)
   const [paymentAmount, setPaymentAmount] = useState("")
+
+  // State for Deleting Player
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -65,17 +79,17 @@ export default function PlayersPage() {
   // Filter out system accounts from the list to avoid accidental editing
   const displayPlayers = players.filter(p => p.email !== 'kasse@kickoff.de')
 
-  const handleAddPlayer = () => {
+  const handleAddPlayer = async () => {
     if (!newName || !newEmail) {
       toast({ variant: "destructive", title: "Fehler", description: "Bitte fülle alle Felder aus." })
       return
     }
-    addPlayer(newName, newEmail, newRole)
+    await addPlayer(newName, newEmail, newRole)
     setIsAddOpen(false)
     setNewName("")
     setNewEmail("")
     setNewRole("player")
-    toast({ title: "Erfolgreich", description: "Spieler wurde hinzugefügt." })
+    toast({ title: "Erfolgreich", description: "Spielerprofil wurde angelegt. Der Spieler kann sich nun mit seiner E-Mail registrieren." })
   }
 
   const handleEditPlayer = (player: Player) => {
@@ -120,6 +134,23 @@ export default function PlayersPage() {
     })
     setIsEditOpen(false)
     toast({ title: "Aktualisiert", description: "Spielerprofil wurde gespeichert." })
+  }
+
+  const handleDeleteRequest = (player: Player) => {
+    if (player.id === currentUserProfile.id) {
+      toast({ variant: "destructive", title: "Fehler", description: "Du kannst dich nicht selbst löschen." })
+      return
+    }
+    setPlayerToDelete(player)
+    setIsDeleteConfirmOpen(true)
+  }
+
+  const confirmDeletePlayer = async () => {
+    if (!playerToDelete) return
+    await deletePlayer(playerToDelete.id)
+    setIsDeleteConfirmOpen(false)
+    setPlayerToDelete(null)
+    toast({ title: "Gelöscht", description: "Der Spieler wurde aus der Liste entfernt." })
   }
 
   const handleDraftReminder = async (player: any) => {
@@ -171,11 +202,11 @@ export default function PlayersPage() {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="name" className="text-right">Name</Label>
-                  <Input id="name" value={newName} onChange={(e) => setNewName(e.target.value)} className="col-span-3" />
+                  <Input id="name" value={newName} onChange={(e) => setNewName(e.target.value)} className="col-span-3" placeholder="Z.B. Max Mustermann" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="email" className="text-right">E-Mail</Label>
-                  <Input id="email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="col-span-3" />
+                  <Input id="email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="col-span-3" placeholder="spieler@beispiel.de" />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="role" className="text-right">Rolle</Label>
@@ -189,9 +220,15 @@ export default function PlayersPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="bg-muted/30 p-3 rounded-xl flex gap-3 items-start col-span-4 mt-2">
+                  <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    <strong>Hinweis:</strong> Der Spieler meldet sich später mit dieser E-Mail an. Ein Passwort wird vom Spieler beim ersten Login selbst festgelegt.
+                  </p>
+                </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddPlayer} className="rounded-xl w-full">Spieler erstellen</Button>
+                <Button onClick={handleAddPlayer} className="rounded-xl w-full">Profil anlegen</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -214,9 +251,21 @@ export default function PlayersPage() {
                     <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                       <UserCircle className="h-8 w-8" />
                     </div>
-                    <Badge variant={player.role === 'auditor' ? 'default' : 'secondary'} className="rounded-lg">
-                      {player.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={player.role === 'auditor' ? 'default' : 'secondary'} className="rounded-lg">
+                        {player.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}
+                      </Badge>
+                      {player.id !== currentUserProfile.id && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full"
+                          onClick={() => handleDeleteRequest(player)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="mb-4 min-h-[60px]">
@@ -356,6 +405,25 @@ export default function PlayersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Alert */}
+        <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Spieler unwiderruflich löschen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bist du sicher, dass du <strong>{playerToDelete?.name}</strong> löschen möchtest? 
+                Alle Profildaten gehen verloren. Bereits getätigte Transaktionen im Verlauf bleiben zur Übersicht erhalten, aber das Profil wird entfernt.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeletePlayer} className="bg-destructive hover:bg-destructive/90 text-white">
+                Spieler löschen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   )

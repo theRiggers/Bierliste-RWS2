@@ -47,7 +47,7 @@ export interface MembershipTransaction {
   id: string;
   description: string;
   amount: number;
-  type: 'sponsor' | 'donation' | 'other';
+  type: 'sponsor' | 'donation' | 'other' | 'expense';
   date: string;
   recordedBy: string;
 }
@@ -67,7 +67,7 @@ export const ANNUAL_FEE = 150.00;
 export const FEE_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4]; // Aug bis Mai
 export const PAYPAL_ME_LINK = "https://www.paypal.me/JamieRigden932";
 export const CLUBHOUSE_PAYPAL_EMAIL = "marleneadmans@yahoo.com";
-export const TREASURY_PAYPAL_EMAIL = "jamierigden@icloud.com"; // Bitte hier die Schatzmeister-Email anpassen!
+export const TREASURY_PAYPAL_EMAIL = "jamierigden@icloud.com";
 
 interface StoreContextType {
   players: Player[];
@@ -85,7 +85,7 @@ interface StoreContextType {
   deletePayment: (paymentId: string) => void;
   addMembershipFee: (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => void;
   deleteMembershipFee: (feeId: string) => void;
-  addMembershipTransaction: (description: string, amount: number, type: 'sponsor' | 'donation' | 'other') => void;
+  addMembershipTransaction: (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense') => void;
   deleteMembershipTransaction: (transactionId: string) => void;
   addTreasuryExpense: (description: string, amount: number) => void;
   deleteTreasuryExpense: (expenseId: string) => void;
@@ -134,7 +134,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const totalMannschaftskasse = useMemo(() => {
     const feeSum = membershipFees.reduce((sum, f) => sum + f.amount, 0);
-    const transactionSum = membershipTransactions.reduce((sum, t) => sum + t.amount, 0);
+    const transactionSum = membershipTransactions.reduce((sum, t) => {
+      return t.type === 'expense' ? sum - t.amount : sum + t.amount;
+    }, 0);
     return feeSum + transactionSum;
   }, [membershipFees, membershipTransactions]);
 
@@ -227,7 +229,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteDoc(doc(db, 'membershipFees', feeId));
   };
 
-  const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other') => {
+  const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense') => {
     if (!db || !currentUserProfile) return;
     const transactionData = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
     addDoc(collection(db, 'membershipTransactions'), transactionData);

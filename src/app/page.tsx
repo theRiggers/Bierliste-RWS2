@@ -30,7 +30,7 @@ export default function Dashboard() {
   const { players, expenses, membershipFees, treasuryExpenses, totalMannschaftskasse, currentUserProfile, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
-  // Treasury Expense States
+  // Treasury Expense States (Now for Team Fund)
   const [isTreasuryOpen, setIsTreasuryOpen] = useState(false)
   const [tDesc, setTDesc] = useState("")
   const [tAmount, setTAmount] = useState("")
@@ -39,7 +39,7 @@ export default function Dashboard() {
   const [isSponsorOpen, setIsSponsorOpen] = useState(false)
   const [sDesc, setSDesc] = useState("")
   const [sAmount, setSAmount] = useState("")
-  const [sType, setSType] = useState<'sponsor' | 'donation' | 'other'>('sponsor')
+  const [sType, setSType] = useState<'sponsor' | 'donation' | 'other' | 'expense'>('sponsor')
   
   // Result for Clubhouse Draft
   const [clubhouseDraft, setClubhouseDraft] = useState<string | null>(null)
@@ -172,7 +172,8 @@ export default function Dashboard() {
       toast({ variant: "destructive", title: "Fehler", description: "Bitte gültige Daten eingeben." })
       return
     }
-    addTreasuryExpense(tDesc, amount)
+    // Now redirected to Mannschaftskasse as an expense
+    addMembershipTransaction(tDesc, amount, 'expense')
     setIsTreasuryOpen(false)
     setTDesc("")
     setTAmount("")
@@ -230,18 +231,18 @@ export default function Dashboard() {
         <DialogTrigger asChild>
           <Button variant={variant === "mobile" ? "ghost" : "outline"} size={variant === "mobile" ? "icon" : "sm"} className={cn("rounded-xl h-10", variant === "mobile" ? "text-primary hover:bg-primary/10" : "border-primary text-primary hover:bg-primary/5")}>
             <ShoppingCart className={cn("h-4 w-4", variant === "mobile" ? "h-6 w-6" : "mr-2")} />
-            {variant !== "mobile" && "Bierkasse-Ausgabe"}
+            {variant !== "mobile" && "Mannschaftskassen-Ausgabe"}
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ausgabe der Bierliste</DialogTitle>
-            <DialogDescription>Buchung von der Bierliste abziehen (z.B. Getränkekauf).</DialogDescription>
+            <DialogTitle>Ausgabe der Mannschaftskasse</DialogTitle>
+            <DialogDescription>Buchung von der Mannschaftskasse abziehen (z.B. Trainingsmaterial).</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="t-desc">Beschreibung</Label>
-              <Input id="t-desc" placeholder="Z.B. Einkauf Krombacher" value={tDesc} onChange={(e) => setTDesc(e.target.value)} />
+              <Input id="t-desc" placeholder="Z.B. Neue Trainingsbälle" value={tDesc} onChange={(e) => setTDesc(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="t-amount">Betrag (€)</Label>

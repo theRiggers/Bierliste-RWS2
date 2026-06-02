@@ -83,9 +83,9 @@ export default function HistoryPage() {
       id: m.id,
       playerId: 'mannschaft',
       playerName: 'Mannschaftskasse',
-      type: 'membershipTransaction',
+      type: m.type,
       description: m.description,
-      amount: m.amount,
+      amount: m.type === 'expense' ? -m.amount : m.amount,
       date: m.date,
       category: 'membershipTransaction' as const
     }));
@@ -124,7 +124,11 @@ export default function HistoryPage() {
       case 'crate': return <Package className="h-4 w-4" />;
       case 'payment': return <Banknote className="h-4 w-4" />;
       case 'treasury': return <ShoppingCart className="h-4 w-4" />;
-      case 'membershipTransaction': return <TrendingUp className="h-4 w-4" />;
+      case 'membershipTransaction':
+      case 'sponsor':
+      case 'donation':
+      case 'other':
+      case 'expense': return <TrendingUp className="h-4 w-4" />;
       default: return null;
     }
   }
@@ -135,7 +139,10 @@ export default function HistoryPage() {
       case 'crate': return 'Kiste';
       case 'payment': return 'Zahlung';
       case 'treasury': return item.description || 'Bierkasse-Ausgabe';
-      case 'membershipTransaction': return item.description || 'Einnahme M-Kasse';
+      case 'sponsor': return 'Sponsor';
+      case 'donation': return 'Spende';
+      case 'expense': return item.description || 'M-Kasse Ausgabe';
+      case 'other': return 'Einnahme M-Kasse';
       default: return item.type;
     }
   }
@@ -194,8 +201,8 @@ export default function HistoryPage() {
                   <SelectItem value="all">Alle</SelectItem>
                   <SelectItem value="expense">Getränke</SelectItem>
                   <SelectItem value="payment">Zahlungen</SelectItem>
-                  <SelectItem value="treasury">Bierliste (Ausgaben)</SelectItem>
-                  <SelectItem value="membershipTransaction">Mannschaftskasse (Einnahmen)</SelectItem>
+                  <SelectItem value="treasury">Bierliste (Abrechnung)</SelectItem>
+                  <SelectItem value="membershipTransaction">Mannschaftskasse (Transaktionen)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -209,7 +216,7 @@ export default function HistoryPage() {
                     <div className="min-w-0 flex items-center gap-3">
                       <div className={cn(
                         "p-2 rounded-full",
-                        item.category === 'payment' || item.category === 'membershipTransaction' ? "bg-emerald-100 text-emerald-600" : 
+                        item.amount > 0 ? "bg-emerald-100 text-emerald-600" : 
                         item.category === 'treasury' ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"
                       )}>
                         {getIcon(item.type)}
@@ -273,14 +280,11 @@ export default function HistoryPage() {
                           <div className="flex items-center gap-2">
                             <span className={cn(
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium gap-1",
-                              item.category === 'payment' || item.category === 'membershipTransaction' ? "bg-emerald-100 text-emerald-800" : 
+                              item.amount > 0 ? "bg-emerald-100 text-emerald-800" : 
                               item.category === 'treasury' ? "bg-amber-100 text-amber-800" : "bg-primary/10 text-primary"
                             )}>
                               {getIcon(item.type)}
-                              {item.category === 'membershipTransaction' ? 'M-Kasse Einnahme' :
-                               item.category === 'treasury' ? 'Bierliste-Ausgabe' : 
-                               item.category === 'payment' ? 'Zahlung' : 
-                               item.type === 'beer' ? 'Bier' : 'Kiste'}
+                              {getTypeLabel(item)}
                             </span>
                           </div>
                         </TableCell>

@@ -233,21 +233,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     if (!teamKasse) return;
 
-    // 1. Record an expense for the team kasse player itself
-    const expenseData = { 
-      playerId: teamKasse.id, 
-      playerName: 'Mannschaftskasse', 
-      itemType: 'crate', 
-      cost: CRATE_PRICE, 
-      date: new Date().toISOString() 
-    };
-    addDoc(collection(db, 'expenses'), expenseData);
-
-    // 2. Deduct amount from team kasse balance
-    const kasseRef = doc(db, 'players', teamKasse.id);
-    setDoc(kasseRef, { balance: (teamKasse.balance || 0) - CRATE_PRICE }, { merge: true });
-    
-    // 3. Optional: Add a treasury record for clarity
+    // 1. Add a treasury record for history and tracking
     const treasuryData = { 
       description: "Bezahlkiste (für Einzelverkauf)", 
       amount: CRATE_PRICE, 
@@ -255,6 +241,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       recordedBy: currentUserProfile.id 
     };
     addDoc(collection(db, 'treasuryExpenses'), treasuryData);
+
+    // 2. Deduct amount from team kasse balance
+    const kasseRef = doc(db, 'players', teamKasse.id);
+    setDoc(kasseRef, { balance: (teamKasse.balance || 0) - CRATE_PRICE }, { merge: true });
   };
 
   const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {

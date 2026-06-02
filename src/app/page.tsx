@@ -274,9 +274,16 @@ Bierliste RWS2 (Schatzmeister)`;
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs md:text-sm font-medium text-muted-foreground">Teamkasse (Gesamt)</p>
-                    <div className="p-2 bg-emerald-100 rounded-full text-emerald-600"><ArrowUpRight className="h-4 w-4" /></div>
+                    <div className={cn("p-2 rounded-full", teamKasse.balance < 0 ? "bg-destructive/10 text-destructive" : "bg-emerald-100 text-emerald-600")}>
+                      <ArrowUpRight className="h-4 w-4" />
+                    </div>
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-emerald-600">{teamKasse.balance.toFixed(2)} €</h2>
+                  <h2 className={cn("text-2xl md:text-3xl font-bold", teamKasse.balance < 0 ? "text-destructive" : "text-emerald-600")}>
+                    {teamKasse.balance.toFixed(2)} €
+                  </h2>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {teamKasse.balance < 0 ? "Vorgestreckte Ausgaben" : "Überschuss/Guthaben"}
+                  </p>
                 </CardContent>
               </Card>
             )}

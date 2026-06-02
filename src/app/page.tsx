@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, totalMannschaftskasse, currentUserProfile, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, treasuryExpenses, totalMannschaftskasse, currentUserProfile, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   // Treasury Expense States
@@ -50,22 +50,31 @@ export default function Dashboard() {
     if (mounted && !authLoading && !user) router.replace("/login")
   }, [mounted, authLoading, user, router])
 
-  // Calculate monthly crates (Team-wide)
+  // Calculate monthly crates (Team-wide) including player crates AND treasury Bezahlkisten
   const monthlyCrateStats = useMemo(() => {
     const now = new Date();
     const start = startOfMonth(now);
     const end = endOfMonth(now);
     
-    const monthlyCrates = expenses.filter(e => {
+    // 1. Crates recorded for individual players
+    const playerCrates = expenses.filter(e => {
       const d = new Date(e.date);
       return e.itemType === 'crate' && isWithinInterval(d, { start, end });
     });
 
+    // 2. Bezahlkisten recorded directly in treasury
+    const bezahlKisten = treasuryExpenses.filter(t => {
+      const d = new Date(t.date);
+      return t.description.includes("Bezahlkiste") && isWithinInterval(d, { start, end });
+    });
+
+    const totalCount = playerCrates.length + bezahlKisten.length;
+
     return {
-      count: monthlyCrates.length,
-      amount: monthlyCrates.length * CRATE_PRICE
+      count: totalCount,
+      amount: totalCount * CRATE_PRICE
     };
-  }, [expenses]);
+  }, [expenses, treasuryExpenses]);
 
   const feeStatus = useMemo(() => {
     if (!currentUserProfile) return { open: 0, paidMonths: 0, monthsStatus: [] };

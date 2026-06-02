@@ -13,8 +13,9 @@ import { useAuth, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Beer, Mail, Lock, Loader2 } from "lucide-react"
+import { Beer, Mail, Lock, Loader2, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -26,6 +27,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -43,15 +45,22 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true)
+    setError(null)
     const provider = new GoogleAuthProvider()
     try {
       await signInWithPopup(auth, provider)
       router.push("/")
     } catch (error: any) {
+      console.error(error)
+      let message = "Login fehlgeschlagen"
+      if (error.code === 'auth/unauthorized-domain') {
+        message = "Domain nicht autorisiert. Bitte füge diese URL in der Firebase Console unter Authentication -> Settings -> Authorized Domains hinzu."
+      }
+      setError(message)
       toast({
         variant: "destructive",
-        title: "Login fehlgeschlagen",
-        description: error.message
+        title: "Fehler",
+        description: message
       })
     } finally {
       setLoading(false)
@@ -61,19 +70,33 @@ export default function LoginPage() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
     try {
       if (isRegistering) {
         await createUserWithEmailAndPassword(auth, email, password)
-        toast({ title: "Konto erstellt", description: "Du kannst dich jetzt anmelden." })
+        toast({ title: "Konto erstellt", description: "Du wurdest automatisch angemeldet." })
+        router.push("/")
       } else {
         await signInWithEmailAndPassword(auth, email, password)
         router.push("/")
       }
     } catch (error: any) {
+      console.error(error)
+      let message = error.message
+      if (error.code === 'auth/unauthorized-domain') {
+        message = "Domain nicht autorisiert. Bitte füge diese URL in der Firebase Console unter Authentication -> Settings -> Authorized Domains hinzu."
+      } else if (error.code === 'auth/email-already-in-use') {
+        message = "Diese E-Mail wird bereits verwendet."
+      } else if (error.code === 'auth/weak-password') {
+        message = "Das Passwort ist zu schwach (min. 6 Zeichen)."
+      } else if (error.code === 'auth/invalid-credential') {
+        message = "Ungültige Login-Daten."
+      }
+      setError(message)
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message
+        description: message
       })
     } finally {
       setLoading(false)
@@ -91,6 +114,16 @@ export default function LoginPage() {
           <CardDescription>Melde dich an, um deine Getränke zu verwalten.</CardDescription>
         </CardHeader>
         <CardContent className="pt-8 space-y-6">
+          {error && (
+            <Alert variant="destructive" className="rounded-xl">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Fehler</AlertTitle>
+              <AlertDescription className="text-xs">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleEmailAuth} className="space-y-4">
             <div className="space-y-2">
               <div className="relative">
@@ -119,7 +152,7 @@ export default function LoginPage() {
               </div>
             </div>
             <Button type="submit" className="w-full h-12 rounded-xl font-bold cyan-glow" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Registrieren" : "Anmelden")}
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Jetzt registrieren" : "Anmelden")}
             </Button>
           </form>
 

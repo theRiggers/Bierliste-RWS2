@@ -4,13 +4,14 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
 ## 🚀 Projekt zu GitHub exportieren
 
-Da dies eine private Entwicklungsumgebung ist, musst du den Code manuell zu GitHub pushen:
+Da dies eine private Entwicklungsumgebung ist, musst du den Code manuell zu GitHub pushen. Benutze dazu das **Terminal innerhalb dieser Webseite (Studio)**.
 
-### 1. Terminal finden & öffnen
-Wenn Standard-Kürzel wie Strg+J nicht funktionieren (da sie vom Browser abgefangen werden):
-- **Befehlspalette**: Drücke **`F1`** oder **`Strg` + `Shift` + `P`**. Tippe dann "Terminal" ein und wähle **"Terminal: Create New Terminal"**.
-- **Menüleiste**: Schau ganz oben am Bildschirmrand des Editors. Dort steht "File", "Edit", "Selection", "Terminal". Klicke auf **"Terminal" -> "New Terminal"**.
-- **Explorer**: Falls du links die Dateiliste siehst, mache einen Rechtsklick auf einen Ordner und wähle **"Open in Integrated Terminal"**.
+### 1. Terminal öffnen (Wenn Shortcuts nicht gehen)
+Wenn `Strg+J` nicht funktioniert (da Chrome es abfängt):
+- **Schritt A**: Drücke die Taste **`F1`** (oder `Strg` + `Shift` + `P`).
+- **Schritt B**: Tippe oben in das Feld das Wort `Terminal` ein.
+- **Schritt C**: Wähle aus der Liste **"Terminal: Create New Terminal"** aus.
+- Es öffnet sich nun unten ein schwarzer Bereich (das Terminal).
 
 ### 2. GitHub Repository erstellen
 Gehe auf [GitHub](https://github.com/new) und erstelle ein neues, leeres Repository (ohne README oder .gitignore). Kopiere die URL (z.B. `https://github.com/nutzer/bierliste.git`).
@@ -42,7 +43,6 @@ Die URL, die auf `.cloudworkstations.dev` endet, ist **privat**. Sie funktionier
 **Um die App zu teilen:**
 1. Klicke oben rechts auf den blauen **"Publish"** Button.
 2. Nach dem erfolgreichen Deployment erhältst du eine öffentliche URL (z.B. `dein-projekt.web.app`).
-3. **Nur diese öffentliche URL** funktioniert auf den Handys der Spieler.
 
 ### Hosting in Deutschland
-Wenn du möchtest, dass die App schneller lädt, kannst du das Hosting-Backend in der Firebase Console löschen und neu anlegen. Wähle dabei als Region **europe-west3 (Frankfurt)** aus. Deine Datenbank bleibt davon unberührt.
+Wenn du möchtest, dass die App schneller lädt, kannst du das Hosting-Backend in der Firebase Console löschen und neu anlegen. Wähle dabei als Region **europe-west3 (Frankfurt)** aus.

@@ -3,9 +3,7 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, where } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
 
 export type Role = 'player' | 'auditor';
 
@@ -45,6 +43,14 @@ export interface MembershipFee {
   datePaid: string;
 }
 
+export interface TreasuryExpense {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  recordedBy: string;
+}
+
 export const BEER_PRICE = 1.50;
 export const CRATE_PRICE = 35.00;
 export const MONTHLY_FEE = 15.00;
@@ -57,6 +63,7 @@ interface StoreContextType {
   expenses: Expense[];
   payments: Payment[];
   membershipFees: MembershipFee[];
+  treasuryExpenses: TreasuryExpense[];
   currentUserProfile: Player | null;
   loading: boolean;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
@@ -65,6 +72,8 @@ interface StoreContextType {
   deletePayment: (paymentId: string) => void;
   addMembershipFee: (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => void;
   deleteMembershipFee: (feeId: string) => void;
+  addTreasuryExpense: (description: string, amount: number) => void;
+  deleteTreasuryExpense: (expenseId: string) => void;
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
 }
@@ -87,10 +96,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const feesQuery = useMemo(() => db ? collection(db, 'membershipFees') : null, [db]);
   const { data: feesData, loading: feesLoading } = useCollection<Omit<MembershipFee, 'id'>>(feesQuery);
 
+  const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(100)) : null, [db]);
+  const { data: tExpensesData, loading: tExpensesLoading } = useCollection<Omit<TreasuryExpense, 'id'>>(tExpensesQuery);
+
   const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
   const membershipFees = useMemo(() => feesData?.map(d => ({ ...d.data, id: d.id })) || [], [feesData]);
+  const treasuryExpenses = useMemo(() => tExpensesData?.map(d => ({ ...d.data, id: d.id })) || [], [tExpensesData]);
 
   const currentUserProfile = useMemo(() => {
     if (!user || players.length === 0) return null;
@@ -167,6 +180,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteDoc(doc(db, 'membershipFees', feeId));
   };
 
+  const addTreasuryExpense = (description: string, amount: number) => {
+    if (!db || !currentUserProfile) return;
+    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
+    if (!teamKasse) return;
+
+    const expenseData = { description, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+    addDoc(collection(db, 'treasuryExpenses'), expenseData);
+
+    const kasseRef = doc(db, 'players', teamKasse.id);
+    setDoc(kasseRef, { balance: (teamKasse.balance || 0) - amount }, { merge: true });
+  };
+
+  const deleteTreasuryExpense = (expenseId: string) => {
+    if (!db) return;
+    const expense = treasuryExpenses.find(e => e.id === expenseId);
+    if (!expense) return;
+    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
+
+    deleteDoc(doc(db, 'treasuryExpenses', expenseId));
+    if (teamKasse) {
+      const kasseRef = doc(db, 'players', teamKasse.id);
+      setDoc(kasseRef, { balance: (teamKasse.balance || 0) + expense.amount }, { merge: true });
+    }
+  };
+
   const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {
     if (!db) return;
     const playerData = { name, email, role, balance: 0.00 };
@@ -181,10 +219,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, currentUserProfile,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || authLoading,
+      players, expenses, payments, membershipFees, treasuryExpenses, currentUserProfile,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || tExpensesLoading || authLoading,
       addExpense, deleteExpense, recordPayment, deletePayment,
-      addMembershipFee, deleteMembershipFee, addPlayer, updatePlayer 
+      addMembershipFee, deleteMembershipFee, addTreasuryExpense, deleteTreasuryExpense,
+      addPlayer, updatePlayer 
     }}>
       {children}
     </StoreContext.Provider>

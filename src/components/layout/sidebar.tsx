@@ -117,11 +117,11 @@ export function MobileNavTrigger({ userRole }: { userRole?: 'player' | 'auditor'
   }
   
   return (
-    <div className="md:hidden flex h-auto min-h-16 flex-col bg-white border-b border-border sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
-      <div className="flex h-16 items-center px-4">
+    <div className="md:hidden flex h-auto min-h-16 flex-col bg-white border-b border-border sticky top-0 z-30 pt-safe-top">
+      <div className="flex h-16 items-center px-4 mt-2">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="mr-2">
+            <Button variant="ghost" size="icon" className="mr-2 h-10 w-10">
               <Menu className="h-6 w-6" />
             </Button>
           </SheetTrigger>

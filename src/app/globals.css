@@ -54,6 +54,12 @@
   }
 }
 
+@layer utilities {
+  .pt-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
 .glass-card {
   @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
 }

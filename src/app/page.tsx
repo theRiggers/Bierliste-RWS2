@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, ANNUAL_FEE } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote } from "lucide-react"
+import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE } from "@/lib/store"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -23,16 +24,20 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, currentUserProfile, addPlayer, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, currentUserProfile, addPlayer, addTreasuryExpense, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
+  // Treasury Expense States
+  const [isTreasuryOpen, setIsTreasuryOpen] = useState(false)
+  const [tDesc, setTDesc] = useState("")
+  const [tAmount, setTAmount] = useState("")
+
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (mounted && !authLoading && !user) router.replace("/login")
   }, [mounted, authLoading, user, router])
 
-  // Beitragsstatus berechnen
   const feeStatus = useMemo(() => {
     if (!currentUserProfile) return { open: 0, paidMonths: 0 };
     
@@ -103,6 +108,19 @@ export default function Dashboard() {
   const monthlyConsumptionCount = expenses.filter(e => e.playerId === currentUserProfile.id && new Date(e.date).getMonth() === new Date().getMonth()).length
   const isAuditor = currentUserProfile.role === 'auditor'
 
+  const handleAddTreasuryExpense = () => {
+    const amount = parseFloat(tAmount)
+    if (!tDesc || isNaN(amount) || amount <= 0) {
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte gültige Daten eingeben." })
+      return
+    }
+    addTreasuryExpense(tDesc, amount)
+    setIsTreasuryOpen(false)
+    setTDesc("")
+    setTAmount("")
+    toast({ title: "Team-Ausgabe verbucht" })
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole={currentUserProfile.role} />
@@ -111,7 +129,38 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
           <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
-          <span className="text-sm font-medium text-muted-foreground">{format(new Date(), 'EEEE, d. MMMM', { locale: de })}</span>
+          <div className="flex items-center gap-4">
+            {isAuditor && (
+              <Dialog open={isTreasuryOpen} onOpenChange={setIsTreasuryOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl border-primary text-primary hover:bg-primary/5">
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Team-Ausgabe
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Ausgabe der Mannschaftskasse</DialogTitle>
+                    <DialogDescription>Buchung von der Teamkasse abziehen (z.B. Getränkekauf).</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="t-desc">Beschreibung</Label>
+                      <Input id="t-desc" placeholder="Z.B. Einkauf Krombacher" value={tDesc} onChange={(e) => setTDesc(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="t-amount">Betrag (€)</Label>
+                      <Input id="t-amount" type="number" step="0.01" value={tAmount} onChange={(e) => setTAmount(e.target.value)} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleAddTreasuryExpense} className="rounded-xl w-full">Ausgabe bestätigen</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            <span className="text-sm font-medium text-muted-foreground">{format(new Date(), 'EEEE, d. MMMM', { locale: de })}</span>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">

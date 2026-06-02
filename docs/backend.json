@@ -52,6 +52,18 @@
         "datePaid": { "type": "string", "format": "date-time" }
       },
       "required": ["playerId", "type", "year", "amount", "datePaid"]
+    },
+    "TreasuryExpense": {
+      "title": "TreasuryExpense",
+      "description": "Eine Ausgabe der Mannschaftskasse (z.B. Einkauf von Getränken).",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "recordedBy": { "type": "string" }
+      },
+      "required": ["description", "amount", "date", "recordedBy"]
     }
   },
   "auth": {
@@ -73,6 +85,10 @@
     "/membershipFees/{feeId}": {
       "schema": "MembershipFee",
       "description": "Mitgliedsbeiträge."
+    },
+    "/treasuryExpenses/{expenseId}": {
+      "schema": "TreasuryExpense",
+      "description": "Ausgaben der Teamkasse."
     }
   }
 }

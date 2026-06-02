@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { Search, Loader2, Beer, Package, Banknote, Trash2 } from "lucide-react"
+import { Search, Loader2, Beer, Package, Banknote, Trash2, ShoppingCart } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
 import { 
@@ -32,10 +32,10 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const { user, loading: authLoading } = useUser()
-  const { expenses, payments, currentUserProfile, deleteExpense, deletePayment, loading: storeLoading } = useStore()
+  const { expenses, payments, treasuryExpenses, currentUserProfile, deleteExpense, deletePayment, deleteTreasuryExpense, loading: storeLoading } = useStore()
   
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' } | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' | 'treasury' } | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -68,10 +68,21 @@ export default function HistoryPage() {
       category: 'payment' as const
     }));
 
-    return [...formattedExpenses, ...formattedPayments].sort((a, b) => 
+    const formattedTreasury = treasuryExpenses.map(t => ({
+      id: t.id,
+      playerId: 'kasse',
+      playerName: 'Teamkasse',
+      type: 'treasury',
+      description: t.description,
+      amount: -t.amount,
+      date: t.date,
+      category: 'treasury' as const
+    }));
+
+    return [...formattedExpenses, ...formattedPayments, ...formattedTreasury].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [expenses, payments]);
+  }, [expenses, payments, treasuryExpenses]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -90,7 +101,8 @@ export default function HistoryPage() {
   }
 
   const filteredHistory = combinedHistory.filter(item => {
-    const matchesSearch = item.playerName.toLowerCase().includes(searchTerm.toLowerCase())
+    const searchString = (item.playerName + (item.category === 'treasury' ? (item as any).description : '')).toLowerCase()
+    const matchesSearch = searchString.includes(searchTerm.toLowerCase())
     const matchesFilter = filterType === "all" || item.category === filterType
     return matchesSearch && matchesFilter
   });
@@ -100,20 +112,22 @@ export default function HistoryPage() {
       case 'beer': return <Beer className="h-4 w-4" />;
       case 'crate': return <Package className="h-4 w-4" />;
       case 'payment': return <Banknote className="h-4 w-4" />;
+      case 'treasury': return <ShoppingCart className="h-4 w-4" />;
       default: return null;
     }
   }
 
-  const getTypeLabel = (type: string) => {
-    switch(type) {
+  const getTypeLabel = (item: any) => {
+    switch(item.type) {
       case 'beer': return 'Bier';
       case 'crate': return 'Kiste';
       case 'payment': return 'Zahlung';
-      default: return type;
+      case 'treasury': return item.description || 'Team-Ausgabe';
+      default: return item.type;
     }
   }
 
-  const handleDeleteRequest = (id: string, category: 'expense' | 'payment') => {
+  const handleDeleteRequest = (id: string, category: 'expense' | 'payment' | 'treasury') => {
     setItemToDelete({ id, category })
     setDeleteConfirmOpen(true)
   }
@@ -122,8 +136,10 @@ export default function HistoryPage() {
     if (!itemToDelete) return
     if (itemToDelete.category === 'expense') {
       deleteExpense(itemToDelete.id)
-    } else {
+    } else if (itemToDelete.category === 'payment') {
       deletePayment(itemToDelete.id)
+    } else {
+      deleteTreasuryExpense(itemToDelete.id)
     }
     setDeleteConfirmOpen(false)
     setItemToDelete(null)
@@ -148,7 +164,7 @@ export default function HistoryPage() {
             <div className="relative w-full md:w-96">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Spieler suchen..." 
+                placeholder="Suche..." 
                 className="pl-10 h-12 md:h-10 rounded-xl bg-white text-base md:text-sm" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -160,9 +176,10 @@ export default function HistoryPage() {
                   <SelectValue placeholder="Typ filtern" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Transaktionen</SelectItem>
+                  <SelectItem value="all">Alle</SelectItem>
                   <SelectItem value="expense">Getränke</SelectItem>
                   <SelectItem value="payment">Zahlungen</SelectItem>
+                  <SelectItem value="treasury">Team-Ausgaben</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -176,14 +193,15 @@ export default function HistoryPage() {
                     <div className="min-w-0 flex items-center gap-3">
                       <div className={cn(
                         "p-2 rounded-full",
-                        item.category === 'payment' ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary"
+                        item.category === 'payment' ? "bg-emerald-100 text-emerald-600" : 
+                        item.category === 'treasury' ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"
                       )}>
                         {getIcon(item.type)}
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-foreground truncate">{item.playerName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(item.date, 'dd.MM.yy HH:mm')} • {getTypeLabel(item.type)}
+                          {formatDate(item.date, 'dd.MM.yy HH:mm')} • {getTypeLabel(item)}
                         </p>
                       </div>
                     </div>
@@ -219,8 +237,8 @@ export default function HistoryPage() {
                   <TableHeader className="bg-muted/30">
                     <TableRow>
                       <TableHead className="font-bold">Datum</TableHead>
-                      <TableHead className="font-bold">Spieler</TableHead>
-                      <TableHead className="font-bold">Transaktion</TableHead>
+                      <TableHead className="font-bold">Spieler / Zweck</TableHead>
+                      <TableHead className="font-bold">Typ</TableHead>
                       <TableHead className="text-right font-bold">Betrag</TableHead>
                       {isAuditor && <TableHead className="w-[50px]"></TableHead>}
                     </TableRow>
@@ -231,15 +249,21 @@ export default function HistoryPage() {
                         <TableCell className="text-muted-foreground">
                           {formatDate(item.date, 'dd.MM.yyyy HH:mm')}
                         </TableCell>
-                        <TableCell className="font-medium">{item.playerName}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.playerName}
+                          {item.category === 'treasury' && <span className="block text-xs text-muted-foreground font-normal">{getTypeLabel(item)}</span>}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className={cn(
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium gap-1",
-                              item.category === 'payment' ? "bg-emerald-100 text-emerald-800" : "bg-primary/10 text-primary"
+                              item.category === 'payment' ? "bg-emerald-100 text-emerald-800" : 
+                              item.category === 'treasury' ? "bg-amber-100 text-amber-800" : "bg-primary/10 text-primary"
                             )}>
                               {getIcon(item.type)}
-                              {getTypeLabel(item.type)}
+                              {item.category === 'treasury' ? 'Team-Ausgabe' : 
+                               item.category === 'payment' ? 'Zahlung' : 
+                               item.type === 'beer' ? 'Bier' : 'Kiste'}
                             </span>
                           </div>
                         </TableCell>
@@ -275,7 +299,7 @@ export default function HistoryPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Eintrag wirklich löschen?</AlertDialogTitle>
               <AlertDialogDescription>
-                Diese Aktion kann nicht rückgängig gemacht werden. Der Kontostand des Spielers wird automatisch korrigiert.
+                Diese Aktion kann nicht rückgängig gemacht werden. Der Kontostand wird automatisch korrigiert.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

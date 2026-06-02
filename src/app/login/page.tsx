@@ -37,8 +37,17 @@ export default function LoginPage() {
       setHostname(window.location.hostname)
     }
 
-    // 1. Warte auf das Redirect-Ergebnis
-    const checkRedirect = async () => {
+    // 1. Zuerst prüfen, ob bereits ein User eingeloggt ist (von einer alten Session)
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace("/")
+      } else {
+        // Wenn kein User da ist, prüfen wir, ob wir gerade von einem Google-Redirect kommen
+        checkRedirectResult()
+      }
+    })
+
+    const checkRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth)
         if (result?.user) {
@@ -52,21 +61,18 @@ export default function LoginPage() {
             code: err.code,
             message: "Diese Domain ist nicht autorisiert. Bitte füge sie in der Firebase Console hinzu."
           })
+        } else {
+          setError({
+            code: err.code,
+            message: "Fehler beim Google-Login: " + err.message
+          })
         }
       } finally {
-        // 2. Prüfe parallel den generellen Auth-Status
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          if (user) {
-            router.replace("/")
-          } else {
-            setInitializing(false)
-          }
-        })
-        return () => unsubscribe()
+        setInitializing(false)
       }
     }
-    
-    checkRedirect()
+
+    return () => unsubscribe()
   }, [auth, router])
 
   const handleGoogleLogin = async () => {

@@ -7,10 +7,10 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 Da dies eine private Entwicklungsumgebung ist, musst du den Code manuell zu GitHub pushen:
 
 ### 1. Terminal finden & öffnen
-Wenn du keine Icons siehst, versuche diese Wege:
-- **Tastenkombination**: Drücke `Strg` + `J` (Windows/Linux) oder `Cmd` + `J` (Mac). Dies öffnet normalerweise das untere Panel mit dem Terminal.
-- **Befehlspalette**: Drücke `F1` oder `Strg` + `Shift` + `P` und tippe "Terminal: Create New Terminal" ein.
-- **Menüleiste**: Falls ganz oben am Bildschirmrand "Terminal" steht, klicke darauf und wähle "New Terminal".
+Wenn Standard-Kürzel wie Strg+J nicht funktionieren (da sie vom Browser abgefangen werden):
+- **Befehlspalette**: Drücke **`F1`** oder **`Strg` + `Shift` + `P`**. Tippe dann "Terminal" ein und wähle **"Terminal: Create New Terminal"**.
+- **Menüleiste**: Schau ganz oben am Bildschirmrand des Editors. Dort steht "File", "Edit", "Selection", "Terminal". Klicke auf **"Terminal" -> "New Terminal"**.
+- **Explorer**: Falls du links die Dateiliste siehst, mache einen Rechtsklick auf einen Ordner und wähle **"Open in Integrated Terminal"**.
 
 ### 2. GitHub Repository erstellen
 Gehe auf [GitHub](https://github.com/new) und erstelle ein neues, leeres Repository (ohne README oder .gitignore). Kopiere die URL (z.B. `https://github.com/nutzer/bierliste.git`).

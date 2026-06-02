@@ -5,19 +5,23 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2 } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 
 export default function Dashboard() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, currentUserProfile, loading: storeLoading } = useStore()
+  const { players, expenses, currentUserProfile, addPlayer, loading: storeLoading } = useStore()
+  const [onboardingName, setOnboardingName] = useState("")
   
   useEffect(() => {
     setMounted(true)
@@ -39,21 +43,49 @@ export default function Dashboard() {
 
   if (!user) return null
 
+  const handleOnboarding = () => {
+    if (!onboardingName.trim()) return
+    addPlayer(onboardingName.trim(), user.email!, 'player')
+  }
+
+  // Onboarding view for new users without a profile
   if (!currentUserProfile) {
     return (
-      <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-        <Sidebar userRole="player" />
-        <MobileNavTrigger userRole="player" />
-        <main className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-          <div className="bg-primary/10 p-4 rounded-full">
-            <Beer className="h-12 w-12 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold">Profil nicht gefunden</h2>
-          <p className="text-muted-foreground max-w-md">
-            Dein Konto ({user.email}) ist noch keinem Spielerprofil zugeordnet. 
-            Bitte wende dich an den Kassenprüfer, um dich registrieren zu lassen.
-          </p>
-        </main>
+      <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">
+        <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
+          <CardHeader className="text-center pb-2 pt-8">
+            <div className="mx-auto bg-primary/10 p-4 rounded-3xl w-fit mb-4 text-primary">
+              <UserCircle className="h-12 w-12" />
+            </div>
+            <CardTitle className="text-2xl font-bold font-headline">Willkommen!</CardTitle>
+            <CardDescription>
+              Dein Konto ({user.email}) ist neu. Gib deinen Namen ein, um dein Profil zu erstellen.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-4 pb-10 px-8">
+            <div className="space-y-2">
+              <Label htmlFor="onboarding-name" className="text-xs uppercase font-bold text-muted-foreground ml-1">Dein Name / Anzeigename</Label>
+              <Input 
+                id="onboarding-name" 
+                placeholder="Z.B. Max Mustermann" 
+                value={onboardingName} 
+                onChange={(e) => setOnboardingName(e.target.value)}
+                className="rounded-xl h-12 bg-muted/30 border-none text-base"
+                onKeyDown={(e) => e.key === 'Enter' && handleOnboarding()}
+              />
+            </div>
+            <Button 
+              className="w-full h-12 rounded-xl font-bold cyan-glow text-lg" 
+              onClick={handleOnboarding}
+              disabled={!onboardingName.trim()}
+            >
+              Profil erstellen & Starten
+            </Button>
+            <p className="text-[10px] text-center text-muted-foreground italic">
+              Du wirst automatisch als Spieler registriert.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }

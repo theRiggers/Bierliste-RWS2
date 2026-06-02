@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -11,13 +12,18 @@ import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
 export default function Dashboard() {
+  const [mounted, setMounted] = useState(false)
   const currentUser = MOCK_PLAYERS[0]
   const teamKasse = MOCK_PLAYERS[2]
-  const [currentDateFormatted, setCurrentDateFormatted] = useState<string>("")
 
   useEffect(() => {
-    setCurrentDateFormatted(format(new Date(), 'EEEE, d. MMMM', { locale: de }))
+    setMounted(true)
   }, [])
+
+  const formatDate = (date: string | Date, pattern: string) => {
+    if (!mounted) return ""
+    return format(new Date(date), pattern, { locale: de })
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -28,13 +34,17 @@ export default function Dashboard() {
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
           <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-muted-foreground">{currentDateFormatted}</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              {mounted ? formatDate(new Date(), 'EEEE, d. MMMM') : ""}
+            </span>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">
           <div className="md:hidden pt-2">
-            <p className="text-sm font-medium text-muted-foreground px-1">{currentDateFormatted}</p>
+            <p className="text-sm font-medium text-muted-foreground px-1">
+              {mounted ? formatDate(new Date(), 'EEEE, d. MMMM') : ""}
+            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -107,7 +117,7 @@ export default function Dashboard() {
                         <div className="min-w-0">
                           <p className="font-semibold text-foreground truncate">{expense.playerName}</p>
                           <p className="text-[10px] md:text-xs text-muted-foreground truncate">
-                            {format(new Date(expense.date), 'dd.MM. HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kasten'}
+                            {mounted ? formatDate(expense.date, 'dd.MM. HH:mm') : "--.--. --:--"} • {expense.itemType === 'beer' ? 'Bier' : 'Kasten'}
                           </p>
                         </div>
                       </div>

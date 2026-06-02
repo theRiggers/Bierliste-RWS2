@@ -1,6 +1,7 @@
+
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { MOCK_PLAYERS, MOCK_EXPENSES } from "@/lib/store"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -8,14 +9,25 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
+import { de } from "date-fns/locale"
 import { Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function HistoryPage() {
+  const [mounted, setMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const currentUser = MOCK_PLAYERS[0]
+
+  const formatDate = (date: string | Date, pattern: string) => {
+    if (!mounted) return ""
+    return format(new Date(date), pattern, { locale: de })
+  }
 
   const filteredExpenses = MOCK_EXPENSES.filter(exp => {
     const matchesSearch = exp.playerName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -65,14 +77,13 @@ export default function HistoryPage() {
           <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-white">
             <CardContent className="p-0">
               <div className="md:hidden">
-                {/* Mobile list view instead of table */}
                 <div className="divide-y divide-border">
                   {filteredExpenses.map((expense) => (
                     <div key={expense.id} className="p-4 flex justify-between items-center active:bg-muted/20">
                       <div className="min-w-0">
                         <p className="font-bold text-foreground truncate">{expense.playerName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {format(new Date(expense.date), 'dd.MM.yy HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
+                          {mounted ? formatDate(expense.date, 'dd.MM.yy HH:mm') : "--.--.-- --:--"} • {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
                         </p>
                       </div>
                       <span className="font-bold text-destructive whitespace-nowrap ml-2">
@@ -102,7 +113,7 @@ export default function HistoryPage() {
                     {filteredExpenses.map((expense) => (
                       <TableRow key={expense.id} className="hover:bg-muted/20 transition-colors">
                         <TableCell className="text-muted-foreground">
-                          {format(new Date(expense.date), 'dd.MM.yyyy HH:mm')}
+                          {mounted ? formatDate(expense.date, 'dd.MM.yyyy HH:mm') : "--.--.---- --:--"}
                         </TableCell>
                         <TableCell className="font-medium">{expense.playerName}</TableCell>
                         <TableCell>

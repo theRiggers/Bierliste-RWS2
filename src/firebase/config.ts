@@ -1,13 +1,16 @@
 
 'use client';
 
-// WICHTIG: Ersetze diese Platzhalter mit den echten Werten aus deiner Firebase Console!
-// Gehe zu: Projekteinstellungen > Allgemein > Deine Apps > SDK-Konfiguration
+/**
+ * Firebase Konfiguration.
+ * WICHTIG: Die Werte sollten idealerweise über Umgebungsvariablen (NEXT_PUBLIC_...) gesetzt werden.
+ * Wenn du die Firebase Console nutzt, kopiere die Werte hierher.
+ */
 export const firebaseConfig = {
-  apiKey: "env-api-key",
-  authDomain: "env-auth-domain",
-  projectId: "env-project-id",
-  storageBucket: "env-storage-bucket",
-  messagingSenderId: "env-messaging-sender-id",
-  appId: "env-app-id"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "env-api-key",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "env-auth-domain",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "env-project-id",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "env-storage-bucket",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "env-messaging-sender-id",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "env-app-id"
 };

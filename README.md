@@ -6,18 +6,15 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
 Benutze das **Terminal innerhalb von Firebase Studio**. 
 
-### ⚠️ WICHTIG: "Command not found" Fehler?
-Falls nach der Eingabe von `git init` die Meldung `command not found` kommt, prüfe dein Terminal:
-- Siehst du am Anfang der Zeile ein `>` Symbol? Dann bist du in der falschen Konsole (Node.js).
-- **Lösung**: Tippe `.exit` ein und drücke Enter (oder drücke zweimal `Strg+C`). Du solltest dann ein Dollarzeichen `$` oder einen Pfad sehen. **Nur dort** funktionieren die Befehle.
+### ⚠️ WICHTIG: Fehler "command not found"?
+Wenn du `git init` eingibst und eine Meldung wie `__vsc_prompt_cmd_original: command not found` erscheint: **Ignoriere das einfach!** Das ist ein Anzeigefehler des Browsers. Solange dein Cursor wieder blinkt, hat es funktioniert.
 
 ### Befehle (einzeln kopieren & Enter drücken):
-1. `git init`
-2. `git add .`
-3. `git commit -m "Initialer Export"`
-4. `git branch -M main`
-5. `git remote add origin https://github.com/theRiggers/Bierliste-RWS2`
-6. `git push -u origin main`
+1. `git add .`
+2. `git commit -m "Initialer Export"`
+3. `git branch -M main`
+4. `git remote add origin https://github.com/theRiggers/Bierliste-RWS2`
+5. `git push -u origin main`
 
 ## Features
 - **Einfache Buchung**: Bier oder Kisten mit einem Klick erfassen.

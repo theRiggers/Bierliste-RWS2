@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useStore } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck } from "lucide-react"
+import { useStore, PAYPAL_ME_LINK } from "@/lib/store"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -164,7 +164,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-none shadow-md bg-white rounded-2xl">
+            <Card className="border-none shadow-md bg-white rounded-2xl relative overflow-hidden group">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs md:text-sm font-medium text-muted-foreground">Dein Kontostand</p>
@@ -178,9 +178,20 @@ export default function Dashboard() {
                 )}>
                   {currentUserProfile.balance.toFixed(2)} €
                 </h2>
-                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
-                  {currentUserProfile.balance < 0 ? 'Du schuldest der Kasse Geld' : 'Dein Guthaben'}
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-[10px] md:text-xs text-muted-foreground">
+                    {currentUserProfile.balance < 0 ? 'Du schuldest der Kasse Geld' : 'Dein Guthaben'}
+                  </p>
+                  {currentUserProfile.balance < 0 && (
+                    <Button 
+                      variant="link" 
+                      className="h-auto p-0 text-[10px] md:text-xs text-primary font-bold flex items-center gap-1"
+                      onClick={() => window.open(`${PAYPAL_ME_LINK}/${Math.abs(currentUserProfile.balance)}`, '_blank')}
+                    >
+                      Jetzt zahlen <ExternalLink className="h-2.5 w-2.5" />
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

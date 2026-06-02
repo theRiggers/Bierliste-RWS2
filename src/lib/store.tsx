@@ -37,6 +37,8 @@ export interface Payment {
 
 export const BEER_PRICE = 1.50;
 export const CRATE_PRICE = 35.00;
+// Hier kannst du den PayPal-Link eures Vereins anpassen
+export const PAYPAL_ME_LINK = "https://paypal.me/rws2kasse";
 
 interface StoreContextType {
   players: Player[];

@@ -6,11 +6,10 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
 Da dies eine private Entwicklungsumgebung ist, musst du den Code manuell zu GitHub pushen. Benutze dazu das **Terminal innerhalb dieser Webseite (Studio)**.
 
-### 1. Terminal öffnen (Wenn Shortcuts nicht gehen)
-Wenn `Strg+J` nicht funktioniert (da Chrome es abfängt):
-- **Schritt A**: Drücke die Taste **`F1`** (oder `Strg` + `Shift` + `P`).
-- **Schritt B**: Tippe oben in das Feld das Wort `Terminal` ein.
-- **Schritt C**: Wähle aus der Liste **"Terminal: Create New Terminal"** aus.
+### 1. Terminal öffnen (Falls noch nicht offen)
+- Drücke **`F1`** (oder `Strg` + `Shift` + `P`).
+- Tippe oben in das Feld das Wort `Terminal` ein.
+- Wähle aus der Liste **"Terminal: Create New Terminal"** aus.
 - Es öffnet sich nun unten ein schwarzer Bereich (das Terminal).
 
 ### 2. GitHub Repository erstellen

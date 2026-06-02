@@ -44,6 +44,8 @@ interface StoreContextType {
   players: Player[];
   expenses: Expense[];
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
+  addPlayer: (name: string, email: string, role: Role) => void;
+  updatePlayer: (id: string, updates: Partial<Player>) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -57,7 +59,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const player = players.find(p => p.id === playerId);
     if (!player) return;
 
-    // 1. Add new expense
     const newExpense: Expense = {
       id: `e${Date.now()}`,
       playerId,
@@ -69,20 +70,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     setExpenses(prev => [newExpense, ...prev]);
 
-    // 2. Update player balance and team cash
     setPlayers(prev => prev.map(p => {
       if (p.id === playerId) {
         return { ...p, balance: p.balance - cost };
       }
-      if (p.id === '3') { // Team cash (Mannschaftskasse)
+      if (p.id === '3') {
         return { ...p, balance: p.balance + cost };
       }
       return p;
     }));
   };
 
+  const addPlayer = (name: string, email: string, role: Role) => {
+    const newPlayer: Player = {
+      id: `p${Date.now()}`,
+      name,
+      email,
+      role,
+      balance: 0.00,
+    };
+    setPlayers(prev => [...prev, newPlayer]);
+  };
+
+  const updatePlayer = (id: string, updates: Partial<Player>) => {
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
   return (
-    <StoreContext.Provider value={{ players, expenses, addExpense }}>
+    <StoreContext.Provider value={{ players, expenses, addExpense, addPlayer, updatePlayer }}>
       {children}
     </StoreContext.Provider>
   );

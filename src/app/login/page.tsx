@@ -13,7 +13,7 @@ import { useAuth, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Beer, Mail, Lock, Loader2, AlertCircle } from "lucide-react"
+import { Beer, Mail, Lock, Loader2, AlertCircle, Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -27,7 +27,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{code: string, message: string} | null>(null)
+  const [hostname, setHostname] = useState("")
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHostname(window.location.hostname)
+    }
+  }, [])
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -50,17 +57,13 @@ export default function LoginPage() {
     try {
       await signInWithPopup(auth, provider)
       router.push("/")
-    } catch (error: any) {
-      console.error(error)
-      let message = "Login fehlgeschlagen"
-      if (error.code === 'auth/unauthorized-domain') {
-        message = "Domain nicht autorisiert. Bitte füge diese URL in der Firebase Console unter Authentication -> Settings -> Authorized Domains hinzu."
-      }
-      setError(message)
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: message
+    } catch (err: any) {
+      console.error(err)
+      setError({
+        code: err.code,
+        message: err.code === 'auth/unauthorized-domain' 
+          ? "Diese Domain ist nicht autorisiert." 
+          : "Login fehlgeschlagen"
       })
     } finally {
       setLoading(false)
@@ -80,27 +83,27 @@ export default function LoginPage() {
         await signInWithEmailAndPassword(auth, email, password)
         router.push("/")
       }
-    } catch (error: any) {
-      console.error(error)
-      let message = error.message
-      if (error.code === 'auth/unauthorized-domain') {
-        message = "Domain nicht autorisiert. Bitte füge diese URL in der Firebase Console unter Authentication -> Settings -> Authorized Domains hinzu."
-      } else if (error.code === 'auth/email-already-in-use') {
-        message = "Diese E-Mail wird bereits verwendet."
-      } else if (error.code === 'auth/weak-password') {
-        message = "Das Passwort ist zu schwach (min. 6 Zeichen)."
-      } else if (error.code === 'auth/invalid-credential') {
-        message = "Ungültige Login-Daten."
+    } catch (err: any) {
+      console.error(err)
+      let msg = err.message
+      if (err.code === 'auth/unauthorized-domain') {
+        msg = "Diese Domain ist nicht autorisiert."
+      } else if (err.code === 'auth/email-already-in-use') {
+        msg = "Diese E-Mail wird bereits verwendet."
+      } else if (err.code === 'auth/weak-password') {
+        msg = "Das Passwort ist zu schwach (min. 6 Zeichen)."
+      } else if (err.code === 'auth/invalid-credential') {
+        msg = "Ungültige Login-Daten."
       }
-      setError(message)
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: message
-      })
+      setError({ code: err.code, message: msg })
     } finally {
       setLoading(false)
     }
+  }
+
+  const copyHostname = () => {
+    navigator.clipboard.writeText(hostname)
+    toast({ title: "Kopiert", description: "Domain wurde in die Zwischenablage kopiert." })
   }
 
   return (
@@ -118,8 +121,22 @@ export default function LoginPage() {
             <Alert variant="destructive" className="rounded-xl">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Fehler</AlertTitle>
-              <AlertDescription className="text-xs">
-                {error}
+              <AlertDescription className="text-xs space-y-2">
+                <p>{error.message}</p>
+                {error.code === 'auth/unauthorized-domain' && (
+                  <div className="mt-2 p-2 bg-destructive-foreground/10 rounded border border-destructive/20">
+                    <p className="font-semibold mb-1">Bitte füge diese Domain hinzu:</p>
+                    <div className="flex items-center justify-between gap-2 font-mono text-[10px] bg-white/50 p-1 rounded">
+                      <span className="truncate">{hostname}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={copyHostname}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-[9px]">
+                      Konsole -> Auth -> Einstellungen -> Autorisierte Domains
+                    </p>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}

@@ -1,8 +1,9 @@
+
 'use client';
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useEffect } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch } from 'firebase/firestore';
 
 export type Role = 'player' | 'auditor';
 
@@ -77,6 +78,7 @@ interface StoreContextType {
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   deletePlayer: (id: string) => Promise<void>;
+  cleanupOldSeasons: () => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -110,6 +112,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!user || players.length === 0) return null;
     return players.find(p => p.id === user.uid) || null;
   }, [user, players]);
+
+  // Cleanup logic: Automatically delete season 2024 (24/25) in August 2026
+  useEffect(() => {
+    if (db && currentUserProfile?.role === 'auditor' && !feesLoading) {
+      const now = new Date();
+      // August 2026 (Month 7 because 0-indexed)
+      const cleanupDate = new Date(2026, 7, 1);
+      
+      if (now >= cleanupDate) {
+        const oldFees = membershipFees.filter(f => f.year === 2024);
+        if (oldFees.length > 0) {
+          console.log("Cleaning up old season data (2024)...");
+          const batch = writeBatch(db);
+          oldFees.forEach(f => {
+            const ref = doc(db, 'membershipFees', f.id);
+            batch.delete(ref);
+          });
+          batch.commit();
+        }
+      }
+    }
+  }, [db, currentUserProfile, membershipFees, feesLoading]);
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
     if (!db) return;
@@ -223,13 +247,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, 'players', id));
   };
 
+  const cleanupOldSeasons = () => {
+    // Manually trigger cleanup if needed
+  };
+
   return (
     <StoreContext.Provider value={{ 
       players, expenses, payments, membershipFees, treasuryExpenses, currentUserProfile,
       loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || tExpensesLoading || authLoading,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addTreasuryExpense, deleteTreasuryExpense,
-      addPlayer, updatePlayer, deletePlayer
+      addPlayer, updatePlayer, deletePlayer, cleanupOldSeasons
     }}>
       {children}
     </StoreContext.Provider>

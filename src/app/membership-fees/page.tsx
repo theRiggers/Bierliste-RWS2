@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Check, X, Loader2, Banknote, Calendar, CreditCard, Filter } from "lucide-react"
+import { Check, X, Loader2, Banknote, Calendar, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -23,9 +23,12 @@ export default function MembershipFeesPage() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
   
-  const defaultSeason = currentMonth < 7 ? currentYear - 1 : currentYear;
+  // Logic: Only current and previous season visible
+  // Season starts in August (Month 7)
+  const currentSeasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
+  const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1];
   
-  const [selectedSeason, setSelectedSeason] = useState(defaultSeason.toString())
+  const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -76,9 +79,11 @@ export default function MembershipFeesPage() {
           <SelectValue placeholder="Saison" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={(currentYear - 2).toString()}>{currentYear - 2}/{(currentYear - 1) % 100}</SelectItem>
-          <SelectItem value={(currentYear - 1).toString()}>{currentYear - 1}/{currentYear % 100}</SelectItem>
-          <SelectItem value={currentYear.toString()}>{currentYear}/{(currentYear + 1) % 100}</SelectItem>
+          {visibleSeasons.map(year => (
+            <SelectItem key={year} value={year.toString()}>
+              {year}/{(year + 1) % 100}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>

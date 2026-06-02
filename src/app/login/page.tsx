@@ -4,7 +4,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { 
-  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult,
   GoogleAuthProvider, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
@@ -37,6 +38,29 @@ export default function LoginPage() {
   }, [])
 
   useEffect(() => {
+    // Handle redirect result when user comes back from Google
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth)
+        if (result) {
+          router.push("/")
+        }
+      } catch (err: any) {
+        console.error("Redirect Error:", err)
+        if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+          setError({
+            code: err.code,
+            message: err.code === 'auth/unauthorized-domain' 
+              ? "Diese Domain ist noch nicht in Firebase autorisiert." 
+              : "Login fehlgeschlagen. Bitte versuche es erneut."
+          })
+        }
+      }
+    }
+    checkRedirect()
+  }, [auth, router])
+
+  useEffect(() => {
     if (user && !authLoading) {
       router.push("/")
     }
@@ -55,17 +79,16 @@ export default function LoginPage() {
     setError(null)
     const provider = new GoogleAuthProvider()
     try {
-      await signInWithPopup(auth, provider)
-      router.push("/")
+      // Use redirect instead of popup for better mobile support
+      await signInWithRedirect(auth, provider)
     } catch (err: any) {
       console.error(err)
-      setError({
-        code: err.code,
-        message: err.code === 'auth/unauthorized-domain' 
-          ? "Diese Domain ist noch nicht in Firebase autorisiert." 
-          : "Login fehlgeschlagen. Bitte versuche es erneut."
-      })
-    } finally {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError({
+          code: err.code,
+          message: "Login konnte nicht gestartet werden."
+        })
+      }
       setLoading(false)
     }
   }

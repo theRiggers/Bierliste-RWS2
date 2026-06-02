@@ -22,7 +22,9 @@ export default function MembershipFeesPage() {
   
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
-  const defaultSeason = currentMonth < 6 ? currentYear - 1 : currentYear;
+  
+  // Saison-Logik: Vor August (7) gehört der Monat zur Vorsaison
+  const defaultSeason = currentMonth < 7 ? currentYear - 1 : currentYear;
   
   const [selectedSeason, setSelectedSeason] = useState(defaultSeason.toString())
 
@@ -91,6 +93,7 @@ export default function MembershipFeesPage() {
                 <SelectValue placeholder="Saison wählen" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={(currentYear - 2).toString()}>{currentYear - 2}/{(currentYear - 1) % 100}</SelectItem>
                 <SelectItem value={(currentYear - 1).toString()}>{currentYear - 1}/{currentYear % 100}</SelectItem>
                 <SelectItem value={currentYear.toString()}>{currentYear}/{(currentYear + 1) % 100}</SelectItem>
               </SelectContent>

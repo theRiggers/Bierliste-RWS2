@@ -41,22 +41,32 @@ export default function Dashboard() {
   const feeStatus = useMemo(() => {
     if (!currentUserProfile) return { open: 0, paidMonths: 0 };
     
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-    const seasonYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    // Die Saison beginnt im August (7). Wenn wir uns im Jan-Jul befinden, begann die Saison im Vorjahr.
+    const seasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
 
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
     
     if (isAnnual) return { open: 0, paidMonths: 10, isAnnual: true };
 
-    const elapsedMonthsInSeason = FEE_MONTHS.indexOf(currentMonth);
-    const monthsToPay = elapsedMonthsInSeason === -1 ? 0 : elapsedMonthsInSeason + 1;
+    const monthIndex = FEE_MONTHS.indexOf(currentMonth);
+    let monthsToPay = 0;
     
-    const paidMonthIndices = userFees.filter(f => f.type === 'monthly').map(f => f.month);
-    const paidCount = paidMonthIndices.length;
+    if (monthIndex !== -1) {
+      // Wir sind innerhalb der zahlungspflichtigen Monate (Aug-Mai)
+      monthsToPay = monthIndex + 1;
+    } else if (currentMonth === 5 || currentMonth === 6) {
+      // Juni oder Juli: Die Saison ist vorbei, alle 10 Monate hätten bezahlt sein müssen
+      monthsToPay = 10;
+    }
     
+    const paidCount = userFees.filter(f => f.type === 'monthly').length;
     const unpaidCount = Math.max(0, monthsToPay - paidCount);
+    
     return { open: unpaidCount * MONTHLY_FEE, paidMonths: paidCount, isAnnual: false };
   }, [currentUserProfile, membershipFees]);
 

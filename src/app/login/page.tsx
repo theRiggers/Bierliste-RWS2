@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -108,12 +109,12 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
-        <CardHeader className="space-y-1 bg-primary/5 pb-8 pt-10 text-center">
-          <div className="mx-auto bg-primary p-3 rounded-2xl shadow-lg w-fit mb-4">
-            <Beer className="h-8 w-8 text-white" />
+        <CardHeader className="space-y-1 bg-primary pb-8 pt-10 text-center">
+          <div className="mx-auto bg-white p-3 rounded-2xl shadow-lg w-fit mb-4">
+            <Beer className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold font-headline text-primary">Kickoff Kasse</CardTitle>
-          <CardDescription>Melde dich an, um deine Getränke zu verwalten.</CardDescription>
+          <CardTitle className="text-2xl font-bold font-headline text-white">Bierliste RWS2</CardTitle>
+          <CardDescription className="text-white/80">Melde dich an, um eure Getränke zu verwalten.</CardDescription>
         </CardHeader>
         <CardContent className="pt-8 space-y-6">
           {error && (

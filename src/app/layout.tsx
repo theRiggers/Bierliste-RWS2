@@ -6,12 +6,12 @@ import { StoreProvider } from '@/lib/store';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'Kickoff Kasse',
+  title: 'Bierliste RWS2',
   description: 'Verwalte deine Fußballmannschaft-Getränke effizient und smart.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Kickoff Kasse',
+    title: 'Bierliste RWS2',
   },
   formatDetection: {
     telephone: false,
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#2b73a1',
+  themeColor: '#d12d2d',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

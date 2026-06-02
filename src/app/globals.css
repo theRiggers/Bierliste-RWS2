@@ -5,40 +5,40 @@
 
 @layer base {
   :root {
-    --background: 197 16% 96%;
-    --foreground: 199 50% 15%;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 199 50% 15%;
+    --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 199 50% 15%;
-    --primary: 199 50% 45%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 182 73% 94%;
-    --secondary-foreground: 199 50% 25%;
-    --muted: 197 16% 90%;
-    --muted-foreground: 199 20% 45%;
-    --accent: 182 73% 61%;
-    --accent-foreground: 199 50% 10%;
+    --secondary: 0 100% 97%;
+    --secondary-foreground: 0 72% 30%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 72% 51%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 199 20% 88%;
-    --input: 199 20% 88%;
-    --ring: 199 50% 45%;
-    --radius: 0.75rem;
-    --chart-1: 199 50% 45%;
-    --chart-2: 182 73% 61%;
-    --chart-3: 199 20% 30%;
-    --chart-4: 182 73% 40%;
-    --chart-5: 199 50% 60%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 0 72% 51%;
+    --radius: 1rem;
+    --chart-1: 0 72% 51%;
+    --chart-2: 0 0% 40%;
+    --chart-3: 0 72% 30%;
+    --chart-4: 0 0% 20%;
+    --chart-5: 0 72% 70%;
     
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 199 50% 45%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 0 72% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 182 73% 94%;
-    --sidebar-accent-foreground: 199 50% 25%;
-    --sidebar-border: 199 20% 88%;
-    --sidebar-ring: 199 50% 45%;
+    --sidebar-accent: 0 100% 97%;
+    --sidebar-accent-foreground: 0 72% 51%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 0 72% 51%;
   }
 }
 
@@ -55,9 +55,13 @@
 }
 
 .glass-card {
-  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+}
+
+.red-glow {
+  box-shadow: 0 0 15px hsla(0, 72%, 51%, 0.2);
 }
 
 .cyan-glow {
-  box-shadow: 0 0 15px hsla(182, 73%, 61%, 0.4);
+  @apply red-glow;
 }

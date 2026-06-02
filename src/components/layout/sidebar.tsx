@@ -29,7 +29,6 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
   const auth = useAuth()
   const { user } = useUser()
   const { currentUserProfile } = useStore()
-  const [isOpen, setIsOpen] = useState(false)
 
   const handleLogout = async () => {
     await signOut(auth)
@@ -43,7 +42,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
           <div className="bg-primary p-1.5 rounded-lg shadow-md">
             <Beer className="h-6 w-6 text-white" />
           </div>
-          <span className="text-xl font-bold font-headline text-primary">Kickoff Kasse</span>
+          <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
         </div>
       </div>
       
@@ -52,7 +51,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
           if (item.auditorOnly && userRole !== 'auditor') return null
           const isActive = pathname === item.href
           return (
-            <Link key={item.name} href={item.href} onClick={() => setIsOpen(false)}>
+            <Link key={item.name} href={item.href}>
               <div className={cn(
                 "group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200",
                 isActive 
@@ -74,7 +73,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
         {user && (
           <div className="bg-muted/50 rounded-2xl p-4 mb-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shadow-sm">
+              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm">
                 {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -98,12 +97,9 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex h-full w-64 flex-col bg-white border-r border-border shadow-sm">
         <NavContent />
       </aside>
-
-      {/* Mobile Sidebar Trigger handled in pages via Sheet */}
     </>
   )
 }
@@ -139,7 +135,7 @@ export function MobileNavTrigger({ userRole }: { userRole?: 'player' | 'auditor'
                 <div className="bg-primary p-1.5 rounded-lg shadow-md">
                   <Beer className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-xl font-bold font-headline text-primary">Kickoff Kasse</span>
+                <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
@@ -168,7 +164,7 @@ export function MobileNavTrigger({ userRole }: { userRole?: 'player' | 'auditor'
               {user && (
                 <div className="bg-muted/50 rounded-2xl p-4 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shadow-sm text-sm">
+                    <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm text-sm">
                       {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -192,7 +188,7 @@ export function MobileNavTrigger({ userRole }: { userRole?: 'player' | 'auditor'
       </Sheet>
       <div className="flex items-center gap-2 ml-2">
         <Beer className="h-5 w-5 text-primary" />
-        <span className="font-bold text-lg text-primary">Kickoff Kasse</span>
+        <span className="font-bold text-lg text-primary">Bierliste RWS2</span>
       </div>
     </div>
   )

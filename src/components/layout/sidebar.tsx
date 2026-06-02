@@ -117,60 +117,62 @@ export function MobileNavTrigger({ userRole }: { userRole?: 'player' | 'auditor'
   }
   
   return (
-    <div className="md:hidden flex h-16 items-center px-4 bg-white border-b border-border sticky top-0 z-30">
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="mr-2">
-            <Menu className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-72">
-          <SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle></SheetHeader>
-          <div className="flex flex-col h-full">
-            <div className="flex h-16 items-center px-6 border-b border-border">
-              <div className="flex items-center gap-2">
-                <div className="bg-primary p-1.5 rounded-lg shadow-md"><Beer className="h-6 w-6 text-white" /></div>
-                <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
+    <div className="md:hidden flex h-auto min-h-16 flex-col bg-white border-b border-border sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
+      <div className="flex h-16 items-center px-4">
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="mr-2">
+              <Menu className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-72">
+            <SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle></SheetHeader>
+            <div className="flex flex-col h-full">
+              <div className="flex h-16 items-center px-6 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="bg-primary p-1.5 rounded-lg shadow-md"><Beer className="h-6 w-6 text-white" /></div>
+                  <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
+                </div>
               </div>
-            </div>
-            <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-              {navigation.map((item) => {
-                if (item.auditorOnly && userRole !== 'auditor') return null
-                const isActive = pathname === item.href
-                return (
-                  <Link key={item.name} href={item.href} onClick={() => setIsOpen(false)}>
-                    <div className={cn("group flex items-center px-3 py-3.5 text-base font-medium rounded-xl transition-all duration-200", isActive ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                      <item.icon className={cn("mr-4 h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
-                      {item.name}
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-            <div className="p-4 border-t border-border bg-white">
-              {user && (
-                <div className="bg-muted/50 rounded-2xl p-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm text-sm">
-                      {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+              <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+                {navigation.map((item) => {
+                  if (item.auditorOnly && userRole !== 'auditor') return null
+                  const isActive = pathname === item.href
+                  return (
+                    <Link key={item.name} href={item.href} onClick={() => setIsOpen(false)}>
+                      <div className={cn("group flex items-center px-3 py-3.5 text-base font-medium rounded-xl transition-all duration-200", isActive ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                        <item.icon className={cn("mr-4 h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                        {item.name}
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+              <div className="p-4 border-t border-border bg-white">
+                {user && (
+                  <div className="bg-muted/50 rounded-2xl p-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm text-sm">
+                        {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-              <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
-                <LogOut className="mr-3 h-5 w-5" /> Abmelden
-              </Button>
+                )}
+                <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
+                  <LogOut className="mr-3 h-5 w-5" /> Abmelden
+                </Button>
+              </div>
             </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-      <div className="flex items-center gap-2 ml-2">
-        <Beer className="h-5 w-5 text-primary" />
-        <span className="font-bold text-lg text-primary">Bierliste RWS2</span>
+          </SheetContent>
+        </Sheet>
+        <div className="flex items-center gap-2 ml-2">
+          <Beer className="h-5 w-5 text-primary" />
+          <span className="font-bold text-lg text-primary">Bierliste RWS2</span>
+        </div>
       </div>
     </div>
   )

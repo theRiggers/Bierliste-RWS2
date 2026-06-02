@@ -101,6 +101,7 @@ export default function Dashboard() {
 
   const teamKasse = players.find(p => p.email === 'kasse@kickoff.de') || { balance: 0 }
   const monthlyConsumptionCount = expenses.filter(e => e.playerId === currentUserProfile.id && new Date(e.date).getMonth() === new Date().getMonth()).length
+  const isAuditor = currentUserProfile.role === 'auditor'
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -114,7 +115,10 @@ export default function Dashboard() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className={cn(
+            "grid gap-4 md:grid-cols-2",
+            isAuditor ? "lg:grid-cols-4" : "lg:grid-cols-3"
+          )}>
             <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
@@ -155,15 +159,17 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-md bg-white rounded-2xl">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Teamkasse</p>
-                  <div className="p-2 bg-emerald-100 rounded-full text-emerald-600"><ArrowUpRight className="h-4 w-4" /></div>
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-emerald-600">{teamKasse.balance.toFixed(2)} €</h2>
-              </CardContent>
-            </Card>
+            {isAuditor && (
+              <Card className="border-none shadow-md bg-white rounded-2xl">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Teamkasse (Gesamt)</p>
+                    <div className="p-2 bg-emerald-100 rounded-full text-emerald-600"><ArrowUpRight className="h-4 w-4" /></div>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-emerald-600">{teamKasse.balance.toFixed(2)} €</h2>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">

@@ -46,6 +46,25 @@ export default function AiToolsPage() {
   const crateCount = currentMonthCrates.length;
   const crateTotalAmount = crateCount * CRATE_PRICE;
 
+  const handleAiError = (error: any, toolName: string) => {
+    console.error(`AI Error (${toolName}):`, error);
+    const message = error?.message?.toLowerCase() || "";
+    
+    if (message.includes("resource_exhausted") || message.includes("429") || message.includes("quota")) {
+      toast({
+        variant: "destructive",
+        title: "KI-Limit erreicht",
+        description: "Das Kontingent für die KI ist für heute erschöpft oder die Abrechnung ist nicht aktiv. Bitte später erneut versuchen."
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "KI-Fehler",
+        description: "Es gab ein Problem bei der Verarbeitung durch die KI. Bitte versuche es noch einmal."
+      });
+    }
+  }
+
   if (storeLoading || !mounted) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
@@ -66,6 +85,8 @@ export default function AiToolsPage() {
       }))
       const result = await treasurerExpenseSummary({ expenses: formattedExpenses })
       setExpenseSummary(result)
+    } catch (err) {
+      handleAiError(err, "Expense Summary")
     } finally {
       setLoading(null)
     }
@@ -81,6 +102,8 @@ export default function AiToolsPage() {
       }))
       const result = await highlightOverduePayments(formattedPlayers)
       setOverdueHighlight(result)
+    } catch (err) {
+      handleAiError(err, "Overdue Highlight")
     } finally {
       setLoading(null)
     }
@@ -93,6 +116,8 @@ export default function AiToolsPage() {
       const playerList = players.filter(p => p.email !== 'kasse@kickoff.de').map(p => ({ id: p.id, name: p.name }))
       const result = await parseTransactions({ rawText, players: playerList })
       setParsedResults(result)
+    } catch (err) {
+      handleAiError(err, "Transaction Parser")
     } finally {
       setLoading(null)
     }
@@ -108,7 +133,8 @@ export default function AiToolsPage() {
         monthName
       });
       setClubhouseDraft(result.draftMessage);
-      toast({ title: "Entwurf erstellt", description: "Die Nachricht für das Vereinsheim ist bereit." });
+    } catch (err) {
+      handleAiError(err, "Clubhouse Draft")
     } finally {
       setLoading(null)
     }
@@ -116,7 +142,6 @@ export default function AiToolsPage() {
 
   const handleConfirmPayment = (payment: any) => {
     recordPayment(payment.playerId, payment.amount)
-    toast({ title: "Zahlung gebucht", description: `${payment.amount}€ für ${payment.playerName} erfasst.` })
     if (parsedResults) {
       setParsedResults({
         ...parsedResults,
@@ -232,7 +257,6 @@ export default function AiToolsPage() {
                 </div>
                 <Button className="mt-4 rounded-xl w-full bg-amber-600" onClick={() => {
                   navigator.clipboard.writeText(clubhouseDraft);
-                  toast({ title: "Kopiert", description: "Text in Zwischenablage gesichert." });
                 }}>
                   Text kopieren
                 </Button>

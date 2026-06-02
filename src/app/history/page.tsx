@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore } from "@/lib/store"
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { Search, Loader2 } from "lucide-react"
+import { Search, Loader2, Beer, Package, Banknote } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
 
@@ -21,7 +21,7 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, currentUserProfile, loading: storeLoading } = useStore()
+  const { expenses, payments, currentUserProfile, loading: storeLoading } = useStore()
   
   useEffect(() => {
     setMounted(true)
@@ -32,6 +32,32 @@ export default function HistoryPage() {
       router.push("/login")
     }
   }, [mounted, authLoading, user, router])
+
+  const combinedHistory = useMemo(() => {
+    const formattedExpenses = expenses.map(e => ({
+      id: e.id,
+      playerId: e.playerId,
+      playerName: e.playerName,
+      type: e.itemType,
+      amount: -e.cost,
+      date: e.date,
+      category: 'expense' as const
+    }));
+
+    const formattedPayments = payments.map(p => ({
+      id: p.id,
+      playerId: p.playerId,
+      playerName: p.playerName,
+      type: 'payment',
+      amount: p.amount,
+      date: p.date,
+      category: 'payment' as const
+    }));
+
+    return [...formattedExpenses, ...formattedPayments].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [expenses, payments]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -47,11 +73,29 @@ export default function HistoryPage() {
     return format(new Date(date), pattern, { locale: de })
   }
 
-  const filteredExpenses = expenses.filter(exp => {
-    const matchesSearch = exp.playerName.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterType === "all" || exp.itemType === filterType
+  const filteredHistory = combinedHistory.filter(item => {
+    const matchesSearch = item.playerName.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesFilter = filterType === "all" || item.category === filterType
     return matchesSearch && matchesFilter
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  });
+
+  const getIcon = (type: string) => {
+    switch(type) {
+      case 'beer': return <Beer className="h-4 w-4" />;
+      case 'crate': return <Package className="h-4 w-4" />;
+      case 'payment': return <Banknote className="h-4 w-4" />;
+      default: return null;
+    }
+  }
+
+  const getTypeLabel = (type: string) => {
+    switch(type) {
+      case 'beer': return 'Bier';
+      case 'crate': return 'Kiste';
+      case 'payment': return 'Zahlung';
+      default: return type;
+    }
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -84,9 +128,9 @@ export default function HistoryPage() {
                   <SelectValue placeholder="Typ filtern" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle Typen</SelectItem>
-                  <SelectItem value="beer">Bier</SelectItem>
-                  <SelectItem value="crate">Kiste</SelectItem>
+                  <SelectItem value="all">Alle Transaktionen</SelectItem>
+                  <SelectItem value="expense">Getränke</SelectItem>
+                  <SelectItem value="payment">Zahlungen</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -95,22 +139,33 @@ export default function HistoryPage() {
           <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-white">
             <CardContent className="p-0">
               <div className="divide-y divide-border md:hidden">
-                {filteredExpenses.map((expense) => (
-                  <div key={expense.id} className="p-4 flex justify-between items-center active:bg-muted/20">
-                    <div className="min-w-0">
-                      <p className="font-bold text-foreground truncate">{expense.playerName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(expense.date, 'dd.MM.yy HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
-                      </p>
+                {filteredHistory.map((item) => (
+                  <div key={item.id} className="p-4 flex justify-between items-center active:bg-muted/20">
+                    <div className="min-w-0 flex items-center gap-3">
+                      <div className={cn(
+                        "p-2 rounded-full",
+                        item.category === 'payment' ? "bg-emerald-100 text-emerald-600" : "bg-primary/10 text-primary"
+                      )}>
+                        {getIcon(item.type)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-foreground truncate">{item.playerName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(item.date, 'dd.MM.yy HH:mm')} • {getTypeLabel(item.type)}
+                        </p>
+                      </div>
                     </div>
-                    <span className="font-bold text-destructive whitespace-nowrap ml-2">
-                      -{expense.cost.toFixed(2)} €
+                    <span className={cn(
+                      "font-bold whitespace-nowrap ml-2",
+                      item.amount > 0 ? "text-emerald-600" : "text-destructive"
+                    )}>
+                      {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
                     </span>
                   </div>
                 ))}
-                {filteredExpenses.length === 0 && (
+                {filteredHistory.length === 0 && (
                   <div className="p-12 text-center text-muted-foreground italic">
-                    Keine Buchungen gefunden.
+                    Keine Einträge gefunden.
                   </div>
                 )}
               </div>
@@ -121,27 +176,33 @@ export default function HistoryPage() {
                     <TableRow>
                       <TableHead className="font-bold">Datum</TableHead>
                       <TableHead className="font-bold">Spieler</TableHead>
-                      <TableHead className="font-bold">Artikel</TableHead>
+                      <TableHead className="font-bold">Transaktion</TableHead>
                       <TableHead className="text-right font-bold">Betrag</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredExpenses.map((expense) => (
-                      <TableRow key={expense.id} className="hover:bg-muted/20 transition-colors">
+                    {filteredHistory.map((item) => (
+                      <TableRow key={item.id} className="hover:bg-muted/20 transition-colors">
                         <TableCell className="text-muted-foreground">
-                          {formatDate(expense.date, 'dd.MM.yyyy HH:mm')}
+                          {formatDate(item.date, 'dd.MM.yyyy HH:mm')}
                         </TableCell>
-                        <TableCell className="font-medium">{expense.playerName}</TableCell>
+                        <TableCell className="font-medium">{item.playerName}</TableCell>
                         <TableCell>
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                            expense.itemType === 'beer' ? 'bg-amber-100 text-amber-800' : 'bg-primary/10 text-primary'
-                          )}>
-                            {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium gap-1",
+                              item.category === 'payment' ? "bg-emerald-100 text-emerald-800" : "bg-primary/10 text-primary"
+                            )}>
+                              {getIcon(item.type)}
+                              {getTypeLabel(item.type)}
+                            </span>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right font-bold text-destructive">
-                          -{expense.cost.toFixed(2)} €
+                        <TableCell className={cn(
+                          "text-right font-bold",
+                          item.amount > 0 ? "text-emerald-600" : "text-destructive"
+                        )}>
+                          {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
                         </TableCell>
                       </TableRow>
                     ))}

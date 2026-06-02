@@ -26,15 +26,26 @@ export interface Expense {
   date: string;
 }
 
+export interface Payment {
+  id: string;
+  playerId: string;
+  playerName: string;
+  amount: number;
+  date: string;
+  recordedBy: string;
+}
+
 export const BEER_PRICE = 1.50;
 export const CRATE_PRICE = 35.00;
 
 interface StoreContextType {
   players: Player[];
   expenses: Expense[];
+  payments: Payment[];
   currentUserProfile: Player | null;
   loading: boolean;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
+  recordPayment: (playerId: string, amount: number) => void;
   addPlayer: (name: string, email: string, role: Role) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
 }
@@ -59,6 +70,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [db]);
   const { data: expensesData, loading: expensesLoading } = useCollection<Omit<Expense, 'id'>>(expensesQuery);
 
+  // Abfrage der letzten 50 Zahlungen
+  const paymentsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'payments'), orderBy('date', 'desc'), limit(50));
+  }, [db]);
+  const { data: paymentsData, loading: paymentsLoading } = useCollection<Omit<Payment, 'id'>>(paymentsQuery);
+
   const players = useMemo(() => 
     playersData?.map(d => ({ ...d.data, id: d.id })) || [], 
     [playersData]
@@ -67,6 +85,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const expenses = useMemo(() => 
     expensesData?.map(d => ({ ...d.data, id: d.id })) || [], 
     [expensesData]
+  );
+
+  const payments = useMemo(() => 
+    paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], 
+    [paymentsData]
   );
 
   // Finde das Profil des aktuell angemeldeten Benutzers
@@ -91,7 +114,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       date: new Date().toISOString(),
     };
 
-    // 1. Ausgabe hinzufügen
     addDoc(collection(db, 'expenses'), expenseData).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'expenses',
@@ -100,7 +122,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
     });
 
-    // 2. Spieler-Balance aktualisieren
     const playerRef = doc(db, 'players', playerId);
     setDoc(playerRef, { balance: (player.balance || 0) - cost }, { merge: true }).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -110,7 +131,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
     });
 
-    // 3. Teamkasse aktualisieren
     if (teamKasse) {
       const kasseRef = doc(db, 'players', teamKasse.id);
       setDoc(kasseRef, { balance: (teamKasse.balance || 0) + cost }, { merge: true }).catch(async () => {
@@ -121,6 +141,37 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }));
       });
     }
+  };
+
+  const recordPayment = (playerId: string, amount: number) => {
+    if (!db || !currentUserProfile) return;
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+
+    const paymentData = {
+      playerId,
+      playerName: player.name,
+      amount,
+      date: new Date().toISOString(),
+      recordedBy: currentUserProfile.id
+    };
+
+    addDoc(collection(db, 'payments'), paymentData).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'payments',
+        operation: 'create',
+        requestResourceData: paymentData
+      }));
+    });
+
+    const playerRef = doc(db, 'players', playerId);
+    setDoc(playerRef, { balance: (player.balance || 0) + amount }, { merge: true }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: playerRef.path,
+        operation: 'update',
+        requestResourceData: { balance: (player.balance || 0) + amount }
+      }));
+    });
   };
 
   const addPlayer = (name: string, email: string, role: Role) => {
@@ -151,9 +202,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     <StoreContext.Provider value={{ 
       players, 
       expenses, 
+      payments,
       currentUserProfile,
-      loading: playersLoading || expensesLoading || authLoading,
+      loading: playersLoading || expensesLoading || paymentsLoading || authLoading,
       addExpense, 
+      recordPayment,
       addPlayer, 
       updatePlayer 
     }}>

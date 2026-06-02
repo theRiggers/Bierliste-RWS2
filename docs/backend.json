@@ -25,6 +25,19 @@
         "date": { "type": "string", "format": "date-time" }
       },
       "required": ["playerId", "playerName", "itemType", "cost", "date"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Eine Einzahlung eines Spielers in die Kasse.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "playerName": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "recordedBy": { "type": "string", "description": "ID des Kassenprüfers, der die Zahlung erfasst hat." }
+      },
+      "required": ["playerId", "playerName", "amount", "date", "recordedBy"]
     }
   },
   "auth": {
@@ -38,6 +51,10 @@
     "/expenses/{expenseId}": {
       "schema": "Expense",
       "description": "Verlauf aller getätigten Buchungen."
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Verlauf aller getätigten Einzahlungen."
     }
   }
 }

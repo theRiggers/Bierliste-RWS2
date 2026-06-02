@@ -6,7 +6,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save, Loader2 } from "lucide-react"
+import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save, Loader2, Banknote } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { draftPaymentReminder } from "@/ai/flows/ai-draft-payment-reminder"
 import { useToast } from "@/hooks/use-toast"
@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function PlayersPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, addPlayer, updatePlayer, loading } = useStore()
+  const { players, addPlayer, updatePlayer, recordPayment, loading, currentUserProfile } = useStore()
   const [drafting, setDrafting] = useState<string | null>(null)
   
   // States for Adding Player
@@ -35,6 +35,11 @@ export default function PlayersPage() {
   const [editEmail, setEditEmail] = useState("")
   const [editRole, setEditRole] = useState<Role>("player")
 
+  // States for Recording Payment
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
+  const [paymentPlayer, setPaymentPlayer] = useState<Player | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState("")
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -47,8 +52,15 @@ export default function PlayersPage() {
     )
   }
 
-  const currentUser = players[0]
-  if (!currentUser) return null
+  if (!currentUserProfile || currentUserProfile.role !== 'auditor') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
+        <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
+        <p className="text-muted-foreground">Nur Kassenprüfer haben Zugriff auf diese Seite.</p>
+        <Button onClick={() => window.location.href = "/"} className="mt-4">Zurück zum Dashboard</Button>
+      </div>
+    )
+  }
 
   const handleAddPlayer = () => {
     if (!newName || !newEmail) {
@@ -69,6 +81,23 @@ export default function PlayersPage() {
     setEditEmail(player.email)
     setEditRole(player.role)
     setIsEditOpen(true)
+  }
+
+  const handleOpenPayment = (player: Player) => {
+    setPaymentPlayer(player)
+    setPaymentAmount("")
+    setIsPaymentOpen(true)
+  }
+
+  const handleRecordPayment = () => {
+    const amount = parseFloat(paymentAmount)
+    if (!paymentPlayer || isNaN(amount) || amount <= 0) {
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte gib einen gültigen Betrag ein." })
+      return
+    }
+    recordPayment(paymentPlayer.id, amount)
+    setIsPaymentOpen(false)
+    toast({ title: "Zahlung erfasst", description: `${amount.toFixed(2)}€ für ${paymentPlayer.name} gutgeschrieben.` })
   }
 
   const savePlayerChanges = () => {
@@ -195,6 +224,15 @@ export default function PlayersPage() {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <Button 
+                        size="icon" 
+                        variant="outline" 
+                        className="rounded-xl hover:bg-emerald-500 hover:text-white h-10 w-10 border-emerald-200 text-emerald-600"
+                        onClick={() => handleOpenPayment(player)}
+                        title="Zahlung erfassen"
+                      >
+                        <Banknote className="h-4 w-4" />
+                      </Button>
                       {player.balance < 0 && (
                         <Button 
                           size="icon" 
@@ -202,11 +240,12 @@ export default function PlayersPage() {
                           className="rounded-xl hover:bg-primary hover:text-white h-10 w-10"
                           onClick={() => handleDraftReminder(player)}
                           disabled={drafting === player.id}
+                          title="Zahlungserinnerung entwerfen"
                         >
                           <MessageCircle className={cn("h-4 w-4", drafting === player.id && "animate-pulse")} />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" className="rounded-xl h-10 w-10" onClick={() => handleEditPlayer(player)}>
+                      <Button size="icon" variant="ghost" className="rounded-xl h-10 w-10" onClick={() => handleEditPlayer(player)} title="Bearbeiten">
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -250,6 +289,36 @@ export default function PlayersPage() {
               <Button onClick={savePlayerChanges} className="rounded-xl w-full">
                 <Save className="h-4 w-4 mr-2" />
                 Änderungen speichern
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Record Payment Dialog */}
+        <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Zahlung erfassen</DialogTitle>
+              <DialogDescription>Geld für {paymentPlayer?.name} gutschreiben.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="payment-amount" className="text-right text-xs">Betrag (€)</Label>
+                <Input 
+                  id="payment-amount" 
+                  type="number" 
+                  step="0.01" 
+                  value={paymentAmount} 
+                  onChange={(e) => setPaymentAmount(e.target.value)} 
+                  className="col-span-3" 
+                  placeholder="Z.B. 20.00"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleRecordPayment} className="rounded-xl w-full bg-emerald-600 hover:bg-emerald-700">
+                <Banknote className="h-4 w-4 mr-2" />
+                Zahlung verbuchen
               </Button>
             </DialogFooter>
           </DialogContent>

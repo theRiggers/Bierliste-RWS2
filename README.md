@@ -4,29 +4,17 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
 ## 🚀 Projekt zu GitHub exportieren
 
-Da dies eine private Entwicklungsumgebung ist, musst du den Code manuell zu GitHub pushen. Benutze dazu das **Terminal innerhalb dieser Webseite (Studio)**.
+Benutze das **Terminal innerhalb von Firebase Studio**. Kopiere die Befehle einzeln (ohne das `>`) und drücke jeweils Enter.
 
-### 1. Terminal öffnen (Falls noch nicht offen)
-- Drücke **`F1`** (oder `Strg` + `Shift` + `P`).
-- Tippe oben in das Feld das Wort `Terminal` ein.
-- Wähle aus der Liste **"Terminal: Create New Terminal"** aus.
-- Es öffnet sich nun unten ein schwarzer Bereich (das Terminal).
-
-### 2. GitHub Repository erstellen
-Gehe auf [GitHub](https://github.com/new) und erstelle ein neues, leeres Repository (ohne README oder .gitignore). Kopiere die URL (z.B. `https://github.com/nutzer/bierliste.git`).
-
-### 3. Befehle im Terminal ausführen
-Kopiere diese Zeilen nacheinander in das Terminal-Fenster und drücke jeweils Enter:
-
+### Befehle:
 ```bash
 git init
 git add .
 git commit -m "Initialer Export der Bierliste"
 git branch -M main
-git remote add origin DEINE_GITHUB_URL_HIER
+git remote add origin https://github.com/theRiggers/Bierliste-RWS2
 git push -u origin main
 ```
-*(Ersetze `DEINE_GITHUB_URL_HIER` mit dem Link deines neuen Repositories)*
 
 ## Features
 - **Einfache Buchung**: Bier oder Kisten mit einem Klick erfassen.
@@ -36,12 +24,14 @@ git push -u origin main
 - **Beitragskasse**: Verwaltung von monatlichen Vereinsbeiträgen (Aug-Mai).
 - **Mobile First**: Optimiert für die Nutzung als App auf dem Homescreen.
 
-## WICHTIG: Entwicklung vs. Live
-Die URL, die auf `.cloudworkstations.dev` endet, ist **privat**. Sie funktioniert nur für dich. 
+## 🌍 Live-Schaltung (Hosting nach Frankfurt verschieben)
+Standardmäßig wird die App oft in den USA gehostet. So ziehst du auf einen deutschen Server um:
 
-**Um die App zu teilen:**
-1. Klicke oben rechts auf den blauen **"Publish"** Button.
-2. Nach dem erfolgreichen Deployment erhältst du eine öffentliche URL (z.B. `dein-projekt.web.app`).
-
-### Hosting in Deutschland
-Wenn du möchtest, dass die App schneller lädt, kannst du das Hosting-Backend in der Firebase Console löschen und neu anlegen. Wähle dabei als Region **europe-west3 (Frankfurt)** aus.
+1. Gehe in die [Firebase Console](https://console.firebase.google.com/).
+2. Wähle dein Projekt aus.
+3. Gehe links auf **App Hosting**.
+4. Falls dort ein Backend existiert, klicke auf die drei Punkte und wähle **Löschen**.
+5. Klicke auf **Get Started** oder **Create Backend**.
+6. Verbinde dein GitHub-Repository.
+7. **WICHTIG**: Wähle im Schritt "Region" unbedingt **europe-west3 (Frankfurt)** aus.
+8. Schließe das Setup ab. Deine App lädt nun blitzschnell aus Deutschland.

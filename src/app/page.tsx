@@ -7,12 +7,11 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { useStore } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, AlertCircle } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -37,10 +36,6 @@ export default function Dashboard() {
       </div>
     )
   }
-
-  // Falls der API-Key noch fehlt (Platzhalter-Check)
-  const isConfigMissing = typeof window !== 'undefined' && 
-    (process.env.NEXT_PUBLIC_FIREBASE_API_KEY === "env-api-key" || !process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
 
   if (!user) return null
 
@@ -94,16 +89,6 @@ export default function Dashboard() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8">
-          {isConfigMissing && (
-            <Alert variant="destructive" className="rounded-xl border-2">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Konfiguration fehlt</AlertTitle>
-              <AlertDescription>
-                Bitte trage deinen Firebase API-Key in der Datei <code>src/firebase/config.ts</code> ein, damit der Login funktioniert.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <div className="md:hidden pt-2">
             <p className="text-sm font-medium text-muted-foreground px-1">
               {formatDate(new Date(), 'EEEE, d. MMMM')}

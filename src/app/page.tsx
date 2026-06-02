@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -6,8 +5,8 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, Sparkles } from "lucide-react"
+import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL } from "@/lib/store"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -17,14 +16,12 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
-import { draftClubhousePayment } from "@/ai/flows/ai-clubhouse-payment-draft"
 
 export default function Dashboard() {
   const router = useRouter()
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isDrafting, setIsDrafting] = useState(false)
   const { user, loading: authLoading } = useUser()
   const { players, expenses, membershipFees, currentUserProfile, addPlayer, addTreasuryExpense, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
@@ -148,27 +145,27 @@ export default function Dashboard() {
     setTAmount("")
   }
 
-  const handleDraftClubhouse = async () => {
+  const handleDraftClubhouseLocal = () => {
     if (monthlyCrateStats.count === 0) return;
-    setIsDrafting(true);
-    try {
-      const monthName = format(new Date(), 'MMMM', { locale: de });
-      const result = await draftClubhousePayment({
-        crateCount: monthlyCrateStats.count,
-        totalAmount: monthlyCrateStats.amount,
-        monthName
-      });
-      setClubhouseDraft(result.draftMessage);
-    } catch (err: any) {
-      console.error(err);
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: "KI konnte Nachricht nicht entwerfen. Bitte später versuchen."
-      });
-    } finally {
-      setIsDrafting(false);
-    }
+    const monthName = format(new Date(), 'MMMM', { locale: de });
+    const draft = `Hallo Marlene,
+
+für den Monat ${monthName} haben wir im Vereinsheim ${monthlyCrateStats.count} Kisten verbraucht.
+Der Gesamtbetrag von ${monthlyCrateStats.amount.toFixed(2)}€ wird hiermit per PayPal überwiesen.
+
+Beste Grüße,
+Bierliste RWS2 (Schatzmeister)`;
+    
+    setClubhouseDraft(draft);
+    toast({ title: "Entwurf erstellt" });
+  }
+
+  const handlePayClubhouse = () => {
+    const monthName = format(new Date(), 'MMMM', { locale: de });
+    const amount = monthlyCrateStats.amount.toFixed(2);
+    // Standard PayPal link for specific account and amount
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(CLUBHOUSE_PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=Kistenabrechnung%20RWS2%20${encodeURIComponent(monthName)}`;
+    window.open(paypalUrl, '_blank');
   }
 
   return (
@@ -281,7 +278,7 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* New Clubhouse Section for Auditors */}
+          {/* Clubhouse Section for Auditors - NO AI */}
           {isAuditor && (
             <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500 overflow-hidden">
               <CardHeader className="bg-amber-50/50 pb-2">
@@ -294,7 +291,7 @@ export default function Dashboard() {
                     {format(new Date(), 'MMMM', { locale: de })}
                   </span>
                 </div>
-                <CardDescription>Aktueller Stand der Getränke-Schulden an das Vereinsheim.</CardDescription>
+                <CardDescription>Abrechnung der monatlichen Getränke-Schulden an das Vereinsheim.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -308,14 +305,23 @@ export default function Dashboard() {
                       <p className="text-3xl font-bold text-amber-700">{monthlyCrateStats.amount.toFixed(2)} €</p>
                     </div>
                   </div>
-                  <div className="flex gap-3 w-full md:w-auto">
+                  <div className="flex flex-wrap gap-3 w-full md:w-auto">
                     <Button 
-                      onClick={handleDraftClubhouse} 
-                      disabled={isDrafting || monthlyCrateStats.count === 0}
+                      variant="outline"
+                      onClick={handleDraftClubhouseLocal} 
+                      disabled={monthlyCrateStats.count === 0}
+                      className="rounded-xl border-amber-600 text-amber-700 hover:bg-amber-50 flex-1 md:flex-none h-12 px-6"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Text entwerfen
+                    </Button>
+                    <Button 
+                      onClick={handlePayClubhouse} 
+                      disabled={monthlyCrateStats.count === 0}
                       className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white flex-1 md:flex-none h-12 px-6"
                     >
-                      {isDrafting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                      Abrechnung entwerfen
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Per PayPal zahlen
                     </Button>
                   </div>
                 </div>
@@ -324,7 +330,7 @@ export default function Dashboard() {
                   <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200 animate-in fade-in slide-in-from-top-2">
                     <div className="flex justify-between items-start mb-2">
                       <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
-                        <Sparkles className="h-3 w-3" /> KI-Entwurf
+                        Vorschau Abrechnungsnachricht
                       </p>
                       <Button variant="ghost" size="sm" className="h-6 text-[10px] text-amber-600" onClick={() => {
                         navigator.clipboard.writeText(clubhouseDraft);
@@ -336,6 +342,10 @@ export default function Dashboard() {
                     </p>
                   </div>
                 )}
+                
+                <div className="mt-4 flex items-center gap-2 text-[10px] text-muted-foreground italic">
+                  <span>Hinterlegtes PayPal: <strong>{CLUBHOUSE_PAYPAL_EMAIL}</strong></span>
+                </div>
               </CardContent>
             </Card>
           )}

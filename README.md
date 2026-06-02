@@ -18,11 +18,20 @@ Die URL, die auf `.cloudworkstations.dev` endet, ist **privat**. Sie funktionier
 2. Nach dem erfolgreichen Deployment erhältst du eine öffentliche URL (z.B. `dein-projekt.web.app`).
 3. **Nur diese öffentliche URL** funktioniert auf den Handys der Spieler.
 
-## Server-Standort & Datenschutz
-Die Region des Backends wird in der Firebase Console festgelegt:
-- **Firestore (Datenbank)**: Der Standort wird bei der Erstellung fest gewählt (z.B. USA) und kann nachträglich nicht verschoben werden.
-- **App Hosting (Web-Server)**: Du kannst bei der Einrichtung des Backends in der Console eine Region in Deutschland/Europa wählen (z.B. `europe-west3` Frankfurt), um Latenzen zu minimieren.
-- **DSGVO**: Die App nutzt Firebase Authentication und Firestore. Achte darauf, im Google Cloud Account die entsprechenden Datenverarbeitungs-Zusätze zu akzeptieren.
+## Region & Standorte (Wichtig für Latenz)
+Es gibt zwei verschiedene Standorte in deinem Projekt:
+1. **Firestore (Datenbank)**: Hier liegen deine Daten (Spieler, Stände). Dieser Ort ist fest (z.B. `europe-west`).
+2. **App Hosting (Web-Server)**: Das ist der Ort, von dem die Webseite geladen wird. 
+
+**Warum steht beim Publish "us-central"?**
+Das App Hosting Backend wird beim ersten Mal oft standardmäßig in den USA erstellt. Da deine Datenbank aber in Europa liegt, "reist" jede Anfrage über den Atlantik. 
+
+**So verschiebst du den Web-Server nach Deutschland:**
+1. Gehe in die [Firebase Console](https://console.firebase.google.com/).
+2. Navigiere zu **App Hosting**.
+3. Lösche das bestehende Backend (falls es in `us-central` liegt).
+4. Erstelle ein neues Backend und wähle im Setup-Prozess als Region **`europe-west3` (Frankfurt)**.
+5. Verbinde es erneut mit deinem GitHub/Repository. Danach ist auch der Web-Server in Deutschland.
 
 ## Installation auf dem Handy
 Die Bierliste ist eine **Progressive Web App (PWA)**.

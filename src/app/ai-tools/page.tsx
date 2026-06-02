@@ -1,25 +1,30 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { useStore } from "@/lib/store"
+import { useStore, CRATE_PRICE } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Sparkles, TrendingUp, AlertTriangle, Send, Loader2, FileText, CheckCircle2, XCircle } from "lucide-react"
+import { Sparkles, TrendingUp, AlertTriangle, FileText, Loader2, CheckCircle2, XCircle, ShoppingBag, Send } from "lucide-react"
 import { treasurerExpenseSummary, TreasurerExpenseSummaryOutput } from "@/ai/flows/ai-treasurer-expense-summary"
 import { highlightOverduePayments, OverduePaymentHighlightOutput } from "@/ai/flows/ai-overdue-payment-highlight-flow"
 import { parseTransactions, ParseTransactionsOutput } from "@/ai/flows/ai-parse-transactions"
-import { Badge } from "@/components/ui/badge"
+import { draftClubhousePayment } from "@/ai/flows/ai-clubhouse-payment-draft"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { format } from "date-fns"
+import { de } from "date-fns/locale"
 
 export default function AiToolsPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const { players, expenses, recordPayment, loading: storeLoading } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
+  
+  // States for results
   const [expenseSummary, setExpenseSummary] = useState<TreasurerExpenseSummaryOutput | null>(null)
   const [overdueHighlight, setOverdueHighlight] = useState<OverduePaymentHighlightOutput | null>(null)
+  const [clubhouseDraft, setClubhouseDraft] = useState<string | null>(null)
   
   // Transaction Parser States
   const [rawText, setRawText] = useState("")
@@ -28,6 +33,18 @@ export default function AiToolsPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Monthly Crate Stats
+  const currentMonthCrates = useMemo(() => {
+    const now = new Date();
+    return expenses.filter(e => {
+      const d = new Date(e.date);
+      return e.itemType === 'crate' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+  }, [expenses]);
+
+  const crateCount = currentMonthCrates.length;
+  const crateTotalAmount = crateCount * CRATE_PRICE;
 
   if (storeLoading || !mounted) {
     return (
@@ -81,10 +98,25 @@ export default function AiToolsPage() {
     }
   }
 
+  const handleDraftClubhousePayment = async () => {
+    setLoading('clubhouse')
+    try {
+      const monthName = format(new Date(), 'MMMM', { locale: de });
+      const result = await draftClubhousePayment({
+        crateCount,
+        totalAmount: crateTotalAmount,
+        monthName
+      });
+      setClubhouseDraft(result.draftMessage);
+      toast({ title: "Entwurf erstellt", description: "Die Nachricht für das Vereinsheim ist bereit." });
+    } finally {
+      setLoading(null)
+    }
+  }
+
   const handleConfirmPayment = (payment: any) => {
     recordPayment(payment.playerId, payment.amount)
     toast({ title: "Zahlung gebucht", description: `${payment.amount}€ für ${payment.playerName} erfasst.` })
-    // Remove from UI after booking
     if (parsedResults) {
       setParsedResults({
         ...parsedResults,
@@ -138,7 +170,30 @@ export default function AiToolsPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden md:col-span-2 lg:col-span-1">
+            <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden border-t-4 border-t-amber-500">
+              <CardHeader className="bg-amber-50">
+                <CardTitle className="flex items-center gap-2 text-sm text-amber-700">
+                  <ShoppingBag className="h-4 w-4" />
+                  Kisten-Kasse (Vereinsheim)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="mb-4 space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Diesen Monat ({format(new Date(), 'MMMM', { locale: de })})</p>
+                  <p className="text-xl font-bold">{crateCount} Kisten / {crateTotalAmount.toFixed(2)} €</p>
+                </div>
+                <Button 
+                  onClick={handleDraftClubhousePayment} 
+                  disabled={loading === 'clubhouse' || crateCount === 0}
+                  className="w-full rounded-xl bg-amber-600 hover:bg-amber-700 text-xs"
+                >
+                  {loading === 'clubhouse' ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
+                  Abrechnung entwerfen
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden md:col-span-2">
               <CardHeader className="bg-emerald-50">
                 <CardTitle className="flex items-center gap-2 text-sm text-emerald-700">
                   <FileText className="h-4 w-4" />
@@ -164,6 +219,26 @@ export default function AiToolsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {clubhouseDraft && (
+            <Card className="border-none shadow-xl rounded-2xl bg-white animate-in fade-in slide-in-from-bottom-4 border-l-4 border-l-amber-500">
+              <CardHeader>
+                <CardTitle className="text-lg">Entwurf: Vereinsheim-Abrechnung</CardTitle>
+                <CardDescription>Kopiere diesen Text für die WhatsApp-Gruppe oder E-Mail.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-amber-50 rounded-xl whitespace-pre-wrap text-sm italic border border-amber-100">
+                  {clubhouseDraft}
+                </div>
+                <Button className="mt-4 rounded-xl w-full bg-amber-600" onClick={() => {
+                  navigator.clipboard.writeText(clubhouseDraft);
+                  toast({ title: "Kopiert", description: "Text in Zwischenablage gesichert." });
+                }}>
+                  Text kopieren
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {parsedResults && (
             <Card className="border-none shadow-xl rounded-2xl bg-white animate-in fade-in slide-in-from-bottom-4">

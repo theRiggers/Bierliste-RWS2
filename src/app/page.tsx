@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL } from "@/lib/store"
+import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL, TREASURY_PAYPAL_EMAIL } from "@/lib/store"
 import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package, Check, X, TrendingUp } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
@@ -201,6 +201,20 @@ export default function Dashboard() {
     window.open(paypalUrl, '_blank');
   }
 
+  const handlePayIndividualDebt = () => {
+    const amount = Math.abs(currentUserProfile.balance).toFixed(2);
+    const reference = `Getränkekonto: ${currentUserProfile.name}`;
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(TREASURY_PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
+    window.open(paypalUrl, '_blank');
+  }
+
+  const handlePayMembershipFee = () => {
+    const amount = feeStatus.open.toFixed(2);
+    const reference = `Mannschaftskasse: ${currentUserProfile.name}`;
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(TREASURY_PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
+    window.open(paypalUrl, '_blank');
+  }
+
   const TreasuryDialog = ({ variant = "default" }: { variant?: "default" | "mobile" }) => (
     <div className="flex flex-wrap gap-2">
       <Dialog open={isTreasuryOpen} onOpenChange={setIsTreasuryOpen}>
@@ -312,7 +326,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-[10px] text-muted-foreground">{currentUserProfile.balance < 0 ? 'Schulden' : 'Guthaben'}</p>
                   {currentUserProfile.balance < 0 && (
-                    <Button variant="link" className="h-auto p-0 text-[10px] text-primary font-bold flex items-center gap-1" onClick={() => window.open(`${PAYPAL_ME_LINK}/${Math.abs(currentUserProfile.balance)}`, '_blank')}>
+                    <Button variant="link" className="h-auto p-0 text-[10px] text-primary font-bold flex items-center gap-1" onClick={handlePayIndividualDebt}>
                       Zahlen <ExternalLink className="h-2.5 w-2.5" />
                     </Button>
                   )}
@@ -332,7 +346,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-[10px] text-muted-foreground">{feeStatus.isAnnual ? 'Jahreszahler' : `${feeStatus.paidMonths} Monate bezahlt`}</p>
                   {feeStatus.open > 0 && (
-                    <Button variant="link" className="h-auto p-0 text-[10px] text-blue-600 font-bold flex items-center gap-1" onClick={() => window.open(`${PAYPAL_ME_LINK}/${feeStatus.open}`, '_blank')}>
+                    <Button variant="link" className="h-auto p-0 text-[10px] text-blue-600 font-bold flex items-center gap-1" onClick={handlePayMembershipFee}>
                       Beitrag zahlen <ExternalLink className="h-2.5 w-2.5" />
                     </Button>
                   )}

@@ -67,6 +67,7 @@ export const ANNUAL_FEE = 150.00;
 export const FEE_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4]; // Aug bis Mai
 export const PAYPAL_ME_LINK = "https://www.paypal.me/JamieRigden932";
 export const CLUBHOUSE_PAYPAL_EMAIL = "marleneadmans@yahoo.com";
+export const TREASURY_PAYPAL_EMAIL = "jamierigden@googlemail.com"; // Bitte hier die Schatzmeister-Email anpassen!
 
 interface StoreContextType {
   players: Player[];

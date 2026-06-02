@@ -43,6 +43,15 @@ export interface MembershipFee {
   datePaid: string;
 }
 
+export interface MembershipTransaction {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'sponsor' | 'donation' | 'other';
+  date: string;
+  recordedBy: string;
+}
+
 export interface TreasuryExpense {
   id: string;
   description: string;
@@ -64,15 +73,19 @@ interface StoreContextType {
   expenses: Expense[];
   payments: Payment[];
   membershipFees: MembershipFee[];
+  membershipTransactions: MembershipTransaction[];
   treasuryExpenses: TreasuryExpense[];
   currentUserProfile: Player | null;
   loading: boolean;
+  totalMannschaftskasse: number;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   deleteExpense: (expenseId: string) => void;
   recordPayment: (playerId: string, amount: number) => void;
   deletePayment: (paymentId: string) => void;
   addMembershipFee: (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => void;
   deleteMembershipFee: (feeId: string) => void;
+  addMembershipTransaction: (description: string, amount: number, type: 'sponsor' | 'donation' | 'other') => void;
+  deleteMembershipTransaction: (transactionId: string) => void;
   addTreasuryExpense: (description: string, amount: number) => void;
   deleteTreasuryExpense: (expenseId: string) => void;
   addBezahlkiste: () => void;
@@ -100,6 +113,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const feesQuery = useMemo(() => db ? collection(db, 'membershipFees') : null, [db]);
   const { data: feesData, loading: feesLoading } = useCollection<Omit<MembershipFee, 'id'>>(feesQuery);
 
+  const mTransactionsQuery = useMemo(() => db ? query(collection(db, 'membershipTransactions'), orderBy('date', 'desc')) : null, [db]);
+  const { data: mTransactionsData, loading: mTransactionsLoading } = useCollection<Omit<MembershipTransaction, 'id'>>(mTransactionsQuery);
+
   const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(100)) : null, [db]);
   const { data: tExpensesData, loading: tExpensesLoading } = useCollection<Omit<TreasuryExpense, 'id'>>(tExpensesQuery);
 
@@ -107,12 +123,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
   const membershipFees = useMemo(() => feesData?.map(d => ({ ...d.data, id: d.id })) || [], [feesData]);
+  const membershipTransactions = useMemo(() => mTransactionsData?.map(d => ({ ...d.data, id: d.id })) || [], [mTransactionsData]);
   const treasuryExpenses = useMemo(() => tExpensesData?.map(d => ({ ...d.data, id: d.id })) || [], [tExpensesData]);
 
   const currentUserProfile = useMemo(() => {
     if (!user || players.length === 0) return null;
     return players.find(p => p.id === user.uid) || null;
   }, [user, players]);
+
+  const totalMannschaftskasse = useMemo(() => {
+    const feeSum = membershipFees.reduce((sum, f) => sum + f.amount, 0);
+    const transactionSum = membershipTransactions.reduce((sum, t) => sum + t.amount, 0);
+    return feeSum + transactionSum;
+  }, [membershipFees, membershipTransactions]);
 
   useEffect(() => {
     if (db && currentUserProfile?.role === 'auditor' && !feesLoading) {
@@ -203,6 +226,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteDoc(doc(db, 'membershipFees', feeId));
   };
 
+  const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other') => {
+    if (!db || !currentUserProfile) return;
+    const transactionData = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+    addDoc(collection(db, 'membershipTransactions'), transactionData);
+  };
+
+  const deleteMembershipTransaction = (transactionId: string) => {
+    if (!db) return;
+    deleteDoc(doc(db, 'membershipTransactions', transactionId));
+  };
+
   const addTreasuryExpense = (description: string, amount: number) => {
     if (!db || !currentUserProfile) return;
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
@@ -233,7 +267,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     if (!teamKasse) return;
 
-    // 1. Add a treasury record for history and tracking
     const treasuryData = { 
       description: "Bezahlkiste (für Einzelverkauf)", 
       amount: CRATE_PRICE, 
@@ -242,7 +275,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
     addDoc(collection(db, 'treasuryExpenses'), treasuryData);
 
-    // 2. Deduct amount from team kasse balance
     const kasseRef = doc(db, 'players', teamKasse.id);
     setDoc(kasseRef, { balance: (teamKasse.balance || 0) - CRATE_PRICE }, { merge: true });
   };
@@ -268,10 +300,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, treasuryExpenses, currentUserProfile,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || tExpensesLoading || authLoading,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, currentUserProfile,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || authLoading,
+      totalMannschaftskasse,
       addExpense, deleteExpense, recordPayment, deletePayment,
-      addMembershipFee, deleteMembershipFee, addTreasuryExpense, deleteTreasuryExpense, addBezahlkiste,
+      addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
+      addTreasuryExpense, deleteTreasuryExpense, addBezahlkiste,
       addPlayer, updatePlayer, deletePlayer, cleanupOldSeasons
     }}>
       {children}

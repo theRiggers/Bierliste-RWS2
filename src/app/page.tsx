@@ -7,7 +7,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package, Check, X } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package, Check, X, TrendingUp } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -26,13 +27,19 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, currentUserProfile, addPlayer, addTreasuryExpense, addBezahlkiste, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, totalMannschaftskasse, currentUserProfile, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   // Treasury Expense States
   const [isTreasuryOpen, setIsTreasuryOpen] = useState(false)
   const [tDesc, setTDesc] = useState("")
   const [tAmount, setTAmount] = useState("")
+
+  // Sponsor/Donation States
+  const [isSponsorOpen, setIsSponsorOpen] = useState(false)
+  const [sDesc, setSDesc] = useState("")
+  const [sAmount, setSAmount] = useState("")
+  const [sType, setSType] = useState<'sponsor' | 'donation' | 'other'>('sponsor')
   
   // Result for Clubhouse Draft
   const [clubhouseDraft, setClubhouseDraft] = useState<string | null>(null)
@@ -73,7 +80,6 @@ export default function Dashboard() {
     
     const monthsStatus = FEE_MONTHS.map(m => {
       const isPaid = isAnnual || userFees.some(f => f.type === 'monthly' && f.month === m);
-      // Logic for determining if a month is "due" (current month or earlier in the season sequence)
       const monthIdxInSeason = FEE_MONTHS.indexOf(m);
       const currentMonthIdxInSeason = FEE_MONTHS.indexOf(currentMonth);
       const isPastOrCurrent = currentMonthIdxInSeason === -1 ? true : monthIdxInSeason <= currentMonthIdxInSeason;
@@ -163,22 +169,27 @@ export default function Dashboard() {
     setTAmount("")
   }
 
+  const handleAddSponsor = () => {
+    const amount = parseFloat(sAmount)
+    if (!sDesc || isNaN(amount) || amount <= 0) {
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte gültige Daten eingeben." })
+      return
+    }
+    addMembershipTransaction(sDesc, amount, sType)
+    setIsSponsorOpen(false)
+    setSDesc("")
+    setSAmount("")
+  }
+
   const handleAddBezahlkisteLocal = () => {
     addBezahlkiste();
-    toast({ title: "Bezahlkiste erfasst", description: "35€ von Teamkasse abgezogen." });
+    toast({ title: "Bezahlkiste erfasst", description: "35€ von Bierliste abgezogen." });
   }
 
   const handleDraftClubhouseLocal = () => {
     if (monthlyCrateStats.count === 0) return;
     const monthName = format(new Date(), 'MMMM', { locale: de });
-    const draft = `Hallo Marlene,
-
-für den Monat ${monthName} haben wir im Vereinsheim ${monthlyCrateStats.count} Kisten verbraucht.
-Der Gesamtbetrag von ${monthlyCrateStats.amount.toFixed(2)}€ wird hiermit per PayPal überwiesen.
-
-Beste Grüße,
-Bierliste RWS2 (Schatzmeister)`;
-    
+    const draft = `Hallo Marlene,\n\nfür den Monat ${monthName} haben wir im Vereinsheim ${monthlyCrateStats.count} Kisten verbraucht.\nDer Gesamtbetrag von ${monthlyCrateStats.amount.toFixed(2)}€ wird hiermit per PayPal überwiesen.\n\nBeste Grüße,\nBierliste RWS2 (Schatzmeister)`;
     setClubhouseDraft(draft);
     toast({ title: "Entwurf erstellt" });
   }
@@ -191,33 +202,76 @@ Bierliste RWS2 (Schatzmeister)`;
   }
 
   const TreasuryDialog = ({ variant = "default" }: { variant?: "default" | "mobile" }) => (
-    <Dialog open={isTreasuryOpen} onOpenChange={setIsTreasuryOpen}>
-      <DialogTrigger asChild>
-        <Button variant={variant === "mobile" ? "ghost" : "outline"} size={variant === "mobile" ? "icon" : "sm"} className={cn("rounded-xl h-10", variant === "mobile" ? "text-primary hover:bg-primary/10" : "border-primary text-primary hover:bg-primary/5")}>
-          <ShoppingCart className={cn("h-4 w-4", variant === "mobile" ? "h-6 w-6" : "mr-2")} />
-          {variant !== "mobile" && "Team-Ausgabe"}
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Ausgabe der Mannschaftskasse</DialogTitle>
-          <DialogDescription>Buchung von der Teamkasse abziehen (z.B. Getränkekauf).</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="t-desc">Beschreibung</Label>
-            <Input id="t-desc" placeholder="Z.B. Einkauf Krombacher" value={tDesc} onChange={(e) => setTDesc(e.target.value)} />
+    <div className="flex flex-wrap gap-2">
+      <Dialog open={isTreasuryOpen} onOpenChange={setIsTreasuryOpen}>
+        <DialogTrigger asChild>
+          <Button variant={variant === "mobile" ? "ghost" : "outline"} size={variant === "mobile" ? "icon" : "sm"} className={cn("rounded-xl h-10", variant === "mobile" ? "text-primary hover:bg-primary/10" : "border-primary text-primary hover:bg-primary/5")}>
+            <ShoppingCart className={cn("h-4 w-4", variant === "mobile" ? "h-6 w-6" : "mr-2")} />
+            {variant !== "mobile" && "Bierkasse-Ausgabe"}
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ausgabe der Bierliste</DialogTitle>
+            <DialogDescription>Buchung von der Bierliste abziehen (z.B. Getränkekauf).</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="t-desc">Beschreibung</Label>
+              <Input id="t-desc" placeholder="Z.B. Einkauf Krombacher" value={tDesc} onChange={(e) => setTDesc(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="t-amount">Betrag (€)</Label>
+              <Input id="t-amount" type="number" step="0.01" value={tAmount} onChange={(e) => setTAmount(e.target.value)} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="t-amount">Betrag (€)</Label>
-            <Input id="t-amount" type="number" step="0.01" value={tAmount} onChange={(e) => setTAmount(e.target.value)} />
+          <DialogFooter>
+            <Button onClick={handleAddTreasuryExpense} className="rounded-xl w-full">Ausgabe bestätigen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSponsorOpen} onOpenChange={setIsSponsorOpen}>
+        <DialogTrigger asChild>
+          <Button variant={variant === "mobile" ? "ghost" : "outline"} size={variant === "mobile" ? "icon" : "sm"} className={cn("rounded-xl h-10", variant === "mobile" ? "text-emerald-600 hover:bg-emerald-50" : "border-emerald-600 text-emerald-600 hover:bg-emerald-50")}>
+            <TrendingUp className={cn("h-4 w-4", variant === "mobile" ? "h-6 w-6" : "mr-2")} />
+            {variant !== "mobile" && "Sponsor / Spende"}
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Einnahme Mannschaftskasse</DialogTitle>
+            <DialogDescription>Buchung für externe Einnahmen (Sponsoren, Spenden).</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="s-desc">Beschreibung</Label>
+              <Input id="s-desc" placeholder="Z.B. Sponsor Trikotsatz" value={sDesc} onChange={(e) => setSDesc(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-amount">Betrag (€)</Label>
+              <Input id="s-amount" type="number" step="0.01" value={sAmount} onChange={(e) => setSAmount(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Typ</Label>
+              <Select value={sType} onValueChange={(v: any) => setSType(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sponsor">Sponsor</SelectItem>
+                  <SelectItem value="donation">Spende</SelectItem>
+                  <SelectItem value="other">Sonstiges</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={handleAddTreasuryExpense} className="rounded-xl w-full">Ausgabe bestätigen</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button onClick={handleAddSponsor} className="rounded-xl w-full bg-emerald-600 hover:bg-emerald-700">Einnahme buchen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 
   return (
@@ -273,7 +327,7 @@ Bierliste RWS2 (Schatzmeister)`;
                   <div className="p-2 bg-blue-100 rounded-full text-blue-600"><Banknote className="h-4 w-4" /></div>
                 </div>
                 <h2 className={cn("text-2xl md:text-3xl font-bold", feeStatus.open > 0 ? 'text-destructive' : 'text-emerald-600')}>
-                  {feeStatus.open.toFixed(2)} €
+                  {feeStatus.open > 0 ? `-${feeStatus.open.toFixed(2)}` : feeStatus.open.toFixed(2)} €
                 </h2>
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-[10px] text-muted-foreground">{feeStatus.isAnnual ? 'Jahreszahler' : `${feeStatus.paidMonths} Monate bezahlt`}</p>
@@ -284,7 +338,6 @@ Bierliste RWS2 (Schatzmeister)`;
                   )}
                 </div>
 
-                {/* Individual Monthly Breakdown */}
                 <div className="mt-4 grid grid-cols-5 gap-1 pt-4 border-t border-border">
                   {feeStatus.monthsStatus.map((m) => (
                     <div key={m.month} className="flex flex-col items-center">
@@ -303,33 +356,54 @@ Bierliste RWS2 (Schatzmeister)`;
             </Card>
 
             {isAuditor && (
+              <>
+                <Card className="border-none shadow-md bg-white rounded-2xl">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs md:text-sm font-medium text-muted-foreground">Bierliste (Gesamt)</p>
+                      <div className={cn("p-2 rounded-full", teamKasse.balance < 0 ? "bg-destructive/10 text-destructive" : "bg-emerald-100 text-emerald-600")}>
+                        <ArrowUpRight className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <h2 className={cn("text-2xl md:text-3xl font-bold", teamKasse.balance < 0 ? "text-destructive" : "text-emerald-600")}>
+                      {teamKasse.balance.toFixed(2)} €
+                    </h2>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {teamKasse.balance < 0 ? "Bierliste im Minus" : "Bierliste im Plus"}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md bg-white rounded-2xl">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs md:text-sm font-medium text-muted-foreground">Mannschaftskasse (Gesamt)</p>
+                      <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
+                        <TrendingUp className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-emerald-600">
+                      {totalMannschaftskasse.toFixed(2)} €
+                    </h2>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Summe Beiträge & Sponsoren
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {!isAuditor && (
               <Card className="border-none shadow-md bg-white rounded-2xl">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Bierliste (Gesamt)</p>
-                    <div className={cn("p-2 rounded-full", teamKasse.balance < 0 ? "bg-destructive/10 text-destructive" : "bg-emerald-100 text-emerald-600")}>
-                      <ArrowUpRight className="h-4 w-4" />
-                    </div>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Bier (Monat)</p>
+                    <div className="p-2 bg-amber-100 rounded-full text-amber-600"><Beer className="h-4 w-4" /></div>
                   </div>
-                  <h2 className={cn("text-2xl md:text-3xl font-bold", teamKasse.balance < 0 ? "text-destructive" : "text-emerald-600")}>
-                    {teamKasse.balance.toFixed(2)} €
-                  </h2>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {teamKasse.balance < 0 ? "Vorgestreckte Ausgaben" : "Überschuss/Guthaben"}
-                  </p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground">{monthlyConsumptionCount}</h2>
                 </CardContent>
               </Card>
             )}
-
-            <Card className="border-none shadow-md bg-white rounded-2xl">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Bier (Monat)</p>
-                  <div className="p-2 bg-amber-100 rounded-full text-amber-600"><Beer className="h-4 w-4" /></div>
-                </div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground">{monthlyConsumptionCount}</h2>
-              </CardContent>
-            </Card>
           </div>
 
           {isAuditor && (

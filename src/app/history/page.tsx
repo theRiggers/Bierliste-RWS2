@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { Search, Loader2, Beer, Package, Banknote, Trash2, ShoppingCart } from "lucide-react"
+import { Search, Loader2, Beer, Package, Banknote, Trash2, ShoppingCart, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
 import { 
@@ -32,10 +32,10 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const { user, loading: authLoading } = useUser()
-  const { expenses, payments, treasuryExpenses, currentUserProfile, deleteExpense, deletePayment, deleteTreasuryExpense, loading: storeLoading } = useStore()
+  const { expenses, payments, treasuryExpenses, membershipTransactions, currentUserProfile, deleteExpense, deletePayment, deleteTreasuryExpense, deleteMembershipTransaction, loading: storeLoading } = useStore()
   
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' | 'treasury' } | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' | 'treasury' | 'membershipTransaction' } | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -70,8 +70,8 @@ export default function HistoryPage() {
 
     const formattedTreasury = treasuryExpenses.map(t => ({
       id: t.id,
-      playerId: 'kasse',
-      playerName: 'Teamkasse',
+      playerId: 'bierliste',
+      playerName: 'Bierliste (Gesamt)',
       type: 'treasury',
       description: t.description,
       amount: -t.amount,
@@ -79,10 +79,21 @@ export default function HistoryPage() {
       category: 'treasury' as const
     }));
 
-    return [...formattedExpenses, ...formattedPayments, ...formattedTreasury].sort((a, b) => 
+    const formattedMembership = membershipTransactions.map(m => ({
+      id: m.id,
+      playerId: 'mannschaft',
+      playerName: 'Mannschaftskasse',
+      type: 'membershipTransaction',
+      description: m.description,
+      amount: m.amount,
+      date: m.date,
+      category: 'membershipTransaction' as const
+    }));
+
+    return [...formattedExpenses, ...formattedPayments, ...formattedTreasury, ...formattedMembership].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [expenses, payments, treasuryExpenses]);
+  }, [expenses, payments, treasuryExpenses, membershipTransactions]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -101,7 +112,7 @@ export default function HistoryPage() {
   }
 
   const filteredHistory = combinedHistory.filter(item => {
-    const searchString = (item.playerName + (item.category === 'treasury' ? (item as any).description : '')).toLowerCase()
+    const searchString = (item.playerName + (item.category === 'treasury' || item.category === 'membershipTransaction' ? (item as any).description : '')).toLowerCase()
     const matchesSearch = searchString.includes(searchTerm.toLowerCase())
     const matchesFilter = filterType === "all" || item.category === filterType
     return matchesSearch && matchesFilter
@@ -113,6 +124,7 @@ export default function HistoryPage() {
       case 'crate': return <Package className="h-4 w-4" />;
       case 'payment': return <Banknote className="h-4 w-4" />;
       case 'treasury': return <ShoppingCart className="h-4 w-4" />;
+      case 'membershipTransaction': return <TrendingUp className="h-4 w-4" />;
       default: return null;
     }
   }
@@ -122,12 +134,13 @@ export default function HistoryPage() {
       case 'beer': return 'Bier';
       case 'crate': return 'Kiste';
       case 'payment': return 'Zahlung';
-      case 'treasury': return item.description || 'Team-Ausgabe';
+      case 'treasury': return item.description || 'Bierkasse-Ausgabe';
+      case 'membershipTransaction': return item.description || 'Einnahme M-Kasse';
       default: return item.type;
     }
   }
 
-  const handleDeleteRequest = (id: string, category: 'expense' | 'payment' | 'treasury') => {
+  const handleDeleteRequest = (id: string, category: 'expense' | 'payment' | 'treasury' | 'membershipTransaction') => {
     setItemToDelete({ id, category })
     setDeleteConfirmOpen(true)
   }
@@ -138,8 +151,10 @@ export default function HistoryPage() {
       deleteExpense(itemToDelete.id)
     } else if (itemToDelete.category === 'payment') {
       deletePayment(itemToDelete.id)
-    } else {
+    } else if (itemToDelete.category === 'treasury') {
       deleteTreasuryExpense(itemToDelete.id)
+    } else {
+      deleteMembershipTransaction(itemToDelete.id)
     }
     setDeleteConfirmOpen(false)
     setItemToDelete(null)
@@ -179,7 +194,8 @@ export default function HistoryPage() {
                   <SelectItem value="all">Alle</SelectItem>
                   <SelectItem value="expense">Getränke</SelectItem>
                   <SelectItem value="payment">Zahlungen</SelectItem>
-                  <SelectItem value="treasury">Team-Ausgaben</SelectItem>
+                  <SelectItem value="treasury">Bierliste (Ausgaben)</SelectItem>
+                  <SelectItem value="membershipTransaction">Mannschaftskasse (Einnahmen)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -193,7 +209,7 @@ export default function HistoryPage() {
                     <div className="min-w-0 flex items-center gap-3">
                       <div className={cn(
                         "p-2 rounded-full",
-                        item.category === 'payment' ? "bg-emerald-100 text-emerald-600" : 
+                        item.category === 'payment' || item.category === 'membershipTransaction' ? "bg-emerald-100 text-emerald-600" : 
                         item.category === 'treasury' ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"
                       )}>
                         {getIcon(item.type)}
@@ -251,17 +267,18 @@ export default function HistoryPage() {
                         </TableCell>
                         <TableCell className="font-medium">
                           {item.playerName}
-                          {item.category === 'treasury' && <span className="block text-xs text-muted-foreground font-normal">{getTypeLabel(item)}</span>}
+                          {(item.category === 'treasury' || item.category === 'membershipTransaction') && <span className="block text-xs text-muted-foreground font-normal">{getTypeLabel(item)}</span>}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className={cn(
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium gap-1",
-                              item.category === 'payment' ? "bg-emerald-100 text-emerald-800" : 
+                              item.category === 'payment' || item.category === 'membershipTransaction' ? "bg-emerald-100 text-emerald-800" : 
                               item.category === 'treasury' ? "bg-amber-100 text-amber-800" : "bg-primary/10 text-primary"
                             )}>
                               {getIcon(item.type)}
-                              {item.category === 'treasury' ? 'Team-Ausgabe' : 
+                              {item.category === 'membershipTransaction' ? 'M-Kasse Einnahme' :
+                               item.category === 'treasury' ? 'Bierliste-Ausgabe' : 
                                item.category === 'payment' ? 'Zahlung' : 
                                item.type === 'beer' ? 'Bier' : 'Kiste'}
                             </span>

@@ -187,7 +187,6 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
           </div>
         </div>
         
-        {/* Page Actions Slot */}
         <div className="flex items-center">
           {rightElement}
         </div>

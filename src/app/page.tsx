@@ -7,7 +7,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package, Check, X } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+
+const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
 export default function Dashboard() {
   const router = useRouter()
@@ -59,7 +61,7 @@ export default function Dashboard() {
   }, [expenses]);
 
   const feeStatus = useMemo(() => {
-    if (!currentUserProfile) return { open: 0, paidMonths: 0 };
+    if (!currentUserProfile) return { open: 0, paidMonths: 0, monthsStatus: [] };
     
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -69,7 +71,22 @@ export default function Dashboard() {
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
     
-    if (isAnnual) return { open: 0, paidMonths: 10, isAnnual: true };
+    const monthsStatus = FEE_MONTHS.map(m => {
+      const isPaid = isAnnual || userFees.some(f => f.type === 'monthly' && f.month === m);
+      // Logic for determining if a month is "due" (current month or earlier in the season sequence)
+      const monthIdxInSeason = FEE_MONTHS.indexOf(m);
+      const currentMonthIdxInSeason = FEE_MONTHS.indexOf(currentMonth);
+      const isPastOrCurrent = currentMonthIdxInSeason === -1 ? true : monthIdxInSeason <= currentMonthIdxInSeason;
+
+      return {
+        month: m,
+        name: MONTH_NAMES_SHORT[m],
+        isPaid,
+        isPastOrCurrent
+      };
+    });
+
+    if (isAnnual) return { open: 0, paidMonths: 10, isAnnual: true, monthsStatus };
 
     const monthIndex = FEE_MONTHS.indexOf(currentMonth);
     let monthsToPay = 0;
@@ -83,7 +100,7 @@ export default function Dashboard() {
     const paidCount = userFees.filter(f => f.type === 'monthly').length;
     const unpaidCount = Math.max(0, monthsToPay - paidCount);
     
-    return { open: unpaidCount * MONTHLY_FEE, paidMonths: paidCount, isAnnual: false };
+    return { open: unpaidCount * MONTHLY_FEE, paidMonths: paidCount, isAnnual: false, monthsStatus };
   }, [currentUserProfile, membershipFees]);
 
   if (!mounted || authLoading || storeLoading) {
@@ -252,7 +269,7 @@ Bierliste RWS2 (Schatzmeister)`;
             <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Vereinsbeiträge</p>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Mannschaftskasse</p>
                   <div className="p-2 bg-blue-100 rounded-full text-blue-600"><Banknote className="h-4 w-4" /></div>
                 </div>
                 <h2 className={cn("text-2xl md:text-3xl font-bold", feeStatus.open > 0 ? 'text-destructive' : 'text-emerald-600')}>
@@ -265,6 +282,22 @@ Bierliste RWS2 (Schatzmeister)`;
                       Beitrag zahlen <ExternalLink className="h-2.5 w-2.5" />
                     </Button>
                   )}
+                </div>
+
+                {/* Individual Monthly Breakdown */}
+                <div className="mt-4 grid grid-cols-5 gap-1 pt-4 border-t border-border">
+                  {feeStatus.monthsStatus.map((m) => (
+                    <div key={m.month} className="flex flex-col items-center">
+                      <div className={cn(
+                        "h-6 w-6 rounded-lg flex items-center justify-center mb-1 text-[8px] font-bold",
+                        m.isPaid ? "bg-emerald-500 text-white" : 
+                        m.isPastOrCurrent ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-muted text-muted-foreground"
+                      )}>
+                        {m.isPaid ? <Check className="h-3 w-3" /> : m.isPastOrCurrent ? <X className="h-3 w-3" /> : null}
+                      </div>
+                      <span className="text-[8px] text-muted-foreground font-medium">{m.name}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

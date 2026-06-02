@@ -46,22 +46,23 @@ export default function Dashboard() {
   const handleOnboarding = () => {
     if (!onboardingName.trim()) return
     
-    // Check if this is the absolute first registration in the DB
-    const isFirstUser = players.length === 0
+    // Check if any admin exists in the system
+    const hasAdmin = players.some(p => p.role === 'auditor')
     
-    if (isFirstUser) {
-      // Create the Master Admin Account
-      addPlayer(onboardingName.trim(), user.email!, 'auditor')
-      // Automatically create the virtual Team Cash Register account
+    if (!hasAdmin) {
+      // Create the Master Admin Account using current User's UID
+      addPlayer(onboardingName.trim(), user.email!, 'auditor', user.uid)
+      // Automatically create the virtual Team Cash Register account (random ID is fine)
       addPlayer('Mannschaftskasse', 'kasse@kickoff.de', 'player')
     } else {
-      addPlayer(onboardingName.trim(), user.email!, 'player')
+      // Create normal player profile using current User's UID
+      addPlayer(onboardingName.trim(), user.email!, 'player', user.uid)
     }
   }
 
   // Onboarding view for new users without a profile
   if (!currentUserProfile) {
-    const isFirstUser = players.length === 0
+    const hasAdmin = players.some(p => p.role === 'auditor')
 
     return (
       <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">
@@ -69,15 +70,15 @@ export default function Dashboard() {
           <CardHeader className="text-center pb-2 pt-8">
             <div className={cn(
               "mx-auto p-4 rounded-3xl w-fit mb-4",
-              isFirstUser ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"
+              !hasAdmin ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"
             )}>
-              {isFirstUser ? <ShieldCheck className="h-12 w-12" /> : <UserCircle className="h-12 w-12" />}
+              {!hasAdmin ? <ShieldCheck className="h-12 w-12" /> : <UserCircle className="h-12 w-12" />}
             </div>
             <CardTitle className="text-2xl font-bold font-headline">
-              {isFirstUser ? "Master-Account erstellen" : "Willkommen!"}
+              {!hasAdmin ? "Master-Account erstellen" : "Willkommen!"}
             </CardTitle>
             <CardDescription>
-              {isFirstUser 
+              {!hasAdmin 
                 ? "Du bist der erste Nutzer und wirst als Kassenprüfer (Administrator) registriert. Die Mannschaftskasse wird ebenfalls initialisiert." 
                 : `Dein Konto (${user.email}) ist neu. Gib deinen Namen ein, um dein Profil zu erstellen.`
               }
@@ -98,12 +99,12 @@ export default function Dashboard() {
             <Button 
               className={cn(
                 "w-full h-12 rounded-xl font-bold text-lg",
-                isFirstUser ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 shadow-lg" : "cyan-glow"
+                !hasAdmin ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 shadow-lg" : "cyan-glow"
               )} 
               onClick={handleOnboarding}
               disabled={!onboardingName.trim()}
             >
-              {isFirstUser ? "Als Admin starten" : "Profil erstellen & Starten"}
+              {!hasAdmin ? "Als Admin starten" : "Profil erstellen & Starten"}
             </Button>
           </CardContent>
         </Card>

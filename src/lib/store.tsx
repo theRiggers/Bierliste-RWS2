@@ -46,7 +46,7 @@ interface StoreContextType {
   loading: boolean;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   recordPayment: (playerId: string, amount: number) => void;
-  addPlayer: (name: string, email: string, role: Role) => void;
+  addPlayer: (name: string, email: string, role: Role, uid?: string) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
 }
 
@@ -92,10 +92,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [paymentsData]
   );
 
-  // Finde das Profil des aktuell angemeldeten Benutzers
+  // Finde das Profil des aktuell angemeldeten Benutzers anhand der UID
   const currentUserProfile = useMemo(() => {
     if (!user || players.length === 0) return null;
-    return players.find(p => p.email.toLowerCase() === user.email?.toLowerCase()) || null;
+    return players.find(p => p.id === user.uid) || null;
   }, [user, players]);
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
@@ -174,13 +174,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const addPlayer = (name: string, email: string, role: Role) => {
+  const addPlayer = (name: string, email: string, role: Role, uid?: string) => {
     if (!db) return;
     const playerData = { name, email, role, balance: 0.00 };
-    addDoc(collection(db, 'players'), playerData).catch(async () => {
+    const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
+    setDoc(playerRef, playerData, { merge: true }).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'players',
-        operation: 'create',
+        path: playerRef.path,
+        operation: 'write',
         requestResourceData: playerData
       }));
     });

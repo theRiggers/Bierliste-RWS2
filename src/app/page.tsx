@@ -7,7 +7,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle } from "lucide-react"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -45,21 +45,36 @@ export default function Dashboard() {
 
   const handleOnboarding = () => {
     if (!onboardingName.trim()) return
-    addPlayer(onboardingName.trim(), user.email!, 'player')
+    
+    // Wenn es noch keine Spieler gibt, wird der erste Nutzer automatisch Kassenprüfer (Admin)
+    const isFirstUser = players.length === 0
+    const role = isFirstUser ? 'auditor' : 'player'
+    
+    addPlayer(onboardingName.trim(), user.email!, role)
   }
 
   // Onboarding view for new users without a profile
   if (!currentUserProfile) {
+    const isFirstUser = players.length === 0
+
     return (
       <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">
         <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
           <CardHeader className="text-center pb-2 pt-8">
-            <div className="mx-auto bg-primary/10 p-4 rounded-3xl w-fit mb-4 text-primary">
-              <UserCircle className="h-12 w-12" />
+            <div className={cn(
+              "mx-auto p-4 rounded-3xl w-fit mb-4",
+              isFirstUser ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"
+            )}>
+              {isFirstUser ? <ShieldCheck className="h-12 w-12" /> : <UserCircle className="h-12 w-12" />}
             </div>
-            <CardTitle className="text-2xl font-bold font-headline">Willkommen!</CardTitle>
+            <CardTitle className="text-2xl font-bold font-headline">
+              {isFirstUser ? "Master-Account erstellen" : "Willkommen!"}
+            </CardTitle>
             <CardDescription>
-              Dein Konto ({user.email}) ist neu. Gib deinen Namen ein, um dein Profil zu erstellen.
+              {isFirstUser 
+                ? "Du bist der erste Nutzer und wirst automatisch als Kassenprüfer (Administrator) registriert." 
+                : `Dein Konto (${user.email}) ist neu. Gib deinen Namen ein, um dein Profil zu erstellen.`
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-4 pb-10 px-8">
@@ -75,14 +90,20 @@ export default function Dashboard() {
               />
             </div>
             <Button 
-              className="w-full h-12 rounded-xl font-bold cyan-glow text-lg" 
+              className={cn(
+                "w-full h-12 rounded-xl font-bold text-lg",
+                isFirstUser ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 shadow-lg" : "cyan-glow"
+              )} 
               onClick={handleOnboarding}
               disabled={!onboardingName.trim()}
             >
-              Profil erstellen & Starten
+              {isFirstUser ? "Als Admin starten" : "Profil erstellen & Starten"}
             </Button>
             <p className="text-[10px] text-center text-muted-foreground italic">
-              Du wirst automatisch als Spieler registriert.
+              {isFirstUser 
+                ? "Du hast danach Zugriff auf alle Verwaltungsfunktionen." 
+                : "Du wirst automatisch als Spieler registriert."
+              }
             </p>
           </CardContent>
         </Card>

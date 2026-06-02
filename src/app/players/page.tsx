@@ -6,7 +6,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save, Loader2, Banknote } from "lucide-react"
+import { UserPlus, UserCircle, MessageCircle, ChevronRight, Save, Loader2, Banknote, Beer, Package } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { draftPaymentReminder } from "@/ai/flows/ai-draft-payment-reminder"
 import { useToast } from "@/hooks/use-toast"
@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function PlayersPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, addPlayer, updatePlayer, recordPayment, loading, currentUserProfile } = useStore()
+  const { players, addPlayer, updatePlayer, recordPayment, addExpense, loading, currentUserProfile } = useStore()
   const [drafting, setDrafting] = useState<string | null>(null)
   
   // States for Adding Player
@@ -101,6 +101,14 @@ export default function PlayersPage() {
     recordPayment(paymentPlayer.id, amount)
     setIsPaymentOpen(false)
     toast({ title: "Zahlung erfasst", description: `${amount.toFixed(2)}€ für ${paymentPlayer.name} gutgeschrieben.` })
+  }
+
+  const handleQuickAdd = (playerId: string, playerName: string, type: 'beer' | 'crate') => {
+    addExpense(playerId, type)
+    toast({ 
+      title: "Buchung erfolgreich", 
+      description: `${type === 'beer' ? 'Ein Bier' : 'Eine Kiste'} für ${playerName} verbucht.` 
+    })
   }
 
   const savePlayerChanges = () => {
@@ -213,7 +221,24 @@ export default function PlayersPage() {
                   
                   <div className="mb-4 min-h-[60px]">
                     <h3 className="text-xl font-bold text-foreground truncate">{player.name}</h3>
-                    <p className="text-sm text-muted-foreground truncate">{player.email}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="h-7 px-2 text-[10px] rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200"
+                        onClick={() => handleQuickAdd(player.id, player.name, 'beer')}
+                      >
+                        <Beer className="h-3 w-3 mr-1" /> Bier buchen
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="h-7 px-2 text-[10px] rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
+                        onClick={() => handleQuickAdd(player.id, player.name, 'crate')}
+                      >
+                        <Package className="h-3 w-3 mr-1" /> Kiste buchen
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between py-3 border-t border-border mt-auto">

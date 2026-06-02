@@ -11,9 +11,20 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { Search, Loader2, Beer, Package, Banknote } from "lucide-react"
+import { Search, Loader2, Beer, Package, Banknote, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 
 export default function HistoryPage() {
   const router = useRouter()
@@ -21,8 +32,11 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const { user, loading: authLoading } = useUser()
-  const { expenses, payments, currentUserProfile, loading: storeLoading } = useStore()
+  const { expenses, payments, currentUserProfile, deleteExpense, deletePayment, loading: storeLoading } = useStore()
   
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' } | null>(null)
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -69,6 +83,8 @@ export default function HistoryPage() {
 
   if (!user || !currentUserProfile) return null
 
+  const isAuditor = currentUserProfile.role === 'auditor'
+
   const formatDate = (date: string | Date, pattern: string) => {
     return format(new Date(date), pattern, { locale: de })
   }
@@ -95,6 +111,22 @@ export default function HistoryPage() {
       case 'payment': return 'Zahlung';
       default: return type;
     }
+  }
+
+  const handleDeleteRequest = (id: string, category: 'expense' | 'payment') => {
+    setItemToDelete({ id, category })
+    setDeleteConfirmOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (!itemToDelete) return
+    if (itemToDelete.category === 'expense') {
+      deleteExpense(itemToDelete.id)
+    } else {
+      deletePayment(itemToDelete.id)
+    }
+    setDeleteConfirmOpen(false)
+    setItemToDelete(null)
   }
 
   return (
@@ -140,7 +172,7 @@ export default function HistoryPage() {
             <CardContent className="p-0">
               <div className="divide-y divide-border md:hidden">
                 {filteredHistory.map((item) => (
-                  <div key={item.id} className="p-4 flex justify-between items-center active:bg-muted/20">
+                  <div key={item.id} className="p-4 flex justify-between items-center active:bg-muted/20 group">
                     <div className="min-w-0 flex items-center gap-3">
                       <div className={cn(
                         "p-2 rounded-full",
@@ -155,12 +187,24 @@ export default function HistoryPage() {
                         </p>
                       </div>
                     </div>
-                    <span className={cn(
-                      "font-bold whitespace-nowrap ml-2",
-                      item.amount > 0 ? "text-emerald-600" : "text-destructive"
-                    )}>
-                      {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "font-bold whitespace-nowrap ml-2",
+                        item.amount > 0 ? "text-emerald-600" : "text-destructive"
+                      )}>
+                        {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
+                      </span>
+                      {isAuditor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteRequest(item.id, item.category)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {filteredHistory.length === 0 && (
@@ -178,11 +222,12 @@ export default function HistoryPage() {
                       <TableHead className="font-bold">Spieler</TableHead>
                       <TableHead className="font-bold">Transaktion</TableHead>
                       <TableHead className="text-right font-bold">Betrag</TableHead>
+                      {isAuditor && <TableHead className="w-[50px]"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredHistory.map((item) => (
-                      <TableRow key={item.id} className="hover:bg-muted/20 transition-colors">
+                      <TableRow key={item.id} className="hover:bg-muted/20 transition-colors group">
                         <TableCell className="text-muted-foreground">
                           {formatDate(item.date, 'dd.MM.yyyy HH:mm')}
                         </TableCell>
@@ -204,6 +249,18 @@ export default function HistoryPage() {
                         )}>
                           {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
                         </TableCell>
+                        {isAuditor && (
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => handleDeleteRequest(item.id, item.category)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -212,6 +269,23 @@ export default function HistoryPage() {
             </CardContent>
           </Card>
         </div>
+
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eintrag wirklich löschen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Diese Aktion kann nicht rückgängig gemacht werden. Der Kontostand des Spielers wird automatisch korrigiert.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+                Löschen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   )

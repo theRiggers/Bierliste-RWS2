@@ -4,17 +4,20 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
 ## 🚀 Projekt zu GitHub exportieren
 
-Benutze das **Terminal innerhalb von Firebase Studio**. Kopiere die Befehle einzeln (ohne das `>`) und drücke jeweils Enter.
+Benutze das **Terminal innerhalb von Firebase Studio**. 
 
-### Befehle:
-```bash
-git init
-git add .
-git commit -m "Initialer Export der Bierliste"
-git branch -M main
-git remote add origin https://github.com/theRiggers/Bierliste-RWS2
-git push -u origin main
-```
+### ⚠️ WICHTIG: "Command not found" Fehler?
+Falls nach der Eingabe von `git init` die Meldung `command not found` kommt, prüfe dein Terminal:
+- Siehst du am Anfang der Zeile ein `>` Symbol? Dann bist du in der falschen Konsole (Node.js).
+- **Lösung**: Tippe `.exit` ein und drücke Enter (oder drücke zweimal `Strg+C`). Du solltest dann ein Dollarzeichen `$` oder einen Pfad sehen. **Nur dort** funktionieren die Befehle.
+
+### Befehle (einzeln kopieren & Enter drücken):
+1. `git init`
+2. `git add .`
+3. `git commit -m "Initialer Export"`
+4. `git branch -M main`
+5. `git remote add origin https://github.com/theRiggers/Bierliste-RWS2`
+6. `git push -u origin main`
 
 ## Features
 - **Einfache Buchung**: Bier oder Kisten mit einem Klick erfassen.

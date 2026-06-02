@@ -13,7 +13,7 @@ import { useAuth, useUser } from "@/firebase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Beer, Mail, Lock, Loader2, AlertCircle, Copy } from "lucide-react"
+import { Beer, Mail, Lock, Loader2, AlertCircle, Copy, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -62,8 +62,8 @@ export default function LoginPage() {
       setError({
         code: err.code,
         message: err.code === 'auth/unauthorized-domain' 
-          ? "Diese Domain ist nicht autorisiert." 
-          : "Login fehlgeschlagen"
+          ? "Diese Domain ist noch nicht in Firebase autorisiert." 
+          : "Login fehlgeschlagen. Bitte versuche es erneut."
       })
     } finally {
       setLoading(false)
@@ -77,7 +77,7 @@ export default function LoginPage() {
     try {
       if (isRegistering) {
         await createUserWithEmailAndPassword(auth, email, password)
-        toast({ title: "Konto erstellt", description: "Du wurdest automatisch angemeldet." })
+        toast({ title: "Konto erstellt", description: "Willkommen bei der Bierliste RWS2!" })
         router.push("/")
       } else {
         await signInWithEmailAndPassword(auth, email, password)
@@ -93,7 +93,7 @@ export default function LoginPage() {
       } else if (err.code === 'auth/weak-password') {
         msg = "Das Passwort ist zu schwach (min. 6 Zeichen)."
       } else if (err.code === 'auth/invalid-credential') {
-        msg = "Ungültige Login-Daten."
+        msg = "Ungültige Login-Daten. Bitte prüfe E-Mail und Passwort."
       }
       setError({ code: err.code, message: msg })
     } finally {
@@ -118,23 +118,26 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="pt-8 space-y-6">
           {error && (
-            <Alert variant="destructive" className="rounded-xl">
+            <Alert variant="destructive" className="rounded-xl border-2">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Fehler</AlertTitle>
-              <AlertDescription className="text-xs space-y-2">
+              <AlertTitle className="font-bold">Aktion erforderlich</AlertTitle>
+              <AlertDescription className="text-xs space-y-3 pt-1">
                 <p>{error.message}</p>
                 {error.code === 'auth/unauthorized-domain' && (
-                  <div className="mt-2 p-2 bg-destructive-foreground/10 rounded border border-destructive/20">
-                    <p className="font-semibold mb-1">Bitte füge diese Domain hinzu:</p>
-                    <div className="flex items-center justify-between gap-2 font-mono text-[10px] bg-white/50 p-1 rounded">
-                      <span className="truncate">{hostname}</span>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={copyHostname}>
-                        <Copy className="h-3 w-3" />
+                  <div className="mt-2 p-3 bg-white/10 rounded-lg border border-white/20">
+                    <p className="font-semibold mb-2">Domain für Firebase Console:</p>
+                    <div className="flex items-center justify-between gap-2 font-mono text-[11px] bg-black/5 p-2 rounded border border-black/5">
+                      <span className="truncate select-all">{hostname}</span>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={copyHostname}>
+                        <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="mt-2 text-[9px]">
-                      Konsole &rarr; Auth &rarr; Einstellungen &rarr; Autorisierte Domains
-                    </p>
+                    <div className="mt-3 flex gap-2 items-start text-[10px] leading-tight">
+                      <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                      <p>
+                        Gehe zu <strong>Authentication</strong> &rarr; <strong>Settings</strong> &rarr; <strong>Authorized Domains</strong> und füge diese Adresse hinzu.
+                      </p>
+                    </div>
                   </div>
                 )}
               </AlertDescription>
@@ -148,7 +151,7 @@ export default function LoginPage() {
                 <Input 
                   type="email" 
                   placeholder="E-Mail Adresse" 
-                  className="pl-10 h-12 rounded-xl" 
+                  className="pl-10 h-12 rounded-xl border-2 focus:border-primary" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -161,15 +164,15 @@ export default function LoginPage() {
                 <Input 
                   type="password" 
                   placeholder="Passwort" 
-                  className="pl-10 h-12 rounded-xl" 
+                  className="pl-10 h-12 rounded-xl border-2 focus:border-primary" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full h-12 rounded-xl font-bold cyan-glow" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Jetzt registrieren" : "Anmelden")}
+            <Button type="submit" className="w-full h-12 rounded-xl font-bold text-lg cyan-glow" disabled={loading}>
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRegistering ? "Konto erstellen" : "Anmelden")}
             </Button>
           </form>
 
@@ -184,11 +187,11 @@ export default function LoginPage() {
 
           <Button 
             variant="outline" 
-            className="w-full h-12 rounded-xl border-2 hover:bg-muted" 
+            className="w-full h-12 rounded-xl border-2 hover:bg-muted font-bold transition-all" 
             onClick={handleGoogleLogin}
             disabled={loading}
           >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                 fill="#4285F4"
@@ -206,11 +209,11 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            Mit Google anmelden
+            Schneller Login mit Google
           </Button>
         </CardContent>
         <CardFooter className="pb-8 pt-2 flex flex-col gap-4">
-          <Button variant="link" className="text-xs text-muted-foreground" onClick={() => setIsRegistering(!isRegistering)}>
+          <Button variant="link" className="text-sm font-semibold text-muted-foreground" onClick={() => setIsRegistering(!isRegistering)}>
             {isRegistering ? "Bereits ein Konto? Hier anmelden" : "Noch kein Konto? Hier registrieren"}
           </Button>
         </CardFooter>

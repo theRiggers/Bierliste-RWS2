@@ -56,7 +56,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const { user, loading: authLoading } = useUser();
 
-  // Memoize queries to avoid infinite re-renders
   const playersQuery = useMemo(() => {
     if (!db) return null;
     return collection(db, 'players');
@@ -111,7 +110,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       date: new Date().toISOString(),
     };
 
-    // Record the expense
     addDoc(collection(db, 'expenses'), expenseData).catch(async () => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'expenses',
@@ -120,7 +118,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
     });
 
-    // Update player balance
     const playerRef = doc(db, 'players', playerId);
     const newPlayerBalance = (player.balance || 0) - cost;
     setDoc(playerRef, { balance: newPlayerBalance }, { merge: true }).catch(async () => {
@@ -131,7 +128,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
     });
 
-    // Update team kasse balance
     if (teamKasse) {
       const kasseRef = doc(db, 'players', teamKasse.id);
       const newKasseBalance = (teamKasse.balance || 0) + cost;

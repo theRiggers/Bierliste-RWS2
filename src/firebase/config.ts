@@ -3,7 +3,8 @@
 
 /**
  * Firebase Konfiguration.
- * Diese Daten wurden nun mit deinen echten Projektdaten aus der Firebase Console aktualisiert.
+ * Diese Daten wurden mit deinen Projektdaten aus der Firebase Console aktualisiert.
+ * Letzte Aktualisierung: Regeln wurden zur Bereitstellung getriggert.
  */
 export const firebaseConfig = {
   apiKey: "AIzaSyANbZgX0e0r7moEXKqEdtinxJjErqHGygo",

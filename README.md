@@ -14,7 +14,9 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 Da dies eine private Entwicklungsumgebung ist, musst du den Code manuell zu GitHub pushen:
 
 1. **GitHub Repository erstellen**: Gehe auf [GitHub](https://github.com/new) und erstelle ein neues, leeres Repository (ohne README oder .gitignore).
-2. **Terminal öffnen**: Öffne das Terminal hier in Firebase Studio (unten oder über das Menü).
+2. **Terminal öffnen**: 
+   - Klicke oben links auf das **Menü (三)** -> **Terminal** -> **New Terminal**.
+   - Oder klicke unten in der Statusleiste auf den Reiter **Terminal**.
 3. **Befehle ausführen**:
    ```bash
    git init

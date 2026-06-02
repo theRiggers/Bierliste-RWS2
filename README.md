@@ -4,8 +4,10 @@ Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
 ## Features
 - **Einfache Buchung**: Bier oder Kisten mit einem Klick erfassen.
-- **Paypal-Integration**: Direkter Link zum Bezahlen von Schulden (Jamie Rigden).
+- **Paypal-Integration**: Direkter Link zum Bezahlen von Schulden.
 - **KI-Berichte**: Automatische Analysen und Zahlungserinnerungen für den Kassenprüfer.
+- **KI-Zahlungs-Import**: PayPal-Texte kopieren und automatisch verbuchen lassen.
+- **Beitragskasse**: Verwaltung von monatlichen Vereinsbeiträgen (Aug-Mai) und Jahresbeiträgen.
 - **Mobile First**: Optimiert für die Nutzung als App auf dem Homescreen.
 
 ## WICHTIG: Entwicklung vs. Live
@@ -15,6 +17,12 @@ Die URL, die auf `.cloudworkstations.dev` endet, ist **privat**. Sie funktionier
 1. Klicke in Firebase Studio oben rechts auf den blauen **"Publish"** Button.
 2. Nach dem erfolgreichen Deployment erhältst du eine öffentliche URL (z.B. `dein-projekt.web.app`).
 3. **Nur diese öffentliche URL** funktioniert auf den Handys der Spieler.
+
+## Server-Standort & Datenschutz
+Die Region des Backends wird in der Firebase Console festgelegt:
+- **Firestore (Datenbank)**: Der Standort wird bei der Erstellung fest gewählt (z.B. USA) und kann nachträglich nicht verschoben werden.
+- **App Hosting (Web-Server)**: Du kannst bei der Einrichtung des Backends in der Console eine Region in Deutschland/Europa wählen (z.B. `europe-west3` Frankfurt), um Latenzen zu minimieren.
+- **DSGVO**: Die App nutzt Firebase Authentication und Firestore. Achte darauf, im Google Cloud Account die entsprechenden Datenverarbeitungs-Zusätze zu akzeptieren.
 
 ## Installation auf dem Handy
 Die Bierliste ist eine **Progressive Web App (PWA)**.
@@ -29,14 +37,10 @@ Die Bierliste ist eine **Progressive Web App (PWA)**.
 2. Tippe oben rechts auf die **drei Punkte**.
 3. Wähle **"App installieren"**.
 
-## Fehlerbehebung: "Publish" Error
-Wenn beim Veröffentlichen der Fehler **"There was an error enabling firebaseapphosting.googleapis.com"** erscheint:
-1. **Blaze-Plan**: Firebase App Hosting benötigt zwingend den **Blaze-Plan** (Pay-as-you-go). Dieser ist für kleine Apps kostenlos, muss aber in der Firebase Console aktiviert werden.
-2. **Kurz warten**: Die Aktivierung der Google-Dienste kann bis zu 10 Minuten dauern.
-3. **Manuelle Aktivierung**: Gehe in die Firebase Console unter "Build" -> "App Hosting" und klicke auf "Get Started".
-
 ## Konfiguration
 In der Datei `src/lib/store.tsx`:
-- `BEER_PRICE`: Preis für ein Bier.
-- `CRATE_PRICE`: Preis für eine Kiste.
-- `PAYPAL_ME_LINK`: Der PayPal-Account (Jamie Rigden).
+- `BEER_PRICE`: Preis für ein Bier (1.50€).
+- `CRATE_PRICE`: Preis für eine Kiste (35.00€).
+- `MONTHLY_FEE`: Monatsbeitrag (15.00€).
+- `ANNUAL_FEE`: Jahresbeitrag (150.00€).
+- `PAYPAL_ME_LINK`: Der zentrale PayPal-Account für Zahlungen.

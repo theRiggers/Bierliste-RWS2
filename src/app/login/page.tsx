@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -133,7 +132,7 @@ export default function LoginPage() {
                       </Button>
                     </div>
                     <p className="mt-2 text-[9px]">
-                      Konsole -> Auth -> Einstellungen -> Autorisierte Domains
+                      Konsole &rarr; Auth &rarr; Einstellungen &rarr; Autorisierte Domains
                     </p>
                   </div>
                 )}

@@ -31,12 +31,13 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
+    // Nur weiterleiten, wenn wir sicher sind, dass kein User da ist
     if (mounted && !authLoading && !user) {
-      router.push("/login")
+      router.replace("/login")
     }
   }, [mounted, authLoading, user, router])
 
-  if (!mounted || authLoading || storeLoading) {
+  if (!mounted || authLoading || (user && storeLoading)) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -62,12 +63,12 @@ export default function Dashboard() {
       } else {
         await addPlayer(onboardingName.trim(), user.email!, 'player', user.uid)
       }
-      toast({ title: "Profil erstellt", description: "Willkommen in der Kickoff Kasse!" })
+      toast({ title: "Profil erstellt", description: "Willkommen in der Bierliste!" })
     } catch (error) {
       toast({ 
         variant: "destructive", 
         title: "Fehler beim Speichern", 
-        description: "Bitte prüfe deine Internetverbindung oder Firebase-Berechtigungen." 
+        description: "Bitte prüfe deine Internetverbindung." 
       })
     } finally {
       setIsSubmitting(false)

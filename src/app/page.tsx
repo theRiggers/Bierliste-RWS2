@@ -232,7 +232,7 @@ Bierliste RWS2 (Schatzmeister)`;
             <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Getränkekasse</p>
+                  <p className="text-xs md:text-sm font-medium text-muted-foreground">Getränkekonto</p>
                   <div className="p-2 bg-primary/10 rounded-full text-primary"><Wallet className="h-4 w-4" /></div>
                 </div>
                 <h2 className={cn("text-2xl md:text-3xl font-bold", currentUserProfile.balance < 0 ? 'text-destructive' : 'text-emerald-600')}>

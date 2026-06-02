@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart } from "lucide-react"
-import { format } from "date-fns"
+import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE } from "@/lib/store"
+import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, Sparkles } from "lucide-react"
+import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
@@ -17,12 +17,14 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { draftClubhousePayment } from "@/ai/flows/ai-clubhouse-payment-draft"
 
 export default function Dashboard() {
   const router = useRouter()
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDrafting, setIsDrafting] = useState(false)
   const { user, loading: authLoading } = useUser()
   const { players, expenses, membershipFees, currentUserProfile, addPlayer, addTreasuryExpense, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
@@ -31,12 +33,32 @@ export default function Dashboard() {
   const [isTreasuryOpen, setIsTreasuryOpen] = useState(false)
   const [tDesc, setTDesc] = useState("")
   const [tAmount, setTAmount] = useState("")
+  
+  // Result for Clubhouse Draft
+  const [clubhouseDraft, setClubhouseDraft] = useState<string | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (mounted && !authLoading && !user) router.replace("/login")
   }, [mounted, authLoading, user, router])
+
+  // Calculate monthly crates (Team-wide)
+  const monthlyCrateStats = useMemo(() => {
+    const now = new Date();
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
+    
+    const monthlyCrates = expenses.filter(e => {
+      const d = new Date(e.date);
+      return e.itemType === 'crate' && isWithinInterval(d, { start, end });
+    });
+
+    return {
+      count: monthlyCrates.length,
+      amount: monthlyCrates.length * CRATE_PRICE
+    };
+  }, [expenses]);
 
   const feeStatus = useMemo(() => {
     if (!currentUserProfile) return { open: 0, paidMonths: 0 };
@@ -45,9 +67,7 @@ export default function Dashboard() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    // Die Saison beginnt im August (7). Wenn wir uns im Jan-Jul befinden, begann die Saison im Vorjahr.
     const seasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
-
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
     
@@ -57,10 +77,8 @@ export default function Dashboard() {
     let monthsToPay = 0;
     
     if (monthIndex !== -1) {
-      // Wir sind innerhalb der zahlungspflichtigen Monate (Aug-Mai)
       monthsToPay = monthIndex + 1;
     } else if (currentMonth === 5 || currentMonth === 6) {
-      // Juni oder Juli: Die Saison ist vorbei, alle 10 Monate hätten bezahlt sein müssen
       monthsToPay = 10;
     }
     
@@ -128,7 +146,29 @@ export default function Dashboard() {
     setIsTreasuryOpen(false)
     setTDesc("")
     setTAmount("")
-    toast({ title: "Team-Ausgabe verbucht" })
+  }
+
+  const handleDraftClubhouse = async () => {
+    if (monthlyCrateStats.count === 0) return;
+    setIsDrafting(true);
+    try {
+      const monthName = format(new Date(), 'MMMM', { locale: de });
+      const result = await draftClubhousePayment({
+        crateCount: monthlyCrateStats.count,
+        totalAmount: monthlyCrateStats.amount,
+        monthName
+      });
+      setClubhouseDraft(result.draftMessage);
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "KI konnte Nachricht nicht entwerfen. Bitte später versuchen."
+      });
+    } finally {
+      setIsDrafting(false);
+    }
   }
 
   return (
@@ -240,6 +280,65 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* New Clubhouse Section for Auditors */}
+          {isAuditor && (
+            <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500 overflow-hidden">
+              <CardHeader className="bg-amber-50/50 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
+                    <ShoppingCart className="h-5 w-5" />
+                    Vereinsheim Abrechnung
+                  </CardTitle>
+                  <span className="text-[10px] font-bold uppercase text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                    {format(new Date(), 'MMMM', { locale: de })}
+                  </span>
+                </div>
+                <CardDescription>Aktueller Stand der Getränke-Schulden an das Vereinsheim.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-8">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-bold uppercase">Kisten verbraucht</p>
+                      <p className="text-3xl font-bold text-amber-700">{monthlyCrateStats.count}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-bold uppercase">Gesamtbetrag</p>
+                      <p className="text-3xl font-bold text-amber-700">{monthlyCrateStats.amount.toFixed(2)} €</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 w-full md:w-auto">
+                    <Button 
+                      onClick={handleDraftClubhouse} 
+                      disabled={isDrafting || monthlyCrateStats.count === 0}
+                      className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white flex-1 md:flex-none h-12 px-6"
+                    >
+                      {isDrafting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                      Abrechnung entwerfen
+                    </Button>
+                  </div>
+                </div>
+
+                {clubhouseDraft && (
+                  <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" /> KI-Entwurf
+                      </p>
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] text-amber-600" onClick={() => {
+                        navigator.clipboard.writeText(clubhouseDraft);
+                        toast({ title: "Kopiert", description: "Nachricht in der Zwischenablage." });
+                      }}>Kopieren</Button>
+                    </div>
+                    <p className="text-sm italic text-amber-900 whitespace-pre-wrap leading-relaxed">
+                      {clubhouseDraft}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div>
             <h3 className="text-lg font-semibold mb-4 text-foreground px-1">Getränk erfassen</h3>

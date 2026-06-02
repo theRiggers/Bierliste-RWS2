@@ -1,10 +1,11 @@
+
 # Bierliste RWS2 🍻
 
 Die digitale Getränkekasse für den Verein. Modern, sicher und KI-gestützt.
 
 ## 🚀 Projekt zu GitHub exportieren (Initial)
 
-Da die Tastenkombinationen im Browser oft von Chrome abgefangen werden, nutze diesen Weg um das Terminal zu öffnen:
+Um das Terminal zu öffnen, falls du keine Icons oder Menüs siehst:
 1. Drücke **`F1`** (oder `Strg` + `Shift` + `P`).
 2. Tippe oben im Suchfeld **"Terminal"** ein.
 3. Wähle **"Terminal: Create New Terminal"**.
@@ -43,5 +44,6 @@ Standardmäßig wird die App oft in den USA gehostet. So ziehst du um:
 ## Features
 - **Einfache Buchung**: Bier oder Kisten mit einem Klick erfassen.
 - **Paypal-Integration**: Direkter Link zum Bezahlen von Schulden.
+- **Kisten-Monitoring**: Integrierter Zähler für die Abrechnung mit dem Vereinsheim (direkt im Dashboard).
 - **KI-Zahlungs-Import**: PayPal-Texte kopieren und automatisch verbuchen lassen.
 - **Beitragskasse**: Verwaltung von monatlichen Vereinsbeiträgen.

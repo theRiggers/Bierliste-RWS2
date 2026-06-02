@@ -1,12 +1,16 @@
+
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Beer, History, Users, LayoutDashboard, Sparkles, LogOut, Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useState } from "react"
+import { useAuth, useUser } from "@/firebase"
+import { signOut } from "firebase/auth"
+import { useStore } from "@/lib/store"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -21,7 +25,16 @@ interface SidebarProps {
 
 export function Sidebar({ userRole = 'player' }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const auth = useAuth()
+  const { user } = useUser()
+  const { currentUserProfile } = useStore()
   const [isOpen, setIsOpen] = useState(false)
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    router.push("/login")
+  }
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
@@ -58,18 +71,24 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
       </div>
 
       <div className="p-4 border-t border-border bg-white">
-        <div className="bg-muted/50 rounded-2xl p-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shadow-sm">
-              LM
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">Lukas Müller</p>
-              <p className="text-xs text-muted-foreground capitalize">{userRole === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+        {user && (
+          <div className="bg-muted/50 rounded-2xl p-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shadow-sm">
+                {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
+                <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6">
+        )}
+        <Button 
+          variant="ghost" 
+          onClick={handleLogout}
+          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6"
+        >
           <LogOut className="mr-3 h-5 w-5" />
           Abmelden
         </Button>
@@ -84,15 +103,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
         <NavContent />
       </aside>
 
-      {/* Mobile Sidebar (Trigger is handled in pages) */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="left" className="p-0 w-72">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Navigation</SheetTitle>
-          </SheetHeader>
-          <NavContent />
-        </SheetContent>
-      </Sheet>
+      {/* Mobile Sidebar Trigger handled in pages via Sheet */}
     </>
   )
 }
@@ -100,6 +111,15 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
 export function MobileNavTrigger({ userRole }: { userRole?: 'player' | 'auditor' }) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const auth = useAuth()
+  const { user } = useUser()
+  const { currentUserProfile } = useStore()
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    router.push("/login")
+  }
   
   return (
     <div className="md:hidden flex h-16 items-center px-4 bg-white border-b border-border sticky top-0 z-30">
@@ -145,18 +165,24 @@ export function MobileNavTrigger({ userRole }: { userRole?: 'player' | 'auditor'
               })}
             </div>
             <div className="p-4 border-t border-border bg-white">
-              <div className="bg-muted/50 rounded-2xl p-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shadow-sm text-sm">
-                    LM
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">Lukas Müller</p>
-                    <p className="text-xs text-muted-foreground capitalize">{userRole === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+              {user && (
+                <div className="bg-muted/50 rounded-2xl p-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shadow-sm text-sm">
+                      {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
+              )}
+              <Button 
+                variant="ghost" 
+                onClick={handleLogout}
+                className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7"
+              >
                 <LogOut className="mr-3 h-5 w-5" />
                 Abmelden
               </Button>

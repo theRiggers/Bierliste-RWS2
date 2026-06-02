@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent } from "@/components/ui/card"
@@ -10,16 +11,25 @@ import { Wallet, Beer, Clock, ArrowUpRight, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { useUser } from "@/firebase"
 
 export default function Dashboard() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const { players, expenses, loading } = useStore()
+  const { user, loading: authLoading } = useUser()
+  const { players, expenses, currentUserProfile, loading: storeLoading } = useStore()
   
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (loading || !mounted) {
+  useEffect(() => {
+    if (mounted && !authLoading && !user) {
+      router.push("/login")
+    }
+  }, [mounted, authLoading, user, router])
+
+  if (!mounted || authLoading || storeLoading) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -27,11 +37,24 @@ export default function Dashboard() {
     )
   }
 
-  const currentUser = players[0]
-  if (!currentUser) {
+  if (!user) return null
+
+  // Wenn der Benutzer eingeloggt ist, aber kein Profil in Firestore hat
+  if (!currentUserProfile) {
     return (
-      <div className="flex h-svh items-center justify-center bg-background p-8 text-center">
-        <p className="text-muted-foreground">Keine Spielerdaten gefunden. Bitte lege zuerst einen Spieler in der Verwaltung an.</p>
+      <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
+        <Sidebar userRole="player" />
+        <MobileNavTrigger userRole="player" />
+        <main className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+          <div className="bg-primary/10 p-4 rounded-full">
+            <Beer className="h-12 w-12 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold">Profil nicht gefunden</h2>
+          <p className="text-muted-foreground max-w-md">
+            Dein Konto ({user.email}) ist noch keinem Spielerprofil zugeordnet. 
+            Bitte wende dich an den Kassenprüfer, um dich registrieren zu lassen.
+          </p>
+        </main>
       </div>
     )
   }
@@ -42,16 +65,15 @@ export default function Dashboard() {
     return format(new Date(date), pattern, { locale: de })
   }
 
-  // Calculate monthly consumption for current user
   const monthlyConsumptionCount = expenses.filter(e => 
-    e.playerId === currentUser.id && 
+    e.playerId === currentUserProfile.id && 
     new Date(e.date).getMonth() === new Date().getMonth()
   ).length
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUser.role} />
-      <MobileNavTrigger userRole={currentUser.role} />
+      <Sidebar userRole={currentUserProfile.role} />
+      <MobileNavTrigger userRole={currentUserProfile.role} />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
@@ -81,9 +103,9 @@ export default function Dashboard() {
                 </div>
                 <h2 className={cn(
                   "text-2xl md:text-3xl font-bold",
-                  currentUser.balance < 0 ? 'text-destructive' : 'text-emerald-600'
+                  currentUserProfile.balance < 0 ? 'text-destructive' : 'text-emerald-600'
                 )}>
-                  {currentUser.balance.toFixed(2)} €
+                  {currentUserProfile.balance.toFixed(2)} €
                 </h2>
                 <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Offene Beträge</p>
               </CardContent>
@@ -122,13 +144,12 @@ export default function Dashboard() {
 
           <div>
             <h3 className="text-lg font-semibold mb-4 text-foreground px-1">Getränk erfassen</h3>
-            <ExpenseActions isAdmin={currentUser.role === 'auditor'} currentUserId={currentUser.id} />
+            <ExpenseActions currentUserId={currentUserProfile.id} />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-4 px-1">
               <h3 className="text-lg font-semibold text-foreground">Letzte Buchungen</h3>
-              <button className="text-sm font-medium text-primary hover:underline">Alle ansehen</button>
             </div>
             <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-white">
               <CardContent className="p-0">

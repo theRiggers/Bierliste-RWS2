@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import { useCollection, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, Firestore } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -32,6 +32,7 @@ export const CRATE_PRICE = 35.00;
 interface StoreContextType {
   players: Player[];
   expenses: Expense[];
+  currentUserProfile: Player | null;
   loading: boolean;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   addPlayer: (name: string, email: string, role: Role) => void;
@@ -42,6 +43,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
+  const { user, loading: authLoading } = useUser();
 
   // Abfrage aller Spieler
   const playersQuery = useMemo(() => {
@@ -66,6 +68,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     expensesData?.map(d => ({ ...d.data, id: d.id })) || [], 
     [expensesData]
   );
+
+  // Finde das Profil des aktuell angemeldeten Benutzers
+  const currentUserProfile = useMemo(() => {
+    if (!user || players.length === 0) return null;
+    return players.find(p => p.email.toLowerCase() === user.email?.toLowerCase()) || null;
+  }, [user, players]);
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
     if (!db) return;
@@ -98,7 +106,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: playerRef.path,
         operation: 'update',
-        requestResourceData: { balance: player.balance - cost }
+        requestResourceData: { balance: (player.balance || 0) - cost }
       }));
     });
 
@@ -109,7 +117,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: kasseRef.path,
           operation: 'update',
-          requestResourceData: { balance: teamKasse.balance + cost }
+          requestResourceData: { balance: (teamKasse.balance || 0) + cost }
         }));
       });
     }
@@ -143,7 +151,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     <StoreContext.Provider value={{ 
       players, 
       expenses, 
-      loading: playersLoading || expensesLoading,
+      currentUserProfile,
+      loading: playersLoading || expensesLoading || authLoading,
       addExpense, 
       addPlayer, 
       updatePlayer 

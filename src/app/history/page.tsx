@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore } from "@/lib/store"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,18 +13,27 @@ import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { Search, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUser } from "@/firebase"
 
 export default function HistoryPage() {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
-  const { players, expenses, loading } = useStore()
+  const { user, loading: authLoading } = useUser()
+  const { players, expenses, currentUserProfile, loading: storeLoading } = useStore()
   
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (loading || !mounted) {
+  useEffect(() => {
+    if (mounted && !authLoading && !user) {
+      router.push("/login")
+    }
+  }, [mounted, authLoading, user, router])
+
+  if (!mounted || authLoading || storeLoading) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -31,8 +41,7 @@ export default function HistoryPage() {
     )
   }
 
-  const currentUser = players[0]
-  if (!currentUser) return null
+  if (!user || !currentUserProfile) return null
 
   const formatDate = (date: string | Date, pattern: string) => {
     return format(new Date(date), pattern, { locale: de })
@@ -46,8 +55,8 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUser.role} />
-      <MobileNavTrigger userRole={currentUser.role} />
+      <Sidebar userRole={currentUserProfile.role} />
+      <MobileNavTrigger userRole={currentUserProfile.role} />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
@@ -85,27 +94,25 @@ export default function HistoryPage() {
 
           <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-white">
             <CardContent className="p-0">
-              <div className="md:hidden">
-                <div className="divide-y divide-border">
-                  {filteredExpenses.map((expense) => (
-                    <div key={expense.id} className="p-4 flex justify-between items-center active:bg-muted/20">
-                      <div className="min-w-0">
-                        <p className="font-bold text-foreground truncate">{expense.playerName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDate(expense.date, 'dd.MM.yy HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
-                        </p>
-                      </div>
-                      <span className="font-bold text-destructive whitespace-nowrap ml-2">
-                        -{expense.cost.toFixed(2)} €
-                      </span>
+              <div className="divide-y divide-border md:hidden">
+                {filteredExpenses.map((expense) => (
+                  <div key={expense.id} className="p-4 flex justify-between items-center active:bg-muted/20">
+                    <div className="min-w-0">
+                      <p className="font-bold text-foreground truncate">{expense.playerName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(expense.date, 'dd.MM.yy HH:mm')} • {expense.itemType === 'beer' ? 'Bier' : 'Kiste'}
+                      </p>
                     </div>
-                  ))}
-                  {filteredExpenses.length === 0 && (
-                    <div className="p-12 text-center text-muted-foreground italic">
-                      Keine Buchungen gefunden.
-                    </div>
-                  )}
-                </div>
+                    <span className="font-bold text-destructive whitespace-nowrap ml-2">
+                      -{expense.cost.toFixed(2)} €
+                    </span>
+                  </div>
+                ))}
+                {filteredExpenses.length === 0 && (
+                  <div className="p-12 text-center text-muted-foreground italic">
+                    Keine Buchungen gefunden.
+                  </div>
+                )}
               </div>
 
               <div className="hidden md:block">

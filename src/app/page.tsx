@@ -306,7 +306,7 @@ Bierliste RWS2 (Schatzmeister)`;
               <Card className="border-none shadow-md bg-white rounded-2xl">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Teamkasse (Gesamt)</p>
+                    <p className="text-xs md:text-sm font-medium text-muted-foreground">Bierliste (Gesamt)</p>
                     <div className={cn("p-2 rounded-full", teamKasse.balance < 0 ? "bg-destructive/10 text-destructive" : "bg-emerald-100 text-emerald-600")}>
                       <ArrowUpRight className="h-4 w-4" />
                     </div>

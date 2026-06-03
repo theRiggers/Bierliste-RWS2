@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
+import { downloadIcsFile } from "@/lib/calendar-export"
 
 const WEEKDAYS = [
   { id: 1, name: "Montag", short: "Mo" },
@@ -63,6 +64,10 @@ export default function CalendarPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  const upcomingEvents = useMemo(() => {
+    return teamEvents.filter(e => isAfter(new Date(e.date), startOfDay(new Date())))
+  }, [teamEvents]);
+
   if (storeLoading || !mounted) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
@@ -72,6 +77,20 @@ export default function CalendarPage() {
   }
 
   const isEditor = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'coach' || currentUserProfile?.role === 'assistant_coach'
+
+  const handleExportAll = () => {
+    if (upcomingEvents.length === 0) {
+      toast({ variant: "destructive", title: "Keine Termine", description: "Es gibt keine anstehenden Termine zum Exportieren." })
+      return;
+    }
+    downloadIcsFile(upcomingEvents, 'rws2-kalender.ics')
+    toast({ title: "Export gestartet", description: "Die Kalender-Datei wird heruntergeladen." })
+  }
+
+  const handleExportSingle = (event: TeamEvent) => {
+    downloadIcsFile([event], `termin-${format(new Date(event.date), 'yyyy-MM-dd')}.ics`)
+    toast({ title: "Termin exportiert" })
+  }
 
   const handleAddEvent = async () => {
     if (!newTitle || !newDate || !newTime) return
@@ -176,8 +195,6 @@ export default function CalendarPage() {
     }
   }
 
-  const upcomingEvents = teamEvents.filter(e => isAfter(new Date(e.date), startOfDay(new Date())))
-
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'training': return <Users className="h-4 w-4" />;
@@ -206,7 +223,10 @@ export default function CalendarPage() {
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <CalendarIcon className="h-6 w-6" /> Teamkalender
           </h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={handleExportAll} className="rounded-xl border-blue-600 text-blue-700 hover:bg-blue-50">
+              <Download className="h-4 w-4 mr-2" /> Kalender exportieren
+            </Button>
             {isEditor && (
               <>
                 <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
@@ -345,6 +365,9 @@ export default function CalendarPage() {
           <div className="md:hidden flex flex-col gap-4 mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Teamkalender</h1>
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={handleExportAll} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 h-10">
+                <Download className="h-3 w-3 mr-1" /> Exportieren
+              </Button>
               {isEditor && (
                 <>
                   <Button size="sm" variant="outline" onClick={() => setIsBulkOpen(true)} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 h-10">
@@ -391,16 +414,27 @@ export default function CalendarPage() {
                           </div>
                         </div>
                       </div>
-                      {isEditor && (
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(event)} className="text-muted-foreground hover:text-primary shrink-0">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive shrink-0">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleExportSingle(event)} 
+                          className="text-muted-foreground hover:text-blue-600 shrink-0"
+                          title="Termin exportieren"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        {isEditor && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(event)} className="text-muted-foreground hover:text-primary shrink-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive shrink-0">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </CardContent>
                   </div>
                 </Card>

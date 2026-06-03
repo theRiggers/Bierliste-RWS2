@@ -1,7 +1,6 @@
-pus
-# Bierliste RWS2 🍻
+# Headquarter RWS2 🍻
 
-Die digitale Getränkekasse für RW Sutthausen.
+Die digitale Getränkekasse und Teamverwaltung für RW Sutthausen.
 
 ## 🔄 Änderungen live schalten (Push-Workflow)
 

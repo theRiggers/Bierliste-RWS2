@@ -1,4 +1,3 @@
-
 import { TeamEvent } from './store';
 
 /**
@@ -8,7 +7,7 @@ export function generateIcsString(events: TeamEvent[]): string {
   const icsLines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Bierliste RWS2//NONSGML v1.0//EN',
+    'PRODID:-//Headquarter RWS2//NONSGML v1.0//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH'
   ];
@@ -26,7 +25,7 @@ export function generateIcsString(events: TeamEvent[]): string {
     const typeLabel = event.type === 'training' ? 'Training' : event.type === 'match' ? 'Spiel' : 'Event';
 
     icsLines.push('BEGIN:VEVENT');
-    icsLines.push(`UID:${event.id}@bierliste-rws2`);
+    icsLines.push(`UID:${event.id}@headquarter-rws2`);
     icsLines.push(`DTSTAMP:${formatDate(new Date())}`);
     icsLines.push(`DTSTART:${formatDate(startDate)}`);
     icsLines.push(`DTEND:${formatDate(endDate)}`);

@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
@@ -6,12 +5,12 @@ import { StoreProvider } from '@/lib/store';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'Bierliste RWS2',
-  description: 'Verwalte deine Fußballmannschaft-Getränke effizient und smart.',
+  title: 'Headquarter RWS2',
+  description: 'Verwalte deine Fußballmannschaft effizient und smart.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Bierliste RWS2',
+    title: 'Headquarter RWS2',
   },
   formatDetection: {
     telephone: false,

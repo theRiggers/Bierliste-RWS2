@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -56,7 +55,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
           <div className="relative h-10 w-10 flex-shrink-0">
             <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" priority />
           </div>
-          <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
+          <span className="text-xl font-bold font-headline text-primary">Headquarter RWS2</span>
         </Link>
       </div>
       
@@ -123,7 +122,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
   }
   
   return (
-    <div className="md:hidden flex h-auto min-h-16 flex-col bg-white border-b border-border sticky top-0 z-30 pt-safe-top">
+    <div className="md:hidden flex h-auto min-16 flex-col bg-white border-b border-border sticky top-0 z-30 pt-safe-top">
       <div className="flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -135,15 +134,15 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
             <SheetContent side="left" className="p-0 w-72">
               <SheetHeader className="sr-only">
                 <SheetTitle>Navigation</SheetTitle>
-                <SheetDescription>Hauptmenü der Bierliste RWS2</SheetDescription>
+                <SheetDescription>Hauptmenü Headquarter RWS2</SheetDescription>
               </SheetHeader>
               <div className="flex flex-col h-full">
-                <div className="flex h-auto min-h-16 items-center px-6 border-b border-border pt-safe-top">
+                <div className="flex h-auto min-16 items-center px-6 border-b border-border pt-safe-top">
                   <Link href="/" className="flex items-center gap-3 h-16 hover:opacity-80 transition-opacity" onClick={() => setIsOpen(false)}>
                     <div className="relative h-8 w-8">
                       <Image src="/logo.png" alt="Logo" fill className="object-contain" />
                     </div>
-                    <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
+                    <span className="text-xl font-bold font-headline text-primary">Headquarter RWS2</span>
                   </Link>
                 </div>
                 <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
@@ -185,7 +184,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
             <div className="relative h-6 w-6">
               <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" />
             </div>
-            <span className="font-bold text-lg text-primary">Bierliste RWS2</span>
+            <span className="font-bold text-lg text-primary">Headquarter RWS2</span>
           </Link>
         </div>
         <div className="flex items-center">{rightElement}</div>

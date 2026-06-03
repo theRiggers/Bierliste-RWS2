@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -106,7 +105,7 @@ export default function LoginPage() {
       <div className="flex h-svh items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="font-bold text-primary">Bierliste RWS2 lädt...</p>
+          <p className="font-bold text-primary">Headquarter RWS2 lädt...</p>
         </div>
       </div>
     )
@@ -123,7 +122,7 @@ export default function LoginPage() {
               <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" priority />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold font-headline text-white">Bierliste RWS2</CardTitle>
+          <CardTitle className="text-2xl font-bold font-headline text-white">Headquarter RWS2</CardTitle>
           <CardDescription className="text-white/80">Eure digitale Mannschaftskasse</CardDescription>
         </CardHeader>
         <CardContent className="pt-8 space-y-6">

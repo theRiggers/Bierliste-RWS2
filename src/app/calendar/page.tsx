@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, TeamEvent } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription as CardDesc } from "@/components/ui/card"
@@ -9,17 +9,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock, Globe, CalendarDays, Check, X } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock, Globe, CalendarDays, Check, X, Calendar as CalendarDaysIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { format, isAfter, startOfDay } from "date-fns"
+import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { Separator } from "@/components/ui/separator"
+import { Checkbox } from "@/components/ui/checkbox"
+
+const WEEKDAYS = [
+  { id: 1, name: "Montag", short: "Mo" },
+  { id: 2, name: "Dienstag", short: "Di" },
+  { id: 3, name: "Mittwoch", short: "Mi" },
+  { id: 4, name: "Donnerstag", short: "Do" },
+  { id: 5, name: "Freitag", short: "Fr" },
+  { id: 6, name: "Samstag", short: "Sa" },
+  { id: 0, name: "Sonntag", short: "So" },
+]
 
 export default function CalendarPage() {
   const { toast } = useToast()
@@ -34,14 +42,14 @@ export default function CalendarPage() {
   const [newType, setNewType] = useState<'training' | 'match' | 'social'>('training')
   const [newLocation, setNewLocation] = useState("")
   
-  // Bulk Add State
+  // Bulk Add State (New Logic)
   const [isBulkOpen, setIsBulkOpen] = useState(false)
-  const [bulkDates, setBulkDates] = useState<Date[]>([])
   const [bulkTitle, setBulkTitle] = useState("Training")
   const [bulkLocation, setBulkLocation] = useState("")
-  const [sameTimeForAll, setSameTimeForAll] = useState(true)
-  const [globalTime, setGlobalTime] = useState("19:00")
-  const [individualTimes, setIndividualTimes] = useState<Record<string, string>>({})
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([])
+  const [weekdayTimes, setWeekdayTimes] = useState<Record<number, string>>({})
+  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [endDate, setEndDate] = useState("")
   
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -77,26 +85,56 @@ export default function CalendarPage() {
   }
 
   const handleBulkAdd = async () => {
-    if (bulkDates.length === 0 || !bulkTitle) return
+    if (selectedWeekdays.length === 0 || !bulkTitle || !startDate || !endDate) {
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte fülle alle Felder aus." })
+      return
+    }
+
+    const start = parseISO(startDate)
+    const end = parseISO(endDate)
+
+    if (isAfter(start, end)) {
+      toast({ variant: "destructive", title: "Fehler", description: "Enddatum muss nach dem Startdatum liegen." })
+      return
+    }
+
     setIsSubmitting(true)
+    let count = 0
     try {
-      for (const date of bulkDates) {
-        const dateStr = format(date, 'yyyy-MM-dd')
-        const timeStr = sameTimeForAll ? globalTime : (individualTimes[dateStr] || globalTime)
-        const combinedDate = new Date(`${dateStr}T${timeStr}`)
-        
-        await addTeamEvent({
-          title: bulkTitle,
-          type: 'training',
-          date: combinedDate.toISOString(),
-          location: bulkLocation,
-        })
+      let current = start
+      while (isBefore(current, addDays(end, 1))) {
+        const dayIdx = getDay(current)
+        if (selectedWeekdays.includes(dayIdx)) {
+          const time = weekdayTimes[dayIdx] || "19:00"
+          const dateStr = format(current, 'yyyy-MM-dd')
+          
+          await addTeamEvent({
+            title: bulkTitle,
+            type: 'training',
+            date: new Date(`${dateStr}T${time}`).toISOString(),
+            location: bulkLocation,
+          })
+          count++
+        }
+        current = addDays(current, 1)
       }
+      
       setIsBulkOpen(false)
-      setBulkDates([])
-      toast({ title: `${bulkDates.length} Termine erstellt` })
+      setSelectedWeekdays([])
+      setWeekdayTimes({})
+      setEndDate("")
+      toast({ title: "Erfolg", description: `${count} Trainingstermine wurden erstellt.` })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const toggleWeekday = (id: number) => {
+    setSelectedWeekdays(prev => 
+      prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id]
+    )
+    if (!weekdayTimes[id]) {
+      setWeekdayTimes(prev => ({ ...prev, [id]: "19:00" }))
     }
   }
 
@@ -139,132 +177,100 @@ export default function CalendarPage() {
                       <CalendarDays className="h-4 w-4 mr-2" /> Serientermine
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-[95vw] md:max-w-3xl rounded-3xl h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl">
-                    <DialogHeader className="p-4 md:p-6 pb-2 shrink-0 border-b md:border-none">
-                      <DialogTitle className="text-xl md:text-2xl">Serientermine hinzufügen</DialogTitle>
-                      <DialogDescription className="text-xs md:text-sm">Wähle Tage aus und erstelle mehrere Trainings in einem Schritt.</DialogDescription>
+                  <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-3xl h-[85vh] md:h-auto flex flex-col p-0 overflow-hidden shadow-2xl">
+                    <DialogHeader className="p-6 pb-2 shrink-0 border-b">
+                      <DialogTitle className="text-xl md:text-2xl">Serientermine erstellen</DialogTitle>
+                      <DialogDescription>Erstelle Trainings automatisch für einen Zeitraum.</DialogDescription>
                     </DialogHeader>
                     
                     <ScrollArea className="flex-1">
-                      <div className="p-4 md:p-6 space-y-8">
-                        {/* Mobile Step Indicator or just flow */}
-                        <div className="grid lg:grid-cols-[1fr_300px] gap-8">
-                          {/* Calendar Section */}
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-bold flex items-center gap-2">
-                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">1</span>
-                                Daten im Kalender wählen
-                              </Label>
-                              <Badge variant="secondary" className="rounded-lg text-[10px]">
-                                {bulkDates.length} Tage gewählt
-                              </Badge>
-                            </div>
-                            <div className="flex justify-center bg-muted/20 p-4 rounded-2xl border border-dashed">
-                              <Calendar
-                                mode="multiple"
-                                selected={bulkDates}
-                                onSelect={(dates) => setBulkDates(dates || [])}
-                                className="rounded-xl bg-white shadow-sm w-fit scale-90 sm:scale-100"
-                                locale={de}
-                              />
-                            </div>
+                      <div className="p-6 space-y-8">
+                        {/* Title & Location */}
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Titel</Label>
+                            <Input value={bulkTitle} onChange={e => setBulkTitle(e.target.value)} placeholder="Z.B. Training" className="h-11 rounded-xl" />
                           </div>
-                          
-                          {/* Settings Section */}
-                          <div className="space-y-6">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Ort (Optional)</Label>
+                            <Input value={bulkLocation} onChange={e => setBulkLocation(e.target.value)} placeholder="Z.B. Kunstrasen" className="h-11 rounded-xl" />
+                          </div>
+                        </div>
+
+                        {/* Weekday Selection */}
+                        <div className="space-y-4">
+                          <Label className="text-sm font-bold flex items-center gap-2">
+                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">1</span>
+                            Trainingstage wählen
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {WEEKDAYS.map((day) => (
+                              <Button
+                                key={day.id}
+                                variant={selectedWeekdays.includes(day.id) ? "default" : "outline"}
+                                className={cn(
+                                  "h-12 w-12 rounded-xl text-xs font-bold p-0 transition-all",
+                                  selectedWeekdays.includes(day.id) ? "bg-blue-600 hover:bg-blue-700 shadow-md" : "hover:bg-blue-50"
+                                )}
+                                onClick={() => toggleWeekday(day.id)}
+                              >
+                                {day.short}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Times for Weekdays */}
+                        {selectedWeekdays.length > 0 && (
+                          <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                             <Label className="text-sm font-bold flex items-center gap-2">
                               <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">2</span>
-                              Details festlegen
+                              Uhrzeiten festlegen
                             </Label>
-                            
-                            <div className="space-y-4 bg-muted/30 p-4 rounded-2xl border">
-                              <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground ml-1">Titel</Label>
-                                <Input 
-                                  value={bulkTitle} 
-                                  onChange={e => setBulkTitle(e.target.value)} 
-                                  placeholder="Z.B. Training"
-                                  className="h-11 rounded-xl bg-white"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground ml-1">Ort (Optional)</Label>
-                                <Input 
-                                  value={bulkLocation} 
-                                  onChange={e => setBulkLocation(e.target.value)} 
-                                  placeholder="Z.B. Kunstrasen"
-                                  className="h-11 rounded-xl bg-white"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="space-y-4 bg-white p-4 rounded-2xl border border-primary/10 shadow-sm">
-                              <div className="flex items-center justify-between pb-2 border-b">
-                                <div className="space-y-0.5">
-                                  <Label htmlFor="same-time-mobile" className="cursor-pointer text-sm font-bold">Gleiche Uhrzeit?</Label>
-                                  <p className="text-[10px] text-muted-foreground">Einmalig festlegen für alle Tage.</p>
-                                </div>
-                                <Switch id="same-time-mobile" checked={sameTimeForAll} onCheckedChange={setSameTimeForAll} />
-                              </div>
-                              
-                              {sameTimeForAll ? (
-                                <div className="space-y-2 pt-2">
-                                  <Label className="text-xs text-muted-foreground ml-1">Startzeit</Label>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              {WEEKDAYS.filter(d => selectedWeekdays.includes(d.id)).map(day => (
+                                <div key={day.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border">
+                                  <span className="text-sm font-bold">{day.name}</span>
                                   <Input 
                                     type="time" 
-                                    value={globalTime} 
-                                    onChange={e => setGlobalTime(e.target.value)} 
-                                    className="h-11 rounded-xl text-lg font-bold"
+                                    className="w-28 h-9 rounded-lg bg-white" 
+                                    value={weekdayTimes[day.id] || "19:00"}
+                                    onChange={(e) => setWeekdayTimes(prev => ({ ...prev, [day.id]: e.target.value }))}
                                   />
                                 </div>
-                              ) : (
-                                <div className="space-y-3 pt-2">
-                                  <Label className="text-[10px] text-primary uppercase font-bold tracking-wider">Individuelle Zeiten je Tag</Label>
-                                  <div className="grid gap-2">
-                                    {bulkDates.sort((a, b) => a.getTime() - b.getTime()).map((date) => {
-                                      const ds = format(date, 'yyyy-MM-dd')
-                                      return (
-                                        <div key={ds} className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-xl border border-border/50">
-                                          <div className="min-w-0">
-                                            <p className="text-[11px] font-bold truncate capitalize">{format(date, 'EEEE', { locale: de })}</p>
-                                            <p className="text-[10px] text-muted-foreground">{format(date, 'dd. MMMM', { locale: de })}</p>
-                                          </div>
-                                          <Input 
-                                            type="time" 
-                                            className="w-28 h-9 rounded-lg text-sm bg-white font-medium" 
-                                            value={individualTimes[ds] || globalTime}
-                                            onChange={(e) => setIndividualTimes(prev => ({ ...prev, [ds]: e.target.value }))}
-                                          />
-                                        </div>
-                                      )
-                                    })}
-                                    {bulkDates.length === 0 && (
-                                      <div className="text-center py-6 bg-muted/20 rounded-xl border border-dashed">
-                                        <p className="text-xs italic text-muted-foreground">Wähle zuerst Daten im Kalender aus.</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Date Range */}
+                        <div className="space-y-4">
+                          <Label className="text-sm font-bold flex items-center gap-2">
+                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">3</span>
+                            Zeitraum festlegen
+                          </Label>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label className="text-[10px] text-muted-foreground ml-1">Startdatum</Label>
+                              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-11 rounded-xl" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[10px] text-muted-foreground ml-1">Enddatum</Label>
+                              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-11 rounded-xl" />
                             </div>
                           </div>
                         </div>
                       </div>
                     </ScrollArea>
 
-                    <DialogFooter className="p-4 md:p-6 bg-muted/50 border-t shrink-0">
+                    <DialogFooter className="p-6 bg-muted/50 border-t">
                       <Button 
                         onClick={handleBulkAdd} 
-                        disabled={isSubmitting || bulkDates.length === 0} 
-                        className="w-full h-14 md:h-12 rounded-2xl font-bold text-lg md:text-base cyan-glow"
+                        disabled={isSubmitting || selectedWeekdays.length === 0 || !endDate} 
+                        className="w-full h-12 rounded-2xl font-bold cyan-glow"
                       >
-                        {isSubmitting ? (
-                          <Loader2 className="animate-spin mr-2 h-5 w-5" />
-                        ) : (
-                          <Plus className="mr-2 h-5 w-5" />
-                        )}
-                        {bulkDates.length} Termine jetzt erstellen
+                        {isSubmitting ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Plus className="mr-2 h-5 w-5" />}
+                        Termine jetzt generieren
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -315,22 +321,6 @@ export default function CalendarPage() {
                   </Button>
                 </>
               )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-               {settings.fupaLink && (
-                  <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-[10px] border-blue-600 text-blue-700 h-9">
-                    <a href={settings.fupaLink} target="_blank" rel="noopener noreferrer">
-                      <Globe className="h-3 w-3 mr-1" /> FuPa.net
-                    </a>
-                  </Button>
-                )}
-                {settings.footballDeLink && (
-                  <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-[10px] h-9">
-                    <a href={settings.footballDeLink} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-3 w-3 mr-1" /> Fußball.de
-                    </a>
-                  </Button>
-                )}
             </div>
           </div>
 

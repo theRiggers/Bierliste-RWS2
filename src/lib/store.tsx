@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { createContext, useContext, useMemo, useEffect } from 'react';
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
+import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch } from 'firebase/firestore';
 
 export type Role = 'player' | 'auditor';
@@ -60,6 +60,17 @@ export interface TreasuryExpense {
   recordedBy: string;
 }
 
+export interface AppSettings {
+  beerPrice: number;
+  cratePrice: number;
+  monthlyFee: number;
+  annualFee: number;
+  paypalMeLink: string;
+  clubhousePaypalEmail: string;
+  treasuryPaypalEmail: string;
+}
+
+// Fallback constants (deprecated, use settings from store)
 export const BEER_PRICE = 1.50;
 export const CRATE_PRICE = 35.00;
 export const MONTHLY_FEE = 15.00;
@@ -77,6 +88,7 @@ interface StoreContextType {
   membershipTransactions: MembershipTransaction[];
   treasuryExpenses: TreasuryExpense[];
   currentUserProfile: Player | null;
+  settings: AppSettings;
   loading: boolean;
   totalMannschaftskasse: number;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
@@ -93,6 +105,7 @@ interface StoreContextType {
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   deletePlayer: (id: string) => Promise<void>;
+  updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
   cleanupOldSeasons: () => void;
 }
 
@@ -120,12 +133,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(100)) : null, [db]);
   const { data: tExpensesData, loading: tExpensesLoading } = useCollection<Omit<TreasuryExpense, 'id'>>(tExpensesQuery);
 
+  const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') : null, [db]);
+  const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
+
   const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
   const membershipFees = useMemo(() => feesData?.map(d => ({ ...d.data, id: d.id })) || [], [feesData]);
   const membershipTransactions = useMemo(() => mTransactionsData?.map(d => ({ ...d.data, id: d.id })) || [], [mTransactionsData]);
   const treasuryExpenses = useMemo(() => tExpensesData?.map(d => ({ ...d.data, id: d.id })) || [], [tExpensesData]);
+
+  const settings = useMemo<AppSettings>(() => ({
+    beerPrice: settingsData?.beerPrice ?? BEER_PRICE,
+    cratePrice: settingsData?.cratePrice ?? CRATE_PRICE,
+    monthlyFee: settingsData?.monthlyFee ?? MONTHLY_FEE,
+    annualFee: settingsData?.annualFee ?? ANNUAL_FEE,
+    paypalMeLink: settingsData?.paypalMeLink ?? PAYPAL_ME_LINK,
+    clubhousePaypalEmail: settingsData?.clubhousePaypalEmail ?? CLUBHOUSE_PAYPAL_EMAIL,
+    treasuryPaypalEmail: settingsData?.treasuryPaypalEmail ?? TREASURY_PAYPAL_EMAIL,
+  }), [settingsData]);
 
   const currentUserProfile = useMemo(() => {
     if (!user || players.length === 0) return null;
@@ -161,7 +187,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
     if (!db) return;
-    const cost = itemType === 'beer' ? BEER_PRICE : CRATE_PRICE;
+    const cost = itemType === 'beer' ? settings.beerPrice : settings.cratePrice;
     const player = players.find(p => p.id === playerId);
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     if (!player) return;
@@ -219,7 +245,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addMembershipFee = (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => {
     if (!db) return;
-    const amount = type === 'monthly' ? MONTHLY_FEE : ANNUAL_FEE;
+    const amount = type === 'monthly' ? settings.monthlyFee : settings.annualFee;
     const feeData = { playerId, type, year, month: type === 'monthly' ? month : null, amount, datePaid: new Date().toISOString() };
     addDoc(collection(db, 'membershipFees'), feeData);
   };
@@ -272,14 +298,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     const treasuryData = { 
       description: "Bezahlkiste (für Einzelverkauf)", 
-      amount: CRATE_PRICE, 
+      amount: settings.cratePrice, 
       date: new Date().toISOString(), 
       recordedBy: currentUserProfile.id 
     };
     addDoc(collection(db, 'treasuryExpenses'), treasuryData);
 
     const kasseRef = doc(db, 'players', teamKasse.id);
-    setDoc(kasseRef, { balance: (teamKasse.balance || 0) - CRATE_PRICE }, { merge: true });
+    setDoc(kasseRef, { balance: (teamKasse.balance || 0) - settings.cratePrice }, { merge: true });
   };
 
   const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {
@@ -299,17 +325,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, 'players', id));
   };
 
+  const updateSettings = async (updates: Partial<AppSettings>) => {
+    if (!db) return;
+    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true });
+  };
+
   const cleanupOldSeasons = () => {};
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, currentUserProfile,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || authLoading,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, currentUserProfile, settings,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || authLoading || settingsLoading,
       totalMannschaftskasse,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, addBezahlkiste,
-      addPlayer, updatePlayer, deletePlayer, cleanupOldSeasons
+      addPlayer, updatePlayer, deletePlayer, updateSettings, cleanupOldSeasons
     }}>
       {children}
     </StoreContext.Provider>

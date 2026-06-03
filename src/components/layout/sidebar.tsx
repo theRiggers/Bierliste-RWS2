@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote } from "lucide-react"
+import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -19,6 +19,7 @@ const navigation = [
   { name: 'Beiträge', href: '/membership-fees', icon: Banknote, auditorOnly: true },
   { name: 'Spieler', href: '/players', icon: Users, auditorOnly: true },
   { name: 'KI-Berichte', href: '/ai-tools', icon: Sparkles, auditorOnly: true },
+  { name: 'Administration', href: '/admin', icon: Settings, auditorOnly: true },
 ]
 
 interface SidebarProps {

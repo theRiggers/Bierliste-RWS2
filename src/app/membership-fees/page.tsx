@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { useStore, FEE_MONTHS, MONTHLY_FEE, ANNUAL_FEE } from "@/lib/store"
+import { useStore, FEE_MONTHS } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,7 @@ const MONTH_NAMES = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "S
 export default function MembershipFeesPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, membershipFees, addMembershipFee, deleteMembershipFee, loading, currentUserProfile } = useStore()
+  const { players, membershipFees, settings, addMembershipFee, deleteMembershipFee, loading, currentUserProfile } = useStore()
   
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
@@ -101,7 +101,7 @@ export default function MembershipFeesPage() {
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Beitragskasse</h1>
-            <Badge variant="outline" className="text-xs">15€ / Monat • 150€ / Jahr</Badge>
+            <Badge variant="outline" className="text-xs">{settings.monthlyFee.toFixed(0)}€ / Monat • {settings.annualFee.toFixed(0)}€ / Jahr</Badge>
           </div>
           <SeasonSelector />
         </header>
@@ -109,7 +109,7 @@ export default function MembershipFeesPage() {
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="md:hidden mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Beiträge</h1>
-            <Badge variant="outline" className="text-[10px] w-fit mt-1">15€ / Monat • 150€ / Jahr</Badge>
+            <Badge variant="outline" className="text-[10px] w-fit mt-1">{settings.monthlyFee.toFixed(0)}€ / Monat • {settings.annualFee.toFixed(0)}€ / Jahr</Badge>
           </div>
 
           <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-white">

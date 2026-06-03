@@ -6,7 +6,7 @@ import { Beer, Package, PlusCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { BEER_PRICE, CRATE_PRICE, useStore } from "@/lib/store"
+import { useStore } from "@/lib/store"
 
 interface ExpenseActionsProps {
   isAdmin?: boolean;
@@ -15,7 +15,7 @@ interface ExpenseActionsProps {
 
 export function ExpenseActions({ isAdmin = false, currentUserId }: ExpenseActionsProps) {
   const { toast } = useToast()
-  const { addExpense } = useStore()
+  const { addExpense, settings } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
 
   const handleAdd = (type: 'beer' | 'crate') => {
@@ -45,7 +45,7 @@ export function ExpenseActions({ isAdmin = false, currentUserId }: ExpenseAction
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0">
-          <p className="text-2xl md:text-3xl font-bold text-foreground mb-4">{BEER_PRICE.toFixed(2)} €</p>
+          <p className="text-2xl md:text-3xl font-bold text-foreground mb-4">{settings.beerPrice.toFixed(2)} €</p>
           <Button 
             className="w-full h-14 md:h-12 rounded-xl text-lg font-bold cyan-glow transition-all active:scale-95 flex items-center justify-center gap-2" 
             onClick={() => handleAdd('beer')}
@@ -68,7 +68,7 @@ export function ExpenseActions({ isAdmin = false, currentUserId }: ExpenseAction
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0">
-          <p className="text-2xl md:text-3xl font-bold text-foreground mb-4">{CRATE_PRICE.toFixed(2)} €</p>
+          <p className="text-2xl md:text-3xl font-bold text-foreground mb-4">{settings.cratePrice.toFixed(2)} €</p>
           <Button 
             variant="outline"
             className="w-full h-14 md:h-12 rounded-xl text-lg font-bold border-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground transition-all active:scale-95 flex items-center justify-center gap-2" 

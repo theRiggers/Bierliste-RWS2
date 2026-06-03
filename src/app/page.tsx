@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useStore, PAYPAL_ME_LINK, FEE_MONTHS, MONTHLY_FEE, CRATE_PRICE, CLUBHOUSE_PAYPAL_EMAIL, TREASURY_PAYPAL_EMAIL } from "@/lib/store"
+import { useStore, FEE_MONTHS } from "@/lib/store"
 import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package, Check, X, TrendingUp } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { de } from "date-fns/locale"
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, treasuryExpenses, totalMannschaftskasse, currentUserProfile, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, treasuryExpenses, totalMannschaftskasse, currentUserProfile, settings, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   // Treasury Expense States (Now for Team Fund)
@@ -72,9 +72,9 @@ export default function Dashboard() {
 
     return {
       count: totalCount,
-      amount: totalCount * CRATE_PRICE
+      amount: totalCount * settings.cratePrice
     };
-  }, [expenses, treasuryExpenses]);
+  }, [expenses, treasuryExpenses, settings]);
 
   const feeStatus = useMemo(() => {
     if (!currentUserProfile) return { open: 0, paidMonths: 0, monthsStatus: [] };
@@ -115,8 +115,8 @@ export default function Dashboard() {
     const paidCount = userFees.filter(f => f.type === 'monthly').length;
     const unpaidCount = Math.max(0, monthsToPay - paidCount);
     
-    return { open: unpaidCount * MONTHLY_FEE, paidMonths: paidCount, isAnnual: false, monthsStatus };
-  }, [currentUserProfile, membershipFees]);
+    return { open: unpaidCount * settings.monthlyFee, paidMonths: paidCount, isAnnual: false, monthsStatus };
+  }, [currentUserProfile, membershipFees, settings]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -193,7 +193,7 @@ export default function Dashboard() {
 
   const handleAddBezahlkisteLocal = () => {
     addBezahlkiste();
-    toast({ title: "Bezahlkiste erfasst", description: "35€ von Bierliste abgezogen." });
+    toast({ title: "Bezahlkiste erfasst", description: `${settings.cratePrice.toFixed(2)}€ von Bierliste abgezogen.` });
   }
 
   const handleDraftClubhouseLocal = () => {
@@ -207,21 +207,21 @@ export default function Dashboard() {
   const handlePayClubhouse = () => {
     const monthName = format(new Date(), 'MMMM', { locale: de });
     const amount = monthlyCrateStats.amount.toFixed(2);
-    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(CLUBHOUSE_PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=Kistenabrechnung%20RWS2%20${encodeURIComponent(monthName)}`;
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.clubhousePaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=Kistenabrechnung%20RWS2%20${encodeURIComponent(monthName)}`;
     window.open(paypalUrl, '_blank');
   }
 
   const handlePayIndividualDebt = () => {
     const amount = Math.abs(currentUserProfile.balance).toFixed(2);
     const reference = `Getränkekonto: ${currentUserProfile.name}`;
-    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(TREASURY_PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.treasuryPaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
     window.open(paypalUrl, '_blank');
   }
 
   const handlePayMembershipFee = () => {
     const amount = feeStatus.open.toFixed(2);
     const reference = `Mannschaftskasse: ${currentUserProfile.name}`;
-    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(TREASURY_PAYPAL_EMAIL)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.treasuryPaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
     window.open(paypalUrl, '_blank');
   }
 
@@ -463,7 +463,7 @@ export default function Dashboard() {
                       className="rounded-xl border-amber-600 text-amber-700 hover:bg-amber-50 flex-1 md:flex-none h-10 px-4 text-xs font-bold"
                     >
                       <Package className="h-3 w-3 mr-2" />
-                      Bezahlkiste (+35€)
+                      Bezahlkiste (+{settings.cratePrice.toFixed(0)}€)
                     </Button>
                     <Button 
                       variant="outline"

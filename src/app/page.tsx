@@ -7,8 +7,33 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore, FEE_MONTHS } from "@/lib/store"
-import { Wallet, Beer, Clock, ArrowUpRight, Loader2, UserCircle, ShieldCheck, ExternalLink, Banknote, ShoppingCart, Send, FileText, CreditCard, PlusCircle, Package, Check, X, TrendingUp, Scale } from "lucide-react"
-import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
+import { 
+  Wallet, 
+  Beer, 
+  Clock, 
+  ArrowUpRight, 
+  Loader2, 
+  UserCircle, 
+  ShieldCheck, 
+  ExternalLink, 
+  Banknote, 
+  ShoppingCart, 
+  Send, 
+  FileText, 
+  CreditCard, 
+  PlusCircle, 
+  Package, 
+  Check, 
+  X, 
+  TrendingUp, 
+  Scale,
+  CalendarDays,
+  MapPin,
+  Trophy,
+  ChevronRight,
+  Info
+} from "lucide-react"
+import { format, startOfMonth, endOfMonth, isWithinInterval, isAfter } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
@@ -27,7 +52,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, fines, treasuryExpenses, totalMannschaftskasse, currentUserProfile, settings, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, totalMannschaftskasse, currentUserProfile, settings, addPlayer, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   const [isTreasuryOpen, setIsTreasuryOpen] = useState(false)
@@ -46,6 +71,14 @@ export default function Dashboard() {
   useEffect(() => {
     if (mounted && !authLoading && !user) router.replace("/login")
   }, [mounted, authLoading, user, router])
+
+  const nextEvent = useMemo(() => {
+    const now = new Date();
+    const futureEvents = teamEvents
+      .filter(e => isAfter(new Date(e.date), now))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return futureEvents[0] || null;
+  }, [teamEvents]);
 
   const monthlyCrateStats = useMemo(() => {
     const now = new Date();
@@ -159,6 +192,15 @@ export default function Dashboard() {
   const isAdmin = currentUserProfile.role === 'admin'
   const isKassenwart = currentUserProfile.role === 'kassenwart' || isAdmin
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'training': return <UsersIcon className="h-4 w-4" />;
+      case 'match': return <Trophy className="h-4 w-4" />;
+      case 'social': return <Info className="h-4 w-4" />;
+      default: return <CalendarDays className="h-4 w-4" />;
+    }
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole={currentUserProfile.role} />
@@ -254,6 +296,47 @@ export default function Dashboard() {
               </Card>
             )}
           </div>
+
+          <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden border-l-4 border-l-blue-500 animate-in fade-in slide-in-from-top-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                <CalendarDays className="h-5 w-5" />
+                Nächster Termin
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {nextEvent ? (
+                <div className="flex items-center gap-4">
+                  <div className="text-center min-w-[55px] bg-blue-50 p-2 rounded-xl border border-blue-100">
+                    <p className="text-[10px] uppercase font-black text-blue-600">{format(new Date(nextEvent.date), 'EEE', { locale: de })}</p>
+                    <p className="text-xl font-black text-blue-900">{format(new Date(nextEvent.date), 'dd')}</p>
+                    <p className="text-[10px] font-bold text-blue-400">{format(new Date(nextEvent.date), 'MMM', { locale: de })}</p>
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-black bg-blue-100 text-blue-700 border border-blue-200 uppercase">
+                        {nextEvent.type === 'training' ? 'Training' : nextEvent.type === 'match' ? 'Spiel' : 'Event'}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-base leading-tight">{nextEvent.title}</h4>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground font-medium">
+                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(nextEvent.date), 'HH:mm')} Uhr</span>
+                       {nextEvent.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {nextEvent.location}</span>}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')} className="shrink-0 text-muted-foreground hover:text-blue-600">
+                    <ChevronRight className="h-6 w-6" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="py-4 text-center">
+                  <p className="text-sm text-muted-foreground italic flex items-center justify-center gap-2">
+                    <CalendarDays className="h-4 w-4 opacity-50" /> Keine Termine geplant.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {isKassenwart && (
             <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500 overflow-hidden">

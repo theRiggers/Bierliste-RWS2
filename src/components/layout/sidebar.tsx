@@ -125,7 +125,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
   
   return (
     <div className="md:hidden flex h-auto min-h-16 flex-col bg-white border-b border-border sticky top-0 z-30 pt-safe-top">
-      <div className="flex h-16 items-center justify-between px-4 mt-2">
+      <div className="flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
@@ -136,8 +136,8 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
             <SheetContent side="left" className="p-0 w-72">
               <SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle></SheetHeader>
               <div className="flex flex-col h-full">
-                <div className="flex h-16 items-center px-6 border-b border-border">
-                  <div className="flex items-center gap-3">
+                <div className="flex h-auto min-h-16 items-center px-6 border-b border-border pt-safe-top">
+                  <div className="flex items-center gap-3 h-16">
                     <div className="relative h-8 w-8">
                       <Image src="/logo.png" alt="Logo" fill className="object-contain" />
                     </div>
@@ -179,7 +179,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-3 ml-2">
+          <div className="flex items-center gap-3 ml-2 h-16">
             <div className="relative h-6 w-6">
               <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" />
             </div>

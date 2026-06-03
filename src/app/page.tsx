@@ -76,11 +76,9 @@ export default function Dashboard() {
   }, [teamEvents]);
 
   const clubhouseStats = useMemo(() => {
-    // Alle Kisten (Spieler + Mannschaft) zählen
     const allCrates = expenses.filter(e => e.itemType === 'crate');
     const totalCrateCost = allCrates.length * settings.cratePrice;
     
-    // Alle Zahlungen an das Vereinsheim zählen
     const paidToClubhouse = treasuryExpenses
       .filter(t => t.description.includes("Vereinsheim"))
       .reduce((sum, t) => sum + t.amount, 0);
@@ -282,7 +280,7 @@ export default function Dashboard() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 pb-20 md:pb-8">
-          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
@@ -329,6 +327,28 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-md bg-white rounded-2xl">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-muted-foreground">Meine Strafen</p>
+                  <div className="p-2 bg-amber-100 rounded-full text-amber-600"><Scale className="h-4 w-4" /></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <h2 className={cn("text-2xl font-bold", fineStatus > 0 ? 'text-destructive' : 'text-emerald-600')}>
+                    {fineStatus > 0 ? `-${fineStatus.toFixed(2)}` : '0.00'} €
+                  </h2>
+                  {fineStatus > 0 && (
+                    <Button size="sm" variant="link" onClick={() => handlePay('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 flex items-center gap-1">
+                      Bezahlen <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  {fineStatus > 0 ? 'Offene Vergehen aus dem Katalog' : 'Keine offenen Strafen'}
+                </p>
               </CardContent>
             </Card>
 

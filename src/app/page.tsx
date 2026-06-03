@@ -61,6 +61,11 @@ export default function Dashboard() {
   const [paymentPlayerId, setPaymentPlayerId] = useState("")
   const [paymentAmount, setPaymentAmount] = useState("")
 
+  // States for player self-payment
+  const [isSelfPaymentDialogOpen, setIsSelfPaymentDialogOpen] = useState(false)
+  const [selfPaymentAmount, setSelfPaymentAmount] = useState("")
+  const [selfPaymentType, setSelfPaymentType] = useState<'drinks' | 'treasury' | 'fines'>('drinks')
+
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
@@ -166,14 +171,25 @@ export default function Dashboard() {
     )
   }
 
-  const handlePay = (type: 'drinks' | 'treasury' | 'fines') => {
+  const handlePayInitiate = (type: 'drinks' | 'treasury' | 'fines') => {
     const amount = type === 'drinks' ? Math.abs(currentUserProfile.balance) : type === 'treasury' ? feeStatus.open : fineStatus;
     if (amount <= 0) {
       toast({ title: "Alles erledigt!" });
       return;
     }
+    setSelfPaymentType(type);
+    setSelfPaymentAmount(amount.toFixed(2));
+    setIsSelfPaymentDialogOpen(true);
+  }
 
-    const subject = type === 'drinks' ? `Getraenkekonto: ${currentUserProfile.name}` : type === 'treasury' ? `Beitrag: ${currentUserProfile.name}` : `Strafen: ${currentUserProfile.name}`;
+  const handlePayConfirm = () => {
+    const amount = parseFloat(selfPaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte gib einen gültigen Betrag ein." });
+      return;
+    }
+
+    const subject = selfPaymentType === 'drinks' ? `Getraenkekonto: ${currentUserProfile.name}` : selfPaymentType === 'treasury' ? `Beitrag: ${currentUserProfile.name}` : `Strafen: ${currentUserProfile.name}`;
     
     if (settings.paypalMeLink && settings.paypalMeLink.includes("paypal.me")) {
       let link = settings.paypalMeLink.trim();
@@ -184,6 +200,7 @@ export default function Dashboard() {
       const email = settings.treasuryPaypalEmail || settings.paypalMeLink;
       window.open(`https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`, '_blank');
     }
+    setIsSelfPaymentDialogOpen(false);
   }
 
   const handlePayClubhouse = () => {
@@ -293,7 +310,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mt-2">
                    <p className="text-[10px] text-muted-foreground">{currentUserProfile.balance < 0 ? 'Offen' : 'Guthaben'}</p>
                    {currentUserProfile.balance < 0 && (
-                     <Button size="sm" variant="link" onClick={() => handlePay('drinks')} className="h-6 p-0 text-xs font-bold text-primary flex items-center gap-1">
+                     <Button size="sm" variant="link" onClick={() => handlePayInitiate('drinks')} className="h-6 p-0 text-xs font-bold text-primary flex items-center gap-1">
                         Bezahlen <ExternalLink className="h-3 w-3" />
                      </Button>
                    )}
@@ -312,7 +329,7 @@ export default function Dashboard() {
                     {feeStatus.open > 0 ? `-${feeStatus.open.toFixed(2)}` : feeStatus.open.toFixed(2)} €
                   </h2>
                   {feeStatus.open > 0 && (
-                    <Button size="sm" variant="link" onClick={() => handlePay('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 flex items-center gap-1">
+                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 flex items-center gap-1">
                       Bezahlen <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}
@@ -341,7 +358,7 @@ export default function Dashboard() {
                     {fineStatus > 0 ? `-${fineStatus.toFixed(2)}` : '0.00'} €
                   </h2>
                   {fineStatus > 0 && (
-                    <Button size="sm" variant="link" onClick={() => handlePay('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 flex items-center gap-1">
+                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 flex items-center gap-1">
                       Bezahlen <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}
@@ -481,6 +498,38 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
+
+        {/* User Self-Payment Dialog */}
+        <Dialog open={isSelfPaymentDialogOpen} onOpenChange={setIsSelfPaymentDialogOpen}>
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Zahlung vorbereiten</DialogTitle>
+              <DialogDescription>
+                Wie viel möchtest du für dein {selfPaymentType === 'drinks' ? 'Getränkekonto' : selfPaymentType === 'treasury' ? 'Beitragskonto' : 'Strafenkonto'} bezahlen?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Betrag (€)</Label>
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    value={selfPaymentAmount} 
+                    onChange={e => setSelfPaymentAmount(e.target.value)} 
+                    className="h-12 rounded-xl pl-10"
+                  />
+                  <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handlePayConfirm} className="w-full h-12 rounded-xl font-bold cyan-glow">
+                Weiter zu PayPal
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   )

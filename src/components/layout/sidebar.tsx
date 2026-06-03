@@ -3,7 +3,6 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote, Settings, Scale } from "lucide-center"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
@@ -12,7 +11,17 @@ import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { useStore, Role } from "@/lib/store"
 import Image from "next/image"
-import { History as HistoryIcon, Users as UsersIcon, LayoutDashboard as DashboardIcon, Sparkles as SparklesIcon, LogOut as LogOutIcon, Menu as MenuIcon, Banknote as BanknoteIcon, Settings as SettingsIcon, Scale as ScaleIcon } from "lucide-react"
+import { 
+  History as HistoryIcon, 
+  Users as UsersIcon, 
+  LayoutDashboard as DashboardIcon, 
+  Sparkles as SparklesIcon, 
+  LogOut as LogOutIcon, 
+  Menu as MenuIcon, 
+  Banknote as BanknoteIcon, 
+  Settings as SettingsIcon, 
+  Scale as ScaleIcon 
+} from "lucide-react"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: DashboardIcon },
@@ -43,12 +52,12 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex h-16 items-center px-6 border-b border-border">
-        <div className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="relative h-10 w-10 flex-shrink-0">
             <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" priority />
           </div>
           <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
-        </div>
+        </Link>
       </div>
       
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
@@ -130,12 +139,12 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
               </SheetHeader>
               <div className="flex flex-col h-full">
                 <div className="flex h-auto min-h-16 items-center px-6 border-b border-border pt-safe-top">
-                  <div className="flex items-center gap-3 h-16">
+                  <Link href="/" className="flex items-center gap-3 h-16 hover:opacity-80 transition-opacity" onClick={() => setIsOpen(false)}>
                     <div className="relative h-8 w-8">
                       <Image src="/logo.png" alt="Logo" fill className="object-contain" />
                     </div>
                     <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
-                  </div>
+                  </Link>
                 </div>
                 <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
                   {navigation.map((item) => {
@@ -172,12 +181,12 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex items-center gap-3 ml-2 h-16">
+          <Link href="/" className="flex items-center gap-3 ml-2 h-16 hover:opacity-80 transition-opacity">
             <div className="relative h-6 w-6">
               <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" />
             </div>
             <span className="font-bold text-lg text-primary">Bierliste RWS2</span>
-          </div>
+          </Link>
         </div>
         <div className="flex items-center">{rightElement}</div>
       </div>

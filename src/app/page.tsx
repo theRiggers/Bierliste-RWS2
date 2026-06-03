@@ -143,7 +143,11 @@ export default function Dashboard() {
     
     // Fallback: If no paypal link exists, use email
     if (settings.paypalMeLink && settings.paypalMeLink.includes("paypal.me")) {
-      const baseUrl = settings.paypalMeLink.endsWith("/") ? settings.paypalMeLink : `${settings.paypalMeLink}/`;
+      let link = settings.paypalMeLink.trim();
+      if (!link.startsWith('http')) {
+        link = `https://${link}`;
+      }
+      const baseUrl = link.endsWith("/") ? link : `${link}/`;
       window.location.href = `${baseUrl}${amount.toFixed(2)}`;
     } else {
       const email = settings.treasuryPaypalEmail;

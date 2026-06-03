@@ -114,14 +114,29 @@ export default function Dashboard() {
       const mIdxInList = FEE_MONTHS.indexOf(m);
       const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
       
-      const isPastOrCurrent = currentMIdxInList === -1 ? true : mIdxInList <= currentMIdxInList;
+      let isPastOrCurrent = false;
+      if (currentMIdxInList !== -1) {
+        isPastOrCurrent = mIdxInList <= currentMIdxInList;
+      } else {
+        // July(6) is before start, June(5) is after end
+        if (currentMonth === 5) isPastOrCurrent = true; 
+        else isPastOrCurrent = false;
+      }
+
       return { month: m, name: MONTH_NAMES_SHORT[m], isPaid, isPastOrCurrent };
     });
 
-    if (isAnnual) return { open: 0, paidMonths: 12, isAnnual: true, monthsStatus };
+    if (isAnnual) return { open: 0, paidMonths: 10, isAnnual: true, monthsStatus };
     
     const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
-    const monthsToPay = currentMIdxInList !== -1 ? currentMIdxInList + 1 : 0;
+    let monthsToPay = 0;
+    if (currentMIdxInList !== -1) {
+      monthsToPay = currentMIdxInList + 1;
+    } else {
+      if (currentMonth === 5) monthsToPay = 10;
+      else monthsToPay = 0;
+    }
+
     const paidCount = userFees.filter(f => f.type === 'monthly').length;
     
     return { open: Math.max(0, monthsToPay - paidCount) * settings.monthlyFee, paidMonths: paidCount, isAnnual: false, monthsStatus };
@@ -326,7 +341,7 @@ export default function Dashboard() {
                     </Button>
                   )}
                 </div>
-                <div className="mt-4 grid grid-cols-6 gap-1 pt-4 border-t border-border">
+                <div className="mt-4 grid grid-cols-5 gap-1 pt-4 border-t border-border">
                   {feeStatus.monthsStatus.map((m) => (
                     <div key={m.month} className="flex flex-col items-center">
                       <div className={cn("h-6 w-6 rounded-lg flex items-center justify-center mb-1 text-[8px] font-bold", m.isPaid ? "bg-emerald-500 text-white" : m.isPastOrCurrent ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-muted text-muted-foreground")}>

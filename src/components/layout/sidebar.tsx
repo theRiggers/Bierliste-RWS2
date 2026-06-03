@@ -19,11 +19,13 @@ import {
   Menu as MenuIcon, 
   Banknote as BanknoteIcon, 
   Settings as SettingsIcon, 
-  Scale as ScaleIcon 
+  Scale as ScaleIcon,
+  Calendar as CalendarIcon
 } from "lucide-react"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: DashboardIcon },
+  { name: 'Kalender', href: '/calendar', icon: CalendarIcon },
   { name: 'Verlauf', href: '/history', icon: HistoryIcon },
   { name: 'Beiträge', href: '/membership-fees', icon: BanknoteIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart'] },

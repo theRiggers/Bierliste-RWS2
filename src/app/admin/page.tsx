@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Mail, Scale, Plus, Trash2, Github, Copy } from "lucide-react"
+import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Mail, Scale, Plus, Trash2, Github, Copy, Trophy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [paypalMeLink, setPaypalMeLink] = useState("")
   const [clubhouseEmail, setClubhouseEmail] = useState("")
   const [treasuryEmail, setTreasuryEmail] = useState("")
+  const [footballDeLink, setFootballDeLink] = useState("")
 
   // Form State Fine Types
   const [newFineName, setNewFineName] = useState("")
@@ -45,6 +46,7 @@ export default function AdminPage() {
       setPaypalMeLink(settings.paypalMeLink)
       setClubhouseEmail(settings.clubhousePaypalEmail)
       setTreasuryEmail(settings.treasuryPaypalEmail)
+      setFootballDeLink(settings.footballDeLink || "")
     }
   }, [settings])
 
@@ -79,6 +81,7 @@ export default function AdminPage() {
         paypalMeLink,
         clubhousePaypalEmail: clubhouseEmail,
         treasuryPaypalEmail: treasuryEmail,
+        footballDeLink,
       })
       toast({ title: "Einstellungen gespeichert" })
     } catch (error) {
@@ -129,7 +132,7 @@ export default function AdminPage() {
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-5xl mx-auto w-full pb-20">
           <Tabs defaultValue={isAdmin ? "general" : "fines"} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8 rounded-xl h-12">
-              {isAdmin && <TabsTrigger value="general" className="rounded-lg">Preise & PayPal</TabsTrigger>}
+              {isAdmin && <TabsTrigger value="general" className="rounded-lg">Preise & Integrationen</TabsTrigger>}
               <TabsTrigger value="fines" className="rounded-lg">Strafenkatalog</TabsTrigger>
             </TabsList>
 
@@ -162,34 +165,26 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
-                  <CardHeader className="bg-blue-50">
+                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-blue-50">
+                  <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
-                      <LinkIcon className="h-5 w-5" />
-                      Zahlungswege
+                      <LinkIcon className="h-5 w-5" /> Integrationen
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-6 space-y-6">
+                  <CardContent className="space-y-6">
                     <div className="space-y-2">
-                      <Label htmlFor="paypal-me">PayPal.me Link (Optional für App-Start)</Label>
+                      <Label htmlFor="football-de">Fußball.de Spielplan-Link</Label>
+                      <div className="relative">
+                        <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="football-de" placeholder="https://www.fussball.de/..." value={footballDeLink} onChange={(e) => setFootballDeLink(e.target.value)} className="pl-10" />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground italic">Füge den Link zu deinem Team auf Fußball.de ein.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="paypal-me">PayPal.me Link (Optional)</Label>
                       <div className="relative">
                         <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input id="paypal-me" placeholder="https://paypal.me/DeinName" value={paypalMeLink} onChange={(e) => setPaypalMeLink(e.target.value)} className="pl-10" />
-                      </div>
-                      <p className="text-[10px] text-muted-foreground italic">Trage hier deinen PayPal.me Link ein, um den direkten Start der PayPal-App zu forcieren.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="treasury-email">PayPal E-Mail Schatzmeister</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="treasury-email" placeholder="email@paypal.com" value={treasuryEmail} onChange={(e) => setTreasuryEmail(e.target.value)} className="pl-10" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="clubhouse-email">PayPal E-Mail Vereinsheim (Marlene)</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="clubhouse-email" placeholder="marlene@verein.de" value={clubhouseEmail} onChange={(e) => setClubhouseEmail(e.target.value)} className="pl-10" />
                       </div>
                     </div>
                   </CardContent>

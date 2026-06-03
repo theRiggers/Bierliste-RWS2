@@ -5,7 +5,7 @@ import React, { createContext, useContext, useMemo, useEffect, useState } from '
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 
-export type Role = 'player' | 'admin' | 'kassenwart' | 'strafenwart';
+export type Role = 'player' | 'admin' | 'kassenwart' | 'strafenwart' | 'coach' | 'assistant_coach';
 
 export interface Player {
   id: string;
@@ -76,6 +76,15 @@ export interface FineType {
   amount: number;
 }
 
+export interface TeamEvent {
+  id: string;
+  title: string;
+  description?: string;
+  type: 'training' | 'match' | 'social';
+  date: string; // ISO String
+  location?: string;
+}
+
 export interface AppSettings {
   beerPrice: number;
   cratePrice: number;
@@ -84,6 +93,7 @@ export interface AppSettings {
   paypalMeLink: string;
   clubhousePaypalEmail: string;
   treasuryPaypalEmail: string;
+  footballDeLink?: string;
 }
 
 // Fallback constants
@@ -112,6 +122,7 @@ interface StoreContextType {
   treasuryExpenses: TreasuryExpense[];
   fines: Fine[];
   fineCatalog: FineType[];
+  teamEvents: TeamEvent[];
   currentUserProfile: Player | null;
   settings: AppSettings;
   loading: boolean;
@@ -131,6 +142,8 @@ interface StoreContextType {
   updateFineType: (id: string, name: string, amount: number) => Promise<void>;
   addFineType: (name: string, amount: number) => Promise<void>;
   deleteFineType: (id: string) => Promise<void>;
+  addTeamEvent: (event: Omit<TeamEvent, 'id'>) => Promise<void>;
+  deleteTeamEvent: (id: string) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -168,10 +181,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fineCatalogQuery = useMemo(() => db ? query(collection(db, 'fineCatalog'), orderBy('name', 'asc')) : null, [db]);
   const { data: fineCatalogData, loading: fineCatalogLoading } = useCollection<Omit<FineType, 'id'>>(fineCatalogQuery);
 
+  const eventsQuery = useMemo(() => db ? query(collection(db, 'teamEvents'), orderBy('date', 'asc')) : null, [db]);
+  const { data: eventsData, loading: eventsLoading } = useCollection<Omit<TeamEvent, 'id'>>(eventsQuery);
+
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
-  // Derived Memos (Order is critical!)
+  // Derived Memos
   const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
@@ -180,6 +196,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const treasuryExpenses = useMemo(() => tExpensesData?.map(d => ({ ...d.data, id: d.id })) || [], [tExpensesData]);
   const fines = useMemo(() => finesData?.map(d => ({ ...d.data, id: d.id })) || [], [finesData]);
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
+  const teamEvents = useMemo(() => eventsData?.map(d => ({ ...d.data, id: d.id })) || [], [eventsData]);
 
   const settings = useMemo<AppSettings>(() => ({
     beerPrice: settingsData?.beerPrice ?? BEER_PRICE,
@@ -189,6 +206,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     paypalMeLink: settingsData?.paypalMeLink ?? PAYPAL_ME_LINK,
     clubhousePaypalEmail: settingsData?.clubhousePaypalEmail ?? CLUBHOUSE_PAYPAL_EMAIL,
     treasuryPaypalEmail: settingsData?.treasuryPaypalEmail ?? TREASURY_PAYPAL_EMAIL,
+    footballDeLink: settingsData?.footballDeLink || "",
   }), [settingsData]);
 
   const currentUserProfile = useMemo(() => {
@@ -205,10 +223,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
 
-  // Seeding initial fine catalog and role checks (Effects after memos)
   useEffect(() => {
     if (db && !fineCatalogLoading) {
-      // Seed Fine Catalog
       if (fineCatalog.length === 0 && currentUserProfile?.role === 'admin') {
         const batch = writeBatch(db);
         DEFAULT_FINES.forEach(name => {
@@ -217,8 +233,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
         batch.commit();
       }
-
-      // Ensure Jamie Rigden is Admin (by name)
       const jamie = players.find(p => p.name.trim().toLowerCase() === "jamie rigden" && p.role !== 'admin');
       if (jamie) {
         setDoc(doc(db, 'players', jamie.id), { role: 'admin' }, { merge: true });
@@ -232,10 +246,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const player = players.find(p => p.id === playerId);
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     if (!player) return;
-
     addDoc(collection(db, 'expenses'), { playerId, playerName: player.name, itemType, cost, date: new Date().toISOString() });
     setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) - cost }, { merge: true });
-
     if (teamKasse && playerId !== teamKasse.id) {
       setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) + cost }, { merge: true });
     }
@@ -247,7 +259,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!expense) return;
     const player = players.find(p => p.id === expense.playerId);
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
-
     deleteDoc(doc(db, 'expenses', expenseId));
     if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true });
     if (teamKasse && expense.playerId !== teamKasse.id) {
@@ -259,7 +270,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db || !currentUserProfile) return;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-
     addDoc(collection(db, 'payments'), { playerId, playerName: player.name, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
     setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) + amount }, { merge: true });
   };
@@ -269,7 +279,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) return;
     const player = players.find(p => p.id === payment.playerId);
-
     deleteDoc(doc(db, 'payments', paymentId));
     if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) - payment.amount }, { merge: true });
   };
@@ -299,7 +308,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db || !currentUserProfile) return;
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     if (!teamKasse) return;
-
     addDoc(collection(db, 'treasuryExpenses'), { description, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
     setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) - amount }, { merge: true });
   };
@@ -309,7 +317,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const expense = treasuryExpenses.find(e => e.id === expenseId);
     if (!expense) return;
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
-
     deleteDoc(doc(db, 'treasuryExpenses', expenseId));
     if (teamKasse) setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) + expense.amount }, { merge: true });
   };
@@ -341,11 +348,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, 'fineCatalog', id));
   };
 
+  const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
+    if (!db) return;
+    await addDoc(collection(db, 'teamEvents'), event);
+  };
+
+  const deleteTeamEvent = async (id: string) => {
+    if (!db) return;
+    await deleteDoc(doc(db, 'teamEvents', id));
+  };
+
   const addBezahlkiste = () => {
     if (!db || !currentUserProfile) return;
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     if (!teamKasse) return;
-
     addDoc(collection(db, 'treasuryExpenses'), { description: "Bezahlkiste (für Einzelverkauf)", amount: settings.cratePrice, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
     setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) - settings.cratePrice }, { merge: true });
   };
@@ -373,13 +389,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, currentUserProfile, settings,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, currentUserProfile, settings,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || eventsLoading,
       totalMannschaftskasse,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
-      addTreasuryExpense, deleteTreasuryExpense, addFine, deleteFine, updateFineType, addFineType, deleteFineType, addBezahlkiste,
-      addPlayer, updatePlayer, deletePlayer, updateSettings
+      addTreasuryExpense, deleteTreasuryExpense, addFine, deleteFine, updateFineType, addFineType, deleteFineType,
+      addTeamEvent, deleteTeamEvent,
+      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings
     }}>
       {children}
     </StoreContext.Provider>

@@ -106,6 +106,8 @@ export default function PlayersPage() {
                     <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="player">Spieler</SelectItem>
+                      <SelectItem value="coach">Trainer</SelectItem>
+                      <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="kassenwart">Kassenwart</SelectItem>
                       <SelectItem value="strafenwart">Strafenwart</SelectItem>
@@ -134,6 +136,8 @@ export default function PlayersPage() {
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="player">Spieler</SelectItem>
+                        <SelectItem value="coach">Trainer</SelectItem>
+                        <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="kassenwart">Kassenwart</SelectItem>
                         <SelectItem value="strafenwart">Strafenwart</SelectItem>
@@ -198,6 +202,8 @@ export default function PlayersPage() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="player">Spieler</SelectItem>
+                    <SelectItem value="coach">Trainer</SelectItem>
+                    <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="kassenwart">Kassenwart</SelectItem>
                     <SelectItem value="strafenwart">Strafenwart</SelectItem>

@@ -138,22 +138,24 @@ export default function CalendarPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                    <DialogHeader className="p-6 pb-0">
+                    <DialogHeader className="p-6 pb-2">
                       <DialogTitle>Bulk-Training hinzufügen</DialogTitle>
                       <DialogDescription>Wähle mehrere Tage aus, um Trainingsserien zu erstellen.</DialogDescription>
                     </DialogHeader>
                     
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                      <div className="grid md:grid-cols-2 gap-8">
+                    <ScrollArea className="flex-1 px-6 pb-6">
+                      <div className="grid md:grid-cols-2 gap-6 md:gap-8">
                         <div className="space-y-4">
-                          <Label>Daten wählen</Label>
-                          <Calendar
-                            mode="multiple"
-                            selected={bulkDates}
-                            onSelect={(dates) => setBulkDates(dates || [])}
-                            className="rounded-xl border shadow-sm"
-                            locale={de}
-                          />
+                          <Label className="text-sm font-bold">Daten wählen</Label>
+                          <div className="flex justify-center md:justify-start">
+                            <Calendar
+                              mode="multiple"
+                              selected={bulkDates}
+                              onSelect={(dates) => setBulkDates(dates || [])}
+                              className="rounded-xl border shadow-sm w-fit"
+                              locale={de}
+                            />
+                          </div>
                           <p className="text-[10px] text-muted-foreground">{bulkDates.length} Tage ausgewählt</p>
                         </div>
                         
@@ -169,45 +171,43 @@ export default function CalendarPage() {
                           
                           <div className="space-y-4 pt-4 border-t">
                             <div className="flex items-center justify-between">
-                              <Label htmlFor="same-time" className="cursor-pointer">Gleiche Uhrzeit für alle?</Label>
+                              <Label htmlFor="same-time" className="cursor-pointer text-sm">Gleiche Uhrzeit?</Label>
                               <Switch id="same-time" checked={sameTimeForAll} onCheckedChange={setSameTimeForAll} />
                             </div>
                             
                             {sameTimeForAll ? (
                               <div className="space-y-2">
                                 <Label>Uhrzeit</Label>
-                                <Input type="time" value={globalTime} onChange={e => setGlobalTime(e.target.value)} className="h-12 text-lg" />
+                                <Input type="time" value={globalTime} onChange={e => setGlobalTime(e.target.value)} className="h-10" />
                               </div>
                             ) : (
                               <div className="space-y-3">
-                                <Label className="text-xs text-muted-foreground uppercase font-bold">Individuelle Zeiten</Label>
-                                <ScrollArea className="h-[200px] pr-4">
-                                  <div className="space-y-2">
-                                    {bulkDates.sort((a, b) => a.getTime() - b.getTime()).map((date) => {
-                                      const ds = format(date, 'yyyy-MM-dd')
-                                      return (
-                                        <div key={ds} className="flex items-center justify-between gap-4 p-2 bg-muted/30 rounded-lg">
-                                          <span className="text-xs font-medium">{format(date, 'dd.MM. (EEE)', { locale: de })}</span>
-                                          <Input 
-                                            type="time" 
-                                            className="w-24 h-8 text-xs" 
-                                            value={individualTimes[ds] || globalTime}
-                                            onChange={(e) => setIndividualTimes(prev => ({ ...prev, [ds]: e.target.value }))}
-                                          />
-                                        </div>
-                                      )
-                                    })}
-                                    {bulkDates.length === 0 && <p className="text-xs italic text-muted-foreground text-center py-4">Wähle zuerst Daten im Kalender links.</p>}
-                                  </div>
-                                </ScrollArea>
+                                <Label className="text-[10px] text-muted-foreground uppercase font-bold">Individuelle Zeiten</Label>
+                                <div className="space-y-2">
+                                  {bulkDates.sort((a, b) => a.getTime() - b.getTime()).map((date) => {
+                                    const ds = format(date, 'yyyy-MM-dd')
+                                    return (
+                                      <div key={ds} className="flex items-center justify-between gap-4 p-2 bg-muted/30 rounded-lg">
+                                        <span className="text-[10px] font-medium">{format(date, 'dd.MM. (EEE)', { locale: de })}</span>
+                                        <Input 
+                                          type="time" 
+                                          className="w-24 h-8 text-xs" 
+                                          value={individualTimes[ds] || globalTime}
+                                          onChange={(e) => setIndividualTimes(prev => ({ ...prev, [ds]: e.target.value }))}
+                                        />
+                                      </div>
+                                    )
+                                  })}
+                                  {bulkDates.length === 0 && <p className="text-xs italic text-muted-foreground text-center py-4">Wähle zuerst Daten im Kalender.</p>}
+                                </div>
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </ScrollArea>
 
-                    <DialogFooter className="p-6 bg-muted/30 border-t">
+                    <DialogFooter className="p-4 md:p-6 bg-muted/30 border-t">
                       <Button onClick={handleBulkAdd} disabled={isSubmitting || bulkDates.length === 0} className="w-full h-12 rounded-xl font-bold">
                         {isSubmitting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                         {bulkDates.length} Termine anlegen

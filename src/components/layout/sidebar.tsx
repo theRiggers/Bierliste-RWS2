@@ -1,4 +1,3 @@
-
 "use client"
 
 import Link from "next/link"
@@ -21,7 +20,8 @@ import {
   Settings as SettingsIcon, 
   Scale as ScaleIcon,
   Calendar as CalendarIcon,
-  TrendingUp as TreasuryIcon
+  TrendingUp as TreasuryIcon,
+  Smartphone as SmartphoneIcon
 } from "lucide-react"
 
 const navigation = [
@@ -32,6 +32,7 @@ const navigation = [
   { name: 'Mannschaftskasse', href: '/treasury', icon: TreasuryIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart'] },
   { name: 'Spieler', href: '/players', icon: UsersIcon, roles: ['admin', 'kassenwart'] },
+  { name: 'App installieren', href: '/how-to', icon: SmartphoneIcon },
   { name: 'Administration', href: '/admin', icon: SettingsIcon, roles: ['admin'] },
 ]
 

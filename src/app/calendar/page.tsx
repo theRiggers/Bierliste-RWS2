@@ -4,12 +4,12 @@
 import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, TeamEvent } from "@/lib/store"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription as CardDesc } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock, Globe, CalendarDays, Check, X, Calendar as CalendarDaysIcon } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { Checkbox } from "@/components/ui/checkbox"
 
 const WEEKDAYS = [
   { id: 1, name: "Montag", short: "Mo" },
@@ -32,7 +31,7 @@ const WEEKDAYS = [
 export default function CalendarPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { teamEvents, addTeamEvent, deleteTeamEvent, currentUserProfile, settings, loading: storeLoading } = useStore()
+  const { teamEvents, addTeamEvent, updateTeamEvent, deleteTeamEvent, currentUserProfile, settings, loading: storeLoading } = useStore()
   
   // Single Add State
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -42,7 +41,7 @@ export default function CalendarPage() {
   const [newType, setNewType] = useState<'training' | 'match' | 'social'>('training')
   const [newLocation, setNewLocation] = useState("")
   
-  // Bulk Add State (New Logic)
+  // Bulk Add State
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [bulkTitle, setBulkTitle] = useState("Training")
   const [bulkLocation, setBulkLocation] = useState("")
@@ -50,6 +49,15 @@ export default function CalendarPage() {
   const [weekdayTimes, setWeekdayTimes] = useState<Record<number, string>>({})
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState("")
+
+  // Edit State
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<TeamEvent | null>(null)
+  const [editTitle, setEditTitle] = useState("")
+  const [editDate, setEditDate] = useState("")
+  const [editTime, setEditTime] = useState("")
+  const [editType, setEditType] = useState<'training' | 'match' | 'social'>('training')
+  const [editLocation, setEditLocation] = useState("")
   
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -82,6 +90,36 @@ export default function CalendarPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleEditEvent = async () => {
+    if (!editingEvent || !editTitle || !editDate || !editTime) return
+    setIsSubmitting(true)
+    try {
+      const combinedDate = new Date(`${editDate}T${editTime}`)
+      await updateTeamEvent(editingEvent.id, {
+        title: editTitle,
+        type: editType,
+        date: combinedDate.toISOString(),
+        location: editLocation,
+      })
+      setIsEditOpen(false)
+      setEditingEvent(null)
+      toast({ title: "Termin aktualisiert" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const openEditDialog = (event: TeamEvent) => {
+    const d = new Date(event.date);
+    setEditingEvent(event);
+    setEditTitle(event.title);
+    setEditDate(format(d, 'yyyy-MM-dd'));
+    setEditTime(format(d, 'HH:mm'));
+    setEditType(event.type);
+    setEditLocation(event.location || "");
+    setIsEditOpen(true);
   }
 
   const handleBulkAdd = async () => {
@@ -185,7 +223,6 @@ export default function CalendarPage() {
                     
                     <ScrollArea className="flex-1">
                       <div className="p-6 space-y-8">
-                        {/* Title & Location */}
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Titel</Label>
@@ -197,7 +234,6 @@ export default function CalendarPage() {
                           </div>
                         </div>
 
-                        {/* Weekday Selection */}
                         <div className="space-y-4">
                           <Label className="text-sm font-bold flex items-center gap-2">
                             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">1</span>
@@ -220,7 +256,6 @@ export default function CalendarPage() {
                           </div>
                         </div>
 
-                        {/* Times for Weekdays */}
                         {selectedWeekdays.length > 0 && (
                           <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                             <Label className="text-sm font-bold flex items-center gap-2">
@@ -243,7 +278,6 @@ export default function CalendarPage() {
                           </div>
                         )}
 
-                        {/* Date Range */}
                         <div className="space-y-4">
                           <Label className="text-sm font-bold flex items-center gap-2">
                             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">3</span>
@@ -358,9 +392,14 @@ export default function CalendarPage() {
                         </div>
                       </div>
                       {isEditor && (
-                        <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive shrink-0">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(event)} className="text-muted-foreground hover:text-primary shrink-0">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive shrink-0">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </CardContent>
                   </div>
@@ -369,6 +408,40 @@ export default function CalendarPage() {
             )}
           </div>
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Termin bearbeiten</DialogTitle>
+              <DialogDescription>Passe die Details dieses Termins an.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2"><Label>Titel</Label><Input value={editTitle} onChange={e => setEditTitle(e.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Datum</Label><Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} /></div>
+              </div>
+              <div className="space-y-2">
+                <Label>Typ</Label>
+                <Select value={editType} onValueChange={(v: any) => setEditType(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="training">Training</SelectItem>
+                    <SelectItem value="match">Spiel</SelectItem>
+                    <SelectItem value="social">Mannschaftsabend / Event</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label>Ort (Optional)</Label><Input value={editLocation} onChange={e => setEditLocation(e.target.value)} /></div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleEditEvent} disabled={isSubmitting} className="w-full rounded-xl">
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Änderungen speichern"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   )

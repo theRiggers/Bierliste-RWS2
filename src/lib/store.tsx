@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -143,6 +144,7 @@ interface StoreContextType {
   addFineType: (name: string, amount: number) => Promise<void>;
   deleteFineType: (id: string) => Promise<void>;
   addTeamEvent: (event: Omit<TeamEvent, 'id'>) => Promise<void>;
+  updateTeamEvent: (id: string, updates: Partial<TeamEvent>) => Promise<void>;
   deleteTeamEvent: (id: string) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
@@ -356,6 +358,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await addDoc(collection(db, 'teamEvents'), event);
   };
 
+  const updateTeamEvent = async (id: string, updates: Partial<TeamEvent>) => {
+    if (!db) return;
+    await setDoc(doc(db, 'teamEvents', id), updates, { merge: true });
+  };
+
   const deleteTeamEvent = async (id: string) => {
     if (!db) return;
     await deleteDoc(doc(db, 'teamEvents', id));
@@ -398,7 +405,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, addFine, deleteFine, updateFineType, addFineType, deleteFineType,
-      addTeamEvent, deleteTeamEvent,
+      addTeamEvent, updateTeamEvent, deleteTeamEvent,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings
     }}>
       {children}
@@ -407,7 +414,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useStore() {
-  const context = useContext(StoreContext);
-  if (context === undefined) throw new Error('useStore must be used within a StoreProvider');
-  return context;
+  const useContextResult = useContext(StoreContext);
+  if (useContextResult === undefined) throw new Error('useStore must be used within a StoreProvider');
+  return useContextResult;
 }

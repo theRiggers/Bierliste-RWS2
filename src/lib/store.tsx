@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -94,6 +93,7 @@ export interface AppSettings {
   clubhousePaypalEmail: string;
   treasuryPaypalEmail: string;
   footballDeLink?: string;
+  fupaLink?: string;
 }
 
 // Fallback constants
@@ -207,6 +207,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     clubhousePaypalEmail: settingsData?.clubhousePaypalEmail ?? CLUBHOUSE_PAYPAL_EMAIL,
     treasuryPaypalEmail: settingsData?.treasuryPaypalEmail ?? TREASURY_PAYPAL_EMAIL,
     footballDeLink: settingsData?.footballDeLink || "",
+    fupaLink: settingsData?.fupaLink || "",
   }), [settingsData]);
 
   const currentUserProfile = useMemo(() => {
@@ -233,8 +234,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
         batch.commit();
       }
-      const jamie = players.find(p => p.name.trim().toLowerCase() === "jamie rigden" && p.role !== 'admin');
-      if (jamie) {
+      
+      // Admin auto-assignment for Jamie Rigden
+      const jamie = players.find(p => p.name.trim().toLowerCase() === "jamie rigden");
+      if (jamie && jamie.role !== 'admin') {
         setDoc(doc(db, 'players', jamie.id), { role: 'admin' }, { merge: true });
       }
     }

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock, Globe } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay } from "date-fns"
 import { de } from "date-fns/locale"
@@ -91,6 +90,13 @@ export default function CalendarPage() {
             <CalendarIcon className="h-6 w-6" /> Teamkalender
           </h1>
           <div className="flex items-center gap-4">
+            {settings.fupaLink && (
+              <Button variant="outline" asChild className="rounded-xl border-blue-600 text-blue-700 hover:bg-blue-50">
+                <a href={settings.fupaLink} target="_blank" rel="noopener noreferrer">
+                  <Globe className="h-4 w-4 mr-2" /> FuPa.net
+                </a>
+              </Button>
+            )}
             {settings.footballDeLink && (
               <Button variant="outline" asChild className="rounded-xl border-primary text-primary hover:bg-primary/5">
                 <a href={settings.footballDeLink} target="_blank" rel="noopener noreferrer">
@@ -132,9 +138,16 @@ export default function CalendarPage() {
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-4xl mx-auto w-full pb-20">
           <div className="md:hidden flex flex-col gap-4 mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Teamkalender</h1>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {settings.fupaLink && (
+                <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700">
+                  <a href={settings.fupaLink} target="_blank" rel="noopener noreferrer">
+                    <Globe className="h-3 w-3 mr-1" /> FuPa.net
+                  </a>
+                </Button>
+              )}
               {settings.footballDeLink && (
-                <Button variant="outline" size="sm" asChild className="flex-1 rounded-xl text-xs">
+                <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-xs">
                   <a href={settings.footballDeLink} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-3 w-3 mr-1" /> Fußball.de
                   </a>
@@ -142,7 +155,7 @@ export default function CalendarPage() {
               )}
               {isEditor && (
                  <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                    <DialogTrigger asChild><Button size="sm" className="flex-1 rounded-xl text-xs"><Plus className="h-3 w-3 mr-1" /> Termin</Button></DialogTrigger>
+                    <DialogTrigger asChild><Button size="sm" className="flex-1 min-w-[120px] rounded-xl text-xs"><Plus className="h-3 w-3 mr-1" /> Termin</Button></DialogTrigger>
                     <DialogContent className="max-w-[95vw] rounded-2xl">
                       <DialogHeader><DialogTitle>Neuer Termin</DialogTitle></DialogHeader>
                       <div className="grid gap-4 py-4">

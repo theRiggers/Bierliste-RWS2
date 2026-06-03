@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,9 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Mail, Scale, Plus, Trash2, Github, Copy, Trophy } from "lucide-react"
+import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Scale, Plus, Trash2, Github, Copy, Trophy, Globe } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AdminPage() {
@@ -28,6 +26,7 @@ export default function AdminPage() {
   const [clubhouseEmail, setClubhouseEmail] = useState("")
   const [treasuryEmail, setTreasuryEmail] = useState("")
   const [footballDeLink, setFootballDeLink] = useState("")
+  const [fupaLink, setFupaLink] = useState("")
 
   // Form State Fine Types
   const [newFineName, setNewFineName] = useState("")
@@ -43,10 +42,11 @@ export default function AdminPage() {
       setCratePrice(settings.cratePrice.toString())
       setMonthlyFee(settings.monthlyFee.toString())
       setAnnualFee(settings.annualFee.toString())
-      setPaypalMeLink(settings.paypalMeLink)
-      setClubhouseEmail(settings.clubhousePaypalEmail)
-      setTreasuryEmail(settings.treasuryPaypalEmail)
+      setPaypalMeLink(settings.paypalMeLink || "")
+      setClubhouseEmail(settings.clubhousePaypalEmail || "")
+      setTreasuryEmail(settings.treasuryPaypalEmail || "")
       setFootballDeLink(settings.footballDeLink || "")
+      setFupaLink(settings.fupaLink || "")
     }
   }, [settings])
 
@@ -82,6 +82,7 @@ export default function AdminPage() {
         clubhousePaypalEmail: clubhouseEmail,
         treasuryPaypalEmail: treasuryEmail,
         footballDeLink,
+        fupaLink,
       })
       toast({ title: "Einstellungen gespeichert" })
     } catch (error) {
@@ -172,13 +173,21 @@ export default function AdminPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="football-de">Fußball.de Spielplan-Link</Label>
-                      <div className="relative">
-                        <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="football-de" placeholder="https://www.fussball.de/..." value={footballDeLink} onChange={(e) => setFootballDeLink(e.target.value)} className="pl-10" />
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="football-de">Fußball.de Spielplan-Link</Label>
+                        <div className="relative">
+                          <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input id="football-de" placeholder="https://www.fussball.de/..." value={footballDeLink} onChange={(e) => setFootballDeLink(e.target.value)} className="pl-10" />
+                        </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground italic">Füge den Link zu deinem Team auf Fußball.de ein.</p>
+                      <div className="space-y-2">
+                        <Label htmlFor="fupa-link">FuPa.net Spielplan-Link</Label>
+                        <div className="relative">
+                          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input id="fupa-link" placeholder="https://www.fupa.net/..." value={fupaLink} onChange={(e) => setFupaLink(e.target.value)} className="pl-10" />
+                        </div>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="paypal-me">PayPal.me Link (Optional)</Label>

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,12 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock, Globe } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock, Globe, CalendarDays, Check, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay } from "date-fns"
 import { de } from "date-fns/locale"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { Switch } from "@/components/ui/switch"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 
 export default function CalendarPage() {
@@ -20,12 +24,23 @@ export default function CalendarPage() {
   const [mounted, setMounted] = useState(false)
   const { teamEvents, addTeamEvent, deleteTeamEvent, currentUserProfile, settings, loading: storeLoading } = useStore()
   
+  // Single Add State
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newDate, setNewDate] = useState("")
   const [newTime, setNewTime] = useState("")
   const [newType, setNewType] = useState<'training' | 'match' | 'social'>('training')
   const [newLocation, setNewLocation] = useState("")
+  
+  // Bulk Add State
+  const [isBulkOpen, setIsBulkOpen] = useState(false)
+  const [bulkDates, setBulkDates] = useState<Date[]>([])
+  const [bulkTitle, setBulkTitle] = useState("Training")
+  const [bulkLocation, setBulkLocation] = useState("")
+  const [sameTimeForAll, setSameTimeForAll] = useState(true)
+  const [globalTime, setGlobalTime] = useState("19:00")
+  const [individualTimes, setIndividualTimes] = useState<Record<string, string>>({})
+  
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -54,6 +69,30 @@ export default function CalendarPage() {
       setIsAddOpen(false)
       setNewTitle(""); setNewDate(""); setNewTime(""); setNewType("training"); setNewLocation("")
       toast({ title: "Termin hinzugefügt" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleBulkAdd = async () => {
+    if (bulkDates.length === 0 || !bulkTitle) return
+    setIsSubmitting(true)
+    try {
+      for (const date of bulkDates) {
+        const dateStr = format(date, 'yyyy-MM-dd')
+        const timeStr = sameTimeForAll ? globalTime : (individualTimes[dateStr] || globalTime)
+        const combinedDate = new Date(`${dateStr}T${timeStr}`)
+        
+        await addTeamEvent({
+          title: bulkTitle,
+          type: 'training',
+          date: combinedDate.toISOString(),
+          location: bulkLocation,
+        })
+      }
+      setIsBulkOpen(false)
+      setBulkDates([])
+      toast({ title: `${bulkDates.length} Termine erstellt` })
     } finally {
       setIsSubmitting(false)
     }
@@ -90,47 +129,120 @@ export default function CalendarPage() {
             <CalendarIcon className="h-6 w-6" /> Teamkalender
           </h1>
           <div className="flex items-center gap-4">
-            {settings.fupaLink && (
-              <Button variant="outline" asChild className="rounded-xl border-blue-600 text-blue-700 hover:bg-blue-50">
-                <a href={settings.fupaLink} target="_blank" rel="noopener noreferrer">
-                  <Globe className="h-4 w-4 mr-2" /> FuPa.net
-                </a>
-              </Button>
-            )}
-            {settings.footballDeLink && (
-              <Button variant="outline" asChild className="rounded-xl border-primary text-primary hover:bg-primary/5">
-                <a href={settings.footballDeLink} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" /> Fußball.de
-                </a>
-              </Button>
-            )}
             {isEditor && (
-              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><Plus className="h-4 w-4 mr-2" /> Termin</Button></DialogTrigger>
-                <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
-                  <DialogHeader><DialogTitle>Neuer Termin</DialogTitle></DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2"><Label>Titel</Label><Input placeholder="Z.B. Training" value={newTitle} onChange={e => setNewTitle(e.target.value)} /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Datum</Label><Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} /></div>
-                      <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} /></div>
+              <>
+                <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="rounded-xl border-blue-600 text-blue-700 hover:bg-blue-50">
+                      <CalendarDays className="h-4 w-4 mr-2" /> Serientermine
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-0">
+                      <DialogTitle>Bulk-Training hinzufügen</DialogTitle>
+                      <DialogDescription>Wähle mehrere Tage aus, um Trainingsserien zu erstellen.</DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                      <div className="grid md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                          <Label>Daten wählen</Label>
+                          <Calendar
+                            mode="multiple"
+                            selected={bulkDates}
+                            onSelect={(dates) => setBulkDates(dates || [])}
+                            className="rounded-xl border shadow-sm"
+                            locale={de}
+                          />
+                          <p className="text-[10px] text-muted-foreground">{bulkDates.length} Tage ausgewählt</p>
+                        </div>
+                        
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <Label>Titel</Label>
+                            <Input value={bulkTitle} onChange={e => setBulkTitle(e.target.value)} placeholder="Z.B. Training" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Ort (Optional)</Label>
+                            <Input value={bulkLocation} onChange={e => setBulkLocation(e.target.value)} placeholder="Z.B. Kunstrasen" />
+                          </div>
+                          
+                          <div className="space-y-4 pt-4 border-t">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="same-time" className="cursor-pointer">Gleiche Uhrzeit für alle?</Label>
+                              <Switch id="same-time" checked={sameTimeForAll} onCheckedChange={setSameTimeForAll} />
+                            </div>
+                            
+                            {sameTimeForAll ? (
+                              <div className="space-y-2">
+                                <Label>Uhrzeit</Label>
+                                <Input type="time" value={globalTime} onChange={e => setGlobalTime(e.target.value)} className="h-12 text-lg" />
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <Label className="text-xs text-muted-foreground uppercase font-bold">Individuelle Zeiten</Label>
+                                <ScrollArea className="h-[200px] pr-4">
+                                  <div className="space-y-2">
+                                    {bulkDates.sort((a, b) => a.getTime() - b.getTime()).map((date) => {
+                                      const ds = format(date, 'yyyy-MM-dd')
+                                      return (
+                                        <div key={ds} className="flex items-center justify-between gap-4 p-2 bg-muted/30 rounded-lg">
+                                          <span className="text-xs font-medium">{format(date, 'dd.MM. (EEE)', { locale: de })}</span>
+                                          <Input 
+                                            type="time" 
+                                            className="w-24 h-8 text-xs" 
+                                            value={individualTimes[ds] || globalTime}
+                                            onChange={(e) => setIndividualTimes(prev => ({ ...prev, [ds]: e.target.value }))}
+                                          />
+                                        </div>
+                                      )
+                                    })}
+                                    {bulkDates.length === 0 && <p className="text-xs italic text-muted-foreground text-center py-4">Wähle zuerst Daten im Kalender links.</p>}
+                                  </div>
+                                </ScrollArea>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Typ</Label>
-                      <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="training">Training</SelectItem>
-                          <SelectItem value="match">Spiel</SelectItem>
-                          <SelectItem value="social">Mannschaftsabend / Event</SelectItem>
-                        </SelectContent>
-                      </Select>
+
+                    <DialogFooter className="p-6 bg-muted/30 border-t">
+                      <Button onClick={handleBulkAdd} disabled={isSubmitting || bulkDates.length === 0} className="w-full h-12 rounded-xl font-bold">
+                        {isSubmitting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                        {bulkDates.length} Termine anlegen
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                  <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><Plus className="h-4 w-4 mr-2" /> Einzeltermin</Button></DialogTrigger>
+                  <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+                    <DialogHeader><DialogTitle>Neuer Einzeltermin</DialogTitle></DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="space-y-2"><Label>Titel</Label><Input placeholder="Z.B. Training" value={newTitle} onChange={e => setNewTitle(e.target.value)} /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label>Datum</Label><Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} /></div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Typ</Label>
+                        <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="training">Training</SelectItem>
+                            <SelectItem value="match">Spiel</SelectItem>
+                            <SelectItem value="social">Mannschaftsabend / Event</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2"><Label>Ort (Optional)</Label><Input placeholder="Z.B. Kunstrasen" value={newLocation} onChange={e => setNewLocation(e.target.value)} /></div>
                     </div>
-                    <div className="space-y-2"><Label>Ort (Optional)</Label><Input placeholder="Z.B. Kunstrasen" value={newLocation} onChange={e => setNewLocation(e.target.value)} /></div>
-                  </div>
-                  <DialogFooter><Button onClick={handleAddEvent} disabled={isSubmitting} className="w-full rounded-xl">Speichern</Button></DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    <DialogFooter><Button onClick={handleAddEvent} disabled={isSubmitting} className="w-full rounded-xl">Speichern</Button></DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
           </div>
         </header>
@@ -139,44 +251,32 @@ export default function CalendarPage() {
           <div className="md:hidden flex flex-col gap-4 mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Teamkalender</h1>
             <div className="flex flex-wrap gap-2">
-              {settings.fupaLink && (
-                <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700">
-                  <a href={settings.fupaLink} target="_blank" rel="noopener noreferrer">
-                    <Globe className="h-3 w-3 mr-1" /> FuPa.net
-                  </a>
-                </Button>
-              )}
-              {settings.footballDeLink && (
-                <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-xs">
-                  <a href={settings.footballDeLink} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-3 w-3 mr-1" /> Fußball.de
-                  </a>
-                </Button>
-              )}
               {isEditor && (
-                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                    <DialogTrigger asChild><Button size="sm" className="flex-1 min-w-[120px] rounded-xl text-xs"><Plus className="h-3 w-3 mr-1" /> Termin</Button></DialogTrigger>
-                    <DialogContent className="max-w-[95vw] rounded-2xl">
-                      <DialogHeader><DialogTitle>Neuer Termin</DialogTitle></DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="space-y-1"><Label className="text-xs">Titel</Label><Input value={newTitle} onChange={e => setNewTitle(e.target.value)} className="h-10" /></div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1"><Label className="text-xs">Datum</Label><Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="h-10" /></div>
-                          <div className="space-y-1"><Label className="text-xs">Uhrzeit</Label><Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className="h-10" /></div>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Typ</Label>
-                          <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
-                            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                            <SelectContent><SelectItem value="training">Training</SelectItem><SelectItem value="match">Spiel</SelectItem><SelectItem value="social">Event</SelectItem></SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1"><Label className="text-xs">Ort</Label><Input value={newLocation} onChange={e => setNewLocation(e.target.value)} className="h-10" /></div>
-                      </div>
-                      <DialogFooter><Button onClick={handleAddEvent} disabled={isSubmitting} className="w-full">Speichern</Button></DialogFooter>
-                    </DialogContent>
-                 </Dialog>
+                <>
+                  <Button size="sm" variant="outline" onClick={() => setIsBulkOpen(true)} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700">
+                    <CalendarDays className="h-3 w-3 mr-1" /> Serientermine
+                  </Button>
+                  <Button size="sm" className="flex-1 min-w-[120px] rounded-xl text-xs" onClick={() => setIsAddOpen(true)}>
+                    <Plus className="h-3 w-3 mr-1" /> Einzeltermin
+                  </Button>
+                </>
               )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+               {settings.fupaLink && (
+                  <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-[10px] border-blue-600 text-blue-700">
+                    <a href={settings.fupaLink} target="_blank" rel="noopener noreferrer">
+                      <Globe className="h-3 w-3 mr-1" /> FuPa.net
+                    </a>
+                  </Button>
+                )}
+                {settings.footballDeLink && (
+                  <Button variant="outline" size="sm" asChild className="flex-1 min-w-[120px] rounded-xl text-[10px]">
+                    <a href={settings.footballDeLink} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-3 w-3 mr-1" /> Fußball.de
+                    </a>
+                  </Button>
+                )}
             </div>
           </div>
 

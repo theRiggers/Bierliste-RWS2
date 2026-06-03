@@ -29,6 +29,10 @@ export default function AdminPage() {
   const [footballDeLink, setFootballDeLink] = useState("")
   const [fupaLink, setFupaLink] = useState("")
 
+  // Form State Fines
+  const [newFineName, setNewFineName] = useState("")
+  const [newFineAmount, setNewFineAmount] = useState("")
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -239,7 +243,86 @@ export default function AdminPage() {
             )}
 
             <TabsContent value="fines" className="space-y-6">
-              {/* Existing Fines UI */}
+              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
+                <CardHeader className="bg-amber-50">
+                  <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
+                    <Scale className="h-5 w-5" /> Strafenkatalog verwalten
+                  </CardTitle>
+                  <CardDescription>Hier kannst du die Vergehen und deren Standardbeträge festlegen.</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="grid gap-4 p-4 border-2 border-dashed border-amber-200 rounded-2xl bg-amber-50/30">
+                    <h4 className="text-sm font-bold text-amber-800">Neues Vergehen hinzufügen</h4>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Bezeichnung</Label>
+                        <Input 
+                          placeholder="Z.B. Zu spät zum Spiel" 
+                          value={newFineName} 
+                          onChange={(e) => setNewFineName(e.target.value)} 
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Standardbetrag (€)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.50" 
+                          placeholder="5.00" 
+                          value={newFineAmount} 
+                          onChange={(e) => setNewFineAmount(e.target.value)} 
+                          className="bg-white"
+                        />
+                      </div>
+                    </div>
+                    <Button onClick={handleAddFineType} disabled={isSaving || !newFineName || !newFineAmount} className="w-full rounded-xl bg-amber-600 hover:bg-amber-700">
+                      <Plus className="h-4 w-4 mr-2" /> Zum Katalog hinzufügen
+                    </Button>
+                  </div>
+
+                  <div className="divide-y divide-border">
+                    {fineCatalog.map((fine) => (
+                      <div key={fine.id} className="py-4 flex items-center justify-between">
+                        <div className="flex-1 min-w-0 mr-4">
+                          <Input 
+                            defaultValue={fine.name} 
+                            onBlur={(e) => {
+                              if (e.target.value && e.target.value !== fine.name) {
+                                updateFineType(fine.id, e.target.value, fine.amount)
+                              }
+                            }}
+                            className="font-bold border-none p-0 h-auto focus-visible:ring-0 bg-transparent text-sm truncate" 
+                          />
+                          <p className="text-[10px] text-muted-foreground uppercase font-medium">Klicken zum Bearbeiten</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-24">
+                            <Input 
+                              type="number" 
+                              step="0.50" 
+                              defaultValue={fine.amount} 
+                              onBlur={(e) => handleUpdateFineAmount(fine.id, fine.name, e.target.value)}
+                              className="h-9 text-right pr-6 rounded-lg bg-muted/30 border-none font-bold" 
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">€</span>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg" 
+                            onClick={() => deleteFineType(fine.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {fineCatalog.length === 0 && (
+                      <p className="py-8 text-center text-muted-foreground italic text-sm">Der Katalog ist leer.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>

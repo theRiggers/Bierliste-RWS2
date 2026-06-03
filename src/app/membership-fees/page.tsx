@@ -23,10 +23,9 @@ export default function MembershipFeesPage() {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
   
-  // Logic: Only current and previous season visible
-  // Season starts in August (Month 7)
-  const currentSeasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
-  const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1];
+  // Saisonwechsel am 01.07. (Monat 6)
+  const currentSeasonYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+  const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1, currentSeasonYear - 2];
   
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
 

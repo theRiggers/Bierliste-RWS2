@@ -101,7 +101,8 @@ export const BEER_PRICE = 1.50;
 export const CRATE_PRICE = 35.00;
 export const MONTHLY_FEE = 15.00;
 export const ANNUAL_FEE = 150.00;
-export const FEE_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
+// Saisonstart 01.07. - Monate: Jul(6), Aug(7), Sep(8), Okt(9), Nov(10), Dez(11), Jan(0), Feb(1), Mär(2), Apr(3), Mai(4), Jun(5)
+export const FEE_MONTHS = [6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5];
 export const PAYPAL_ME_LINK = "";
 export const CLUBHOUSE_PAYPAL_EMAIL = "";
 export const TREASURY_PAYPAL_EMAIL = "";

@@ -249,48 +249,35 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole={currentUserProfile.role} />
-      <MobileNavTrigger userRole={currentUserProfile.role} />
+      <MobileNavTrigger 
+        userRole={currentUserProfile.role} 
+        rightElement={
+          isKassenwart && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-emerald-600 h-10 w-10 mr-1"
+              onClick={() => setIsPaymentOpen(true)}
+              title="Zahlung verbuchen"
+            >
+              <PlusCircle className="h-6 w-6" />
+            </Button>
+          )
+        }
+      />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
           <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           <div className="flex items-center gap-4">
             {isKassenwart && (
-              <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50">
-                    <PlusCircle className="h-4 w-4 mr-2" /> Zahlung verbuchen
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Zahlung erfassen</DialogTitle>
-                    <DialogDescription>Verbucht eine Zahlung eines Spielers in die Bierkasse.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Spieler</Label>
-                      <Select value={paymentPlayerId} onValueChange={setPaymentPlayerId}>
-                        <SelectTrigger><SelectValue placeholder="Spieler wählen" /></SelectTrigger>
-                        <SelectContent>
-                          {players.filter(p => p.email !== 'kasse@kickoff.de').map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Betrag (€)</Label>
-                      <Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleRecordPaymentAction} disabled={isSubmitting || !paymentPlayerId} className="w-full rounded-xl bg-emerald-600">
-                      {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Zahlung speichern"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                variant="outline" 
+                className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => setIsPaymentOpen(true)}
+              >
+                <PlusCircle className="h-4 w-4 mr-2" /> Zahlung verbuchen
+              </Button>
             )}
             <span className="text-sm font-medium text-muted-foreground">{format(new Date(), 'EEEE, d. MMMM', { locale: de })}</span>
           </div>
@@ -498,6 +485,38 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
+
+        {/* Payment Dialog for Treasurer */}
+        <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Zahlung erfassen</DialogTitle>
+              <DialogDescription>Verbucht eine Zahlung eines Spielers in die Bierkasse.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Spieler</Label>
+                <Select value={paymentPlayerId} onValueChange={setPaymentPlayerId}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Spieler wählen" /></SelectTrigger>
+                  <SelectContent>
+                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Betrag (€)</Label>
+                <Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} className="h-12 rounded-xl" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleRecordPaymentAction} disabled={isSubmitting || !paymentPlayerId} className="w-full h-12 rounded-xl bg-emerald-600 font-bold">
+                {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Zahlung speichern"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* User Self-Payment Dialog */}
         <Dialog open={isSelfPaymentDialogOpen} onOpenChange={setIsSelfPaymentDialogOpen}>

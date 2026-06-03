@@ -8,17 +8,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Mail } from "lucide-react"
+import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Mail, Scale, Plus, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function AdminPage() {
   const { toast } = useToast()
-  const { settings, updateSettings, currentUserProfile, loading: storeLoading } = useStore()
+  const { settings, updateSettings, fineCatalog, updateFineType, addFineType, deleteFineType, currentUserProfile, loading: storeLoading } = useStore()
   const [mounted, setMounted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Form State
+  // Form State Settings
   const [beerPrice, setBeerPrice] = useState("")
   const [cratePrice, setCratePrice] = useState("")
   const [monthlyFee, setMonthlyFee] = useState("")
@@ -26,6 +27,10 @@ export default function AdminPage() {
   const [paypalMeLink, setPaypalMeLink] = useState("")
   const [clubhouseEmail, setClubhouseEmail] = useState("")
   const [treasuryEmail, setTreasuryEmail] = useState("")
+
+  // Form State Fine Types
+  const [newFineName, setNewFineName] = useState("")
+  const [newFineAmount, setNewFineAmount] = useState("")
 
   useEffect(() => {
     setMounted(true)
@@ -51,7 +56,10 @@ export default function AdminPage() {
     )
   }
 
-  if (!currentUserProfile || currentUserProfile.role !== 'auditor') {
+  const isAdmin = currentUserProfile?.role === 'admin'
+  const isStrafenwart = currentUserProfile?.role === 'strafenwart'
+
+  if (!currentUserProfile || (!isAdmin && !isStrafenwart)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
@@ -60,7 +68,7 @@ export default function AdminPage() {
     )
   }
 
-  const handleSave = async () => {
+  const handleSaveSettings = async () => {
     setIsSaving(true)
     try {
       await updateSettings({
@@ -72,7 +80,7 @@ export default function AdminPage() {
         clubhousePaypalEmail: clubhouseEmail,
         treasuryPaypalEmail: treasuryEmail,
       })
-      toast({ title: "Einstellungen gespeichert", description: "Alle Änderungen wurden erfolgreich übernommen." })
+      toast({ title: "Einstellungen gespeichert" })
     } catch (error) {
       toast({ variant: "destructive", title: "Fehler beim Speichern" })
     } finally {
@@ -80,10 +88,30 @@ export default function AdminPage() {
     }
   }
 
+  const handleAddFineType = async () => {
+    const val = parseFloat(newFineAmount)
+    if (!newFineName || isNaN(val)) return
+    setIsSaving(true)
+    try {
+      await addFineType(newFineName, val)
+      setNewFineName("")
+      setNewFineAmount("")
+      toast({ title: "Strafe hinzugefügt" })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleUpdateFineAmount = async (id: string, name: string, amountStr: string) => {
+    const val = parseFloat(amountStr)
+    if (isNaN(val)) return
+    await updateFineType(id, name, val)
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole="auditor" />
-      <MobileNavTrigger userRole="auditor" />
+      <Sidebar userRole={currentUserProfile.role} />
+      <MobileNavTrigger userRole={currentUserProfile.role} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
@@ -91,98 +119,126 @@ export default function AdminPage() {
             <Settings className="h-6 w-6" />
             Administration
           </h1>
-          <Button onClick={handleSave} disabled={isSaving} className="rounded-xl cyan-glow">
-            {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
-            Speichern
-          </Button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-4xl mx-auto w-full pb-20">
-          <div className="md:hidden flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-primary font-headline">Admin</h1>
-            <Button onClick={handleSave} disabled={isSaving} size="sm" className="rounded-xl">
-              <Save className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-5xl mx-auto w-full pb-20">
+          <Tabs defaultValue={isAdmin ? "general" : "fines"} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8 rounded-xl h-12">
+              {isAdmin && <TabsTrigger value="general" className="rounded-lg">Preise & PayPal</TabsTrigger>}
+              <TabsTrigger value="fines" className="rounded-lg">Strafenkatalog</TabsTrigger>
+            </TabsList>
 
-          <div className="grid gap-6">
-            <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
-              <CardHeader className="bg-primary/5">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Beer className="h-5 w-5 text-primary" />
-                  Preise & Gebühren
-                </CardTitle>
-                <CardDescription>Passe die Beträge für Getränke und Vereinsbeiträge an.</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 grid gap-6 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="beer-price">Preis pro Bier (€)</Label>
-                  <Input id="beer-price" type="number" step="0.01" value={beerPrice} onChange={(e) => setBeerPrice(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="crate-price">Preis pro Kiste (€)</Label>
-                  <Input id="crate-price" type="number" step="0.01" value={cratePrice} onChange={(e) => setCratePrice(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthly-fee">Monatsbeitrag (€)</Label>
-                  <Input id="monthly-fee" type="number" step="0.01" value={monthlyFee} onChange={(e) => setMonthlyFee(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="annual-fee">Jahresbeitrag (€)</Label>
-                  <Input id="annual-fee" type="number" step="0.01" value={annualFee} onChange={(e) => setAnnualFee(e.target.value)} />
-                </div>
-              </CardContent>
-            </Card>
+            {isAdmin && (
+              <TabsContent value="general" className="space-y-6">
+                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
+                  <CardHeader className="bg-primary/5">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Beer className="h-5 w-5 text-primary" />
+                      Preise & Gebühren
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="beer-price">Preis pro Bier (€)</Label>
+                      <Input id="beer-price" type="number" step="0.01" value={beerPrice} onChange={(e) => setBeerPrice(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="crate-price">Preis pro Kiste (€)</Label>
+                      <Input id="crate-price" type="number" step="0.01" value={cratePrice} onChange={(e) => setCratePrice(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="monthly-fee">Monatsbeitrag (€)</Label>
+                      <Input id="monthly-fee" type="number" step="0.01" value={monthlyFee} onChange={(e) => setMonthlyFee(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="annual-fee">Jahresbeitrag (€)</Label>
+                      <Input id="annual-fee" type="number" step="0.01" value={annualFee} onChange={(e) => setAnnualFee(e.target.value)} />
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
-              <CardHeader className="bg-blue-50">
-                <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
-                  <LinkIcon className="h-5 w-5" />
-                  Zahlungswege (PayPal)
-                </CardTitle>
-                <CardDescription>Konfiguriere die Zieladressen für PayPal-Zahlungen.</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="treasury-email">PayPal E-Mail Schatzmeister (Getränke & Beiträge)</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="treasury-email" placeholder="email@paypal.com" value={treasuryEmail} onChange={(e) => setTreasuryEmail(e.target.value)} className="pl-10" />
+                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
+                  <CardHeader className="bg-blue-50">
+                    <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                      <LinkIcon className="h-5 w-5" />
+                      Zahlungswege
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="treasury-email">PayPal E-Mail Schatzmeister</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="treasury-email" placeholder="email@paypal.com" value={treasuryEmail} onChange={(e) => setTreasuryEmail(e.target.value)} className="pl-10" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="clubhouse-email">PayPal E-Mail Vereinsheim (Marlene)</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="clubhouse-email" placeholder="marlene@verein.de" value={clubhouseEmail} onChange={(e) => setClubhouseEmail(e.target.value)} className="pl-10" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full rounded-xl h-12 font-bold cyan-glow">
+                  {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                  Haupteinstellungen speichern
+                </Button>
+              </TabsContent>
+            )}
+
+            <TabsContent value="fines" className="space-y-6">
+              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
+                <CardHeader className="bg-amber-50">
+                  <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
+                    <Scale className="h-5 w-5" />
+                    Strafenkatalog verwalten
+                  </CardTitle>
+                  <CardDescription>Definiere Vergehen und deren Standardpreise.</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-5 items-end bg-muted/30 p-4 rounded-xl">
+                    <div className="sm:col-span-3 space-y-2">
+                      <Label>Neues Vergehen</Label>
+                      <Input placeholder="Z.B. Trikot vergessen" value={newFineName} onChange={(e) => setNewFineName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Betrag (€)</Label>
+                      <Input type="number" step="0.50" value={newFineAmount} onChange={(e) => setNewFineAmount(e.target.value)} />
+                    </div>
+                    <Button onClick={handleAddFineType} disabled={isSaving || !newFineName} className="rounded-xl w-full">
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Wohin die Spieler ihr Geld für Getränke und Mitgliedschaft senden.</p>
-                </div>
 
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label htmlFor="clubhouse-email">PayPal E-Mail Vereinsheim (Marlene)</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="clubhouse-email" placeholder="marlene@verein.de" value={clubhouseEmail} onChange={(e) => setClubhouseEmail(e.target.value)} className="pl-10" />
+                  <div className="divide-y divide-border pt-4">
+                    {fineCatalog.map((fine) => (
+                      <div key={fine.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <span className="font-medium text-sm sm:flex-1">{fine.name}</span>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 w-32">
+                            <Input 
+                              type="number" 
+                              step="0.50" 
+                              value={fine.amount} 
+                              onChange={(e) => handleUpdateFineAmount(fine.id, fine.name, e.target.value)} 
+                              className="h-9 text-right"
+                            />
+                            <span className="text-sm">€</span>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => deleteFineType(fine.id)} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Zieladresse für die monatliche Kisten-Abrechnung der Mannschaft.</p>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label htmlFor="paypal-me">PayPal.me Link (für KI-Erinnerungen)</Label>
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="paypal-me" placeholder="https://paypal.me/DeinName" value={paypalMeLink} onChange={(e) => setPaypalMeLink(e.target.value)} className="pl-10" />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">Wird von der KI in Zahlungsaufforderungen eingefügt.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="md:hidden">
-             <Button onClick={handleSave} disabled={isSaving} className="w-full rounded-xl h-12 font-bold">
-               {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
-               Einstellungen speichern
-             </Button>
-          </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

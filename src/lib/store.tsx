@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 export type Role = 'player' | 'admin' | 'kassenwart' | 'strafenwart';
 
@@ -70,6 +70,12 @@ export interface Fine {
   recordedBy: string;
 }
 
+export interface FineType {
+  id: string;
+  name: string;
+  amount: number;
+}
+
 export interface AppSettings {
   beerPrice: number;
   cratePrice: number;
@@ -86,9 +92,16 @@ export const CRATE_PRICE = 35.00;
 export const MONTHLY_FEE = 15.00;
 export const ANNUAL_FEE = 150.00;
 export const FEE_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4]; // Aug bis Mai
-export const PAYPAL_ME_LINK = "https://www.paypal.me/DeinName";
-export const CLUBHOUSE_PAYPAL_EMAIL = "marlene@verein.de";
-export const TREASURY_PAYPAL_EMAIL = "kasse@verein.de";
+export const PAYPAL_ME_LINK = "";
+export const CLUBHOUSE_PAYPAL_EMAIL = "";
+export const TREASURY_PAYPAL_EMAIL = "";
+
+export const DEFAULT_FINES = [
+  "Dumme Aktion", "Arroganzspruch", "Tunnel beim Kreisspiel", "Sachen liegen lassen (pro Teil)",
+  "Während Training pinkeln müssen", "Nicht aufräumen nach dem Training", "Zu spät absagen beim Training",
+  "Zu spät beim Training", "Trinken/Rauchen im Trikot", "Zu spät beim Spiel", "Gar nicht absagen beim Training",
+  "Verkatert beim Spiel", "Zu spät absagen beim Spiel", "Tunnel Mallerunde"
+];
 
 interface StoreContextType {
   players: Player[];
@@ -98,6 +111,7 @@ interface StoreContextType {
   membershipTransactions: MembershipTransaction[];
   treasuryExpenses: TreasuryExpense[];
   fines: Fine[];
+  fineCatalog: FineType[];
   currentUserProfile: Player | null;
   settings: AppSettings;
   loading: boolean;
@@ -114,6 +128,9 @@ interface StoreContextType {
   deleteTreasuryExpense: (expenseId: string) => void;
   addFine: (playerId: string, reason: string, amount: number) => void;
   deleteFine: (fineId: string) => void;
+  updateFineType: (id: string, name: string, amount: number) => Promise<void>;
+  addFineType: (name: string, amount: number) => Promise<void>;
+  deleteFineType: (id: string) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -148,9 +165,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const finesQuery = useMemo(() => db ? query(collection(db, 'fines'), orderBy('date', 'desc')) : null, [db]);
   const { data: finesData, loading: finesLoading } = useCollection<Omit<Fine, 'id'>>(finesQuery);
 
+  const fineCatalogQuery = useMemo(() => db ? query(collection(db, 'fineCatalog'), orderBy('name', 'asc')) : null, [db]);
+  const { data: fineCatalogData, loading: fineCatalogLoading } = useCollection<Omit<FineType, 'id'>>(fineCatalogQuery);
+
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
+  // Derived Memos
   const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
@@ -158,6 +179,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const membershipTransactions = useMemo(() => mTransactionsData?.map(d => ({ ...d.data, id: d.id })) || [], [mTransactionsData]);
   const treasuryExpenses = useMemo(() => tExpensesData?.map(d => ({ ...d.data, id: d.id })) || [], [tExpensesData]);
   const fines = useMemo(() => finesData?.map(d => ({ ...d.data, id: d.id })) || [], [finesData]);
+  const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
 
   const settings = useMemo<AppSettings>(() => ({
     beerPrice: settingsData?.beerPrice ?? BEER_PRICE,
@@ -182,6 +204,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }, 0);
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
+
+  // Seeding initial fine catalog if empty
+  useEffect(() => {
+    if (!fineCatalogLoading && fineCatalog.length === 0 && db && currentUserProfile?.role === 'admin') {
+      const batch = writeBatch(db);
+      DEFAULT_FINES.forEach(name => {
+        const ref = doc(collection(db, 'fineCatalog'));
+        batch.set(ref, { name, amount: 2.00 });
+      });
+      batch.commit();
+    }
+  }, [fineCatalogLoading, fineCatalog.length, db, currentUserProfile]);
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
     if (!db) return;
@@ -283,6 +317,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteDoc(doc(db, 'fines', fineId));
   };
 
+  const updateFineType = async (id: string, name: string, amount: number) => {
+    if (!db) return;
+    await setDoc(doc(db, 'fineCatalog', id), { name, amount }, { merge: true });
+  };
+
+  const addFineType = async (name: string, amount: number) => {
+    if (!db) return;
+    await addDoc(collection(db, 'fineCatalog'), { name, amount });
+  };
+
+  const deleteFineType = async (id: string) => {
+    if (!db) return;
+    await deleteDoc(doc(db, 'fineCatalog', id));
+  };
+
   const addBezahlkiste = () => {
     if (!db || !currentUserProfile) return;
     const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
@@ -315,12 +364,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, currentUserProfile, settings,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || authLoading || settingsLoading,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, currentUserProfile, settings,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading,
       totalMannschaftskasse,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
-      addTreasuryExpense, deleteTreasuryExpense, addFine, deleteFine, addBezahlkiste,
+      addTreasuryExpense, deleteTreasuryExpense, addFine, deleteFine, updateFineType, addFineType, deleteFineType, addBezahlkiste,
       addPlayer, updatePlayer, deletePlayer, updateSettings
     }}>
       {children}

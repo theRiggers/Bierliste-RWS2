@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Scale, Plus, Trash2, Loader2, UserCircle } from "lucide-react"
+import { Scale, Plus, Trash2, Loader2, UserCircle, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
@@ -16,15 +16,23 @@ import { de } from "date-fns/locale"
 
 export default function FinesPage() {
   const { toast } = useToast()
-  const { players, fines, addFine, deleteFine, currentUserProfile, loading: storeLoading } = useStore()
+  const { players, fines, fineCatalog, addFine, deleteFine, currentUserProfile, loading: storeLoading } = useStore()
   const [mounted, setMounted] = useState(false)
   
   const [selectedPlayer, setSelectedPlayer] = useState("")
-  const [reason, setReason] = useState("")
-  const [amount, setAmount] = useState("")
+  const [selectedFineTypeId, setSelectedFineTypeId] = useState("")
+  const [customAmount, setCustomAmount] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Auto-fill amount when fine type changes
+  useEffect(() => {
+    const selectedFine = fineCatalog.find(f => f.id === selectedFineTypeId)
+    if (selectedFine) {
+      setCustomAmount(selectedFine.amount.toString())
+    }
+  }, [selectedFineTypeId, fineCatalog])
 
   if (storeLoading || !mounted) {
     return (
@@ -34,7 +42,10 @@ export default function FinesPage() {
     )
   }
 
-  if (!currentUserProfile || (currentUserProfile.role !== 'admin' && currentUserProfile.role !== 'strafenwart')) {
+  const isAdmin = currentUserProfile?.role === 'admin'
+  const isStrafenwart = currentUserProfile?.role === 'strafenwart'
+
+  if (!currentUserProfile || (!isAdmin && !isStrafenwart)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
@@ -44,17 +55,19 @@ export default function FinesPage() {
   }
 
   const handleAddFine = async () => {
-    const val = parseFloat(amount)
-    if (!selectedPlayer || !reason || isNaN(val) || val <= 0) {
+    const val = parseFloat(customAmount)
+    const fineType = fineCatalog.find(f => f.id === selectedFineTypeId)
+    
+    if (!selectedPlayer || !fineType || isNaN(val) || val <= 0) {
       toast({ variant: "destructive", title: "Fehler", description: "Bitte fülle alle Felder korrekt aus." })
       return
     }
     setIsSubmitting(true)
     try {
-      addFine(selectedPlayer, reason, val)
+      addFine(selectedPlayer, fineType.name, val)
       toast({ title: "Strafe eingetragen" })
-      setReason("")
-      setAmount("")
+      setSelectedFineTypeId("")
+      setCustomAmount("")
       setSelectedPlayer("")
     } finally {
       setIsSubmitting(false)
@@ -77,34 +90,57 @@ export default function FinesPage() {
           <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
             <CardHeader className="bg-amber-50">
               <CardTitle className="text-lg">Neue Strafe erfassen</CardTitle>
-              <CardDescription>Wähle einen Spieler und gib den Grund für die Strafe an.</CardDescription>
+              <CardDescription>Wähle einen Spieler und das Vergehen aus dem Katalog.</CardDescription>
             </CardHeader>
-            <CardContent className="pt-6 grid gap-4">
-              <div className="space-y-2">
-                <Label>Spieler</Label>
-                <Select value={selectedPlayer} onValueChange={setSelectedPlayer}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Spieler auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <CardContent className="pt-6 grid gap-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Grund</Label>
-                  <Input placeholder="Z.B. Zuspätkommen" value={reason} onChange={(e) => setReason(e.target.value)} className="rounded-xl" />
+                  <Label>Spieler</Label>
+                  <Select value={selectedPlayer} onValueChange={setSelectedPlayer}>
+                    <SelectTrigger className="rounded-xl h-12">
+                      <SelectValue placeholder="Spieler auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {players.filter(p => p.email !== 'kasse@kickoff.de').map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Betrag (€)</Label>
-                  <Input type="number" step="0.50" value={amount} onChange={(e) => setAmount(e.target.value)} className="rounded-xl" />
+                  <Label>Vergehen (Katalog)</Label>
+                  <Select value={selectedFineTypeId} onValueChange={setSelectedFineTypeId}>
+                    <SelectTrigger className="rounded-xl h-12">
+                      <SelectValue placeholder="Grund auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fineCatalog.map(f => (
+                        <SelectItem key={f.id} value={f.id}>{f.name} ({f.amount.toFixed(2)}€)</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <Button onClick={handleAddFine} disabled={isSubmitting} className="w-full rounded-xl mt-2">
-                {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4 mr-2" />}
+
+              <div className="space-y-2">
+                <Label>Betrag anpassen (€)</Label>
+                <div className="relative">
+                  <Input 
+                    type="number" 
+                    step="0.50" 
+                    value={customAmount} 
+                    onChange={(e) => setCustomAmount(e.target.value)} 
+                    className="rounded-xl h-12 pl-10" 
+                  />
+                  <Scale className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> Betrag wird automatisch aus dem Katalog geladen, kann aber überschrieben werden.
+                </p>
+              </div>
+
+              <Button onClick={handleAddFine} disabled={isSubmitting || !selectedPlayer || !selectedFineTypeId} className="w-full rounded-xl h-12 font-bold text-base mt-2 shadow-lg shadow-amber-200 bg-amber-600 hover:bg-amber-700">
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="h-5 w-5 mr-2" />}
                 Strafe buchen
               </Button>
             </CardContent>

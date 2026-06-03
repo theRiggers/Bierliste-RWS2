@@ -228,10 +228,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [membershipFees, membershipTransactions, fines]);
 
   const totalBierkasse = useMemo(() => {
-    const paymentSum = payments.reduce((sum, p) => sum + p.amount, 0);
-    const treasuryExpenseSum = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
-    return paymentSum - treasuryExpenseSum;
-  }, [payments, treasuryExpenses]);
+    const cashOnHand = payments.reduce((sum, p) => sum + p.amount, 0) - treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
+    const outstandingReceivables = players.reduce((sum, p) => p.balance < 0 ? sum + Math.abs(p.balance) : sum, 0);
+    // Gesamtwert = Bargeld + Forderungen an Spieler
+    return cashOnHand + outstandingReceivables;
+  }, [payments, treasuryExpenses, players]);
 
   useEffect(() => {
     if (db && !fineCatalogLoading) {
@@ -244,7 +245,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         batch.commit();
       }
       
-      // Admin auto-assignment for Jamie Rigden
       const jamie = players.find(p => p.name.trim().toLowerCase() === "jamie rigden");
       if (jamie && jamie.role !== 'admin') {
         setDoc(doc(db, 'players', jamie.id), { role: 'admin' }, { merge: true });

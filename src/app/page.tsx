@@ -31,7 +31,8 @@ import {
   MapPin,
   Trophy,
   ChevronRight,
-  Info
+  Info,
+  Calculator
 } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval, isAfter } from "date-fns"
 import { de } from "date-fns/locale"
@@ -55,16 +56,6 @@ export default function Dashboard() {
   const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, totalMannschaftskasse, totalBierkasse, currentUserProfile, settings, addPlayer, recordPayment, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
-  const [isTreasuryOpen, setIsTreasuryOpen] = useState(false)
-  const [tDesc, setTDesc] = useState("")
-  const [tAmount, setTAmount] = useState("")
-
-  const [isSponsorOpen, setIsSponsorOpen] = useState(false)
-  const [sDesc, setSDesc] = useState("")
-  const [sAmount, setSAmount] = useState("")
-  const [sType, setSType] = useState<'sponsor' | 'donation' | 'other' | 'expense'>('sponsor')
-  
-  // Payment Dialog State
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentPlayerId, setPaymentPlayerId] = useState("")
   const [paymentAmount, setPaymentAmount] = useState("")
@@ -87,10 +78,24 @@ export default function Dashboard() {
     const now = new Date();
     const start = startOfMonth(now);
     const end = endOfMonth(now);
+    
     const pCrates = expenses.filter(e => e.itemType === 'crate' && isWithinInterval(new Date(e.date), { start, end }));
+    const pBeers = expenses.filter(e => e.itemType === 'beer' && isWithinInterval(new Date(e.date), { start, end }));
     const bKisten = treasuryExpenses.filter(t => t.description.includes("Bezahlkiste") && isWithinInterval(new Date(t.date), { start, end }));
-    const totalCount = pCrates.length + bKisten.length;
-    return { count: totalCount, amount: totalCount * settings.cratePrice };
+    
+    const crateCount = pCrates.length + bKisten.length;
+    const totalCrateCost = crateCount * settings.cratePrice;
+    const beerRevenue = pBeers.length * settings.beerPrice;
+    
+    // Verrechnung: Crates - Beers
+    const netAmount = totalCrateCost - beerRevenue;
+
+    return { 
+      count: crateCount, 
+      totalCost: totalCrateCost,
+      beerRevenue: beerRevenue,
+      netAmount: Math.max(0, netAmount)
+    };
   }, [expenses, treasuryExpenses, settings]);
 
   const feeStatus = useMemo(() => {
@@ -188,7 +193,7 @@ export default function Dashboard() {
   }
 
   const handlePayClubhouse = () => {
-    const amount = monthlyCrateStats.amount;
+    const amount = monthlyCrateStats.netAmount;
     const email = settings.clubhousePaypalEmail;
     if (!email) {
       toast({ variant: "destructive", title: "Fehler", description: "Keine PayPal E-Mail für das Vereinsheim hinterlegt." });
@@ -336,7 +341,7 @@ export default function Dashboard() {
                     <h2 className={cn("text-2xl font-bold", totalBierkasse < 0 ? 'text-destructive' : 'text-emerald-600')}>
                       {totalBierkasse.toFixed(2)} €
                     </h2>
-                    <p className="text-[10px] text-muted-foreground mt-1">Guthaben für Getränke</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Gesamtwert (Inkl. Außenstände)</p>
                   </CardContent>
                 </Card>
 
@@ -398,18 +403,41 @@ export default function Dashboard() {
           {isKassenwart && (
             <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500 overflow-hidden">
               <CardHeader className="bg-amber-50/50 pb-2">
-                <CardTitle className="text-lg flex items-center gap-2 text-amber-800"><ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung (Marlene)</CardTitle>
-                <CardDescription>Offene Getränke-Schulden für {format(new Date(), 'MMMM', { locale: de })}.</CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
+                    <ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung (Marlene)
+                  </CardTitle>
+                  <Badge variant="outline" className="bg-white text-amber-700 border-amber-200">
+                    {format(new Date(), 'MMMM', { locale: de })}
+                  </Badge>
+                </div>
+                <CardDescription>Berechnung: (Kisten × Preis) – Einzelbier-Einnahmen.</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-8">
-                  <div><p className="text-[10px] text-muted-foreground font-bold">KISTEN</p><p className="text-2xl font-bold text-amber-700">{monthlyCrateStats.count}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground font-bold">SCHULDEN</p><p className="text-2xl font-bold text-amber-700">{monthlyCrateStats.amount.toFixed(2)} €</p></div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 w-full md:w-auto">
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Kisten Total</p>
+                    <p className="text-2xl font-black text-amber-700">{monthlyCrateStats.count}</p>
+                    <p className="text-[10px] text-muted-foreground">({monthlyCrateStats.totalCost.toFixed(2)}€)</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Bier-Einnahmen</p>
+                    <p className="text-2xl font-black text-emerald-600">-{monthlyCrateStats.beerRevenue.toFixed(2)}€</p>
+                    <p className="text-[10px] text-muted-foreground italic">von Bezahlkisten</p>
+                  </div>
+                  <div className="space-y-1 col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-amber-200 pt-3 sm:pt-0 sm:pl-6">
+                    <p className="text-[10px] text-amber-800/60 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Calculator className="h-3 w-3" /> Offen
+                    </p>
+                    <p className="text-3xl font-black text-amber-600">{monthlyCrateStats.netAmount.toFixed(2)} €</p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                   <Button variant="outline" onClick={() => addBezahlkiste()} className="rounded-xl border-amber-600 text-amber-700">Bezahlkiste</Button>
-                   <Button onClick={handlePayClubhouse} disabled={monthlyCrateStats.amount <= 0 || !settings.clubhousePaypalEmail} className="rounded-xl bg-amber-600 text-white shadow-lg shadow-amber-200">
-                     <ExternalLink className="h-4 w-4 mr-2" /> Jetzt bezahlen
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                   <Button variant="outline" onClick={() => addBezahlkiste()} className="flex-1 md:flex-none rounded-xl border-amber-600 text-amber-700 hover:bg-amber-50">
+                     <PlusCircle className="h-4 w-4 mr-2" /> Bezahlkiste
+                   </Button>
+                   <Button onClick={handlePayClubhouse} disabled={monthlyCrateStats.netAmount <= 0 || !settings.clubhousePaypalEmail} className="flex-1 md:flex-none rounded-xl bg-amber-600 text-white shadow-lg shadow-amber-200 font-bold">
+                     <ExternalLink className="h-4 w-4 mr-2" /> Abrechnen
                    </Button>
                 </div>
               </CardContent>

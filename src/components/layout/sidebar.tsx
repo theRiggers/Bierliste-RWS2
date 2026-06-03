@@ -29,7 +29,7 @@ const navigation = [
   { name: 'Verlauf', href: '/history', icon: HistoryIcon },
   { name: 'Beiträge', href: '/membership-fees', icon: BanknoteIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart'] },
-  { name: 'Spieler', href: '/players', icon: UsersIcon, roles: ['admin'] },
+  { name: 'Spieler', href: '/players', icon: UsersIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Administration', href: '/admin', icon: SettingsIcon, roles: ['admin'] },
 ]
 

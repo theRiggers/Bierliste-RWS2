@@ -54,7 +54,7 @@ export default function PlayersPage() {
   const isAdmin = currentUserProfile?.role === 'admin'
   const isKassenwart = currentUserProfile?.role === 'kassenwart' || isAdmin
 
-  if (!currentUserProfile || !isAdmin) {
+  if (!currentUserProfile || (!isAdmin && !isKassenwart)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
@@ -115,47 +115,18 @@ export default function PlayersPage() {
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
-          <h1 className="text-2xl font-bold text-primary font-headline">Spielerverwaltung</h1>
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Rolle</Label>
-                  <Select value={newRole} onValueChange={(v: any) => setNewRole(v)}>
-                    <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="player">Spieler</SelectItem>
-                      <SelectItem value="coach">Trainer</SelectItem>
-                      <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="kassenwart">Kassenwart</SelectItem>
-                      <SelectItem value="strafenwart">Strafenwart</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter><Button onClick={handleAddPlayer} className="w-full">Anlegen</Button></DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
-          <div className="md:hidden flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>
+          <h1 className="text-2xl font-bold text-primary font-headline">Spieler & Konten</h1>
+          {isAdmin && (
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <DialogTrigger asChild><Button size="sm" className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-1" /> Neu</Button></DialogTrigger>
-              <DialogContent className="max-w-[90vw] rounded-2xl">
+              <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
+              <DialogContent>
                 <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
                 <div className="grid gap-4 py-4">
-                  <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
-                  <div className="space-y-2"><Label>E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
-                  <div className="space-y-2">
-                    <Label>Rolle</Label>
+                  <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} className="col-span-3" /></div>
+                  <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} className="col-span-3" /></div>
+                  <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Rolle</Label>
                     <Select value={newRole} onValueChange={(v: any) => setNewRole(v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="player">Spieler</SelectItem>
                         <SelectItem value="coach">Trainer</SelectItem>
@@ -170,6 +141,39 @@ export default function PlayersPage() {
                 <DialogFooter><Button onClick={handleAddPlayer} className="w-full">Anlegen</Button></DialogFooter>
               </DialogContent>
             </Dialog>
+          )}
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+          <div className="md:hidden flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>
+            {isAdmin && (
+              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild><Button size="sm" className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-1" /> Neu</Button></DialogTrigger>
+                <DialogContent className="max-w-[90vw] rounded-2xl">
+                  <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
+                    <div className="space-y-2"><Label>E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
+                    <div className="space-y-2">
+                      <Label>Rolle</Label>
+                      <Select value={newRole} onValueChange={(v: any) => setNewRole(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="player">Spieler</SelectItem>
+                          <SelectItem value="coach">Trainer</SelectItem>
+                          <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="kassenwart">Kassenwart</SelectItem>
+                          <SelectItem value="strafenwart">Strafenwart</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter><Button onClick={handleAddPlayer} className="w-full">Anlegen</Button></DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -200,21 +204,25 @@ export default function PlayersPage() {
                           <Banknote className="h-4 w-4" />
                         </Button>
                       )}
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        onClick={() => { setEditingPlayer(player); setEditName(player.name); setEditEmail(player.email); setEditRole(player.role); setIsEditOpen(true); }}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                      {isAdmin && (
+                        <>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => { setEditingPlayer(player); setEditName(player.name); setEditEmail(player.email); setEditRole(player.role); setIsEditOpen(true); }}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </CardContent>

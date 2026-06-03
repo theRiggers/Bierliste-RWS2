@@ -6,11 +6,11 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2 } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function PlayersPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, addPlayer, updatePlayer, deletePlayer, loading, currentUserProfile } = useStore()
+  const { players, addPlayer, updatePlayer, deletePlayer, recordPayment, loading, currentUserProfile } = useStore()
   
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newName, setNewName] = useState("")
@@ -35,6 +35,12 @@ export default function PlayersPage() {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null)
 
+  // Payment State
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState("")
+  const [paymentPlayer, setPaymentPlayer] = useState<Player | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   useEffect(() => { setMounted(true) }, [])
 
   if (loading || !mounted) {
@@ -46,6 +52,7 @@ export default function PlayersPage() {
   }
 
   const isAdmin = currentUserProfile?.role === 'admin'
+  const isKassenwart = currentUserProfile?.role === 'kassenwart' || isAdmin
 
   if (!currentUserProfile || !isAdmin) {
     return (
@@ -83,6 +90,21 @@ export default function PlayersPage() {
     } finally {
       setIsDeleteConfirmOpen(false)
       setPlayerToDelete(null)
+    }
+  }
+
+  const handleRecordPayment = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (!paymentPlayer || isNaN(amount) || amount <= 0) return;
+    setIsSubmitting(true);
+    try {
+      await recordPayment(paymentPlayer.id, amount);
+      setIsPaymentOpen(false);
+      setPaymentAmount("");
+      setPaymentPlayer(null);
+      toast({ title: "Zahlung verbucht" });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -167,6 +189,17 @@ export default function PlayersPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
+                      {isKassenwart && player.balance < 0 && (
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          title="Zahlung verbuchen"
+                          onClick={() => { setPaymentPlayer(player); setPaymentAmount(Math.abs(player.balance).toString()); setIsPaymentOpen(true); }}
+                        >
+                          <Banknote className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button 
                         size="icon" 
                         variant="ghost" 
@@ -212,6 +245,26 @@ export default function PlayersPage() {
               </div>
             </div>
             <DialogFooter><Button onClick={savePlayerChanges} className="w-full">Speichern</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Schulden begleichen</DialogTitle>
+              <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Betrag (€)</Label>
+                <Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleRecordPayment} disabled={isSubmitting} className="w-full rounded-xl bg-emerald-600">
+                {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Verbuchen"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

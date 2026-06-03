@@ -128,6 +128,7 @@ interface StoreContextType {
   settings: AppSettings;
   loading: boolean;
   totalMannschaftskasse: number;
+  totalBierkasse: number;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   deleteExpense: (expenseId: string) => void;
   recordPayment: (playerId: string, amount: number) => void;
@@ -226,6 +227,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
 
+  const totalBierkasse = useMemo(() => {
+    const paymentSum = payments.reduce((sum, p) => sum + p.amount, 0);
+    const treasuryExpenseSum = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
+    return paymentSum - treasuryExpenseSum;
+  }, [payments, treasuryExpenses]);
+
   useEffect(() => {
     if (db && !fineCatalogLoading) {
       if (fineCatalog.length === 0 && currentUserProfile?.role === 'admin') {
@@ -249,13 +256,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const cost = itemType === 'beer' ? settings.beerPrice : settings.cratePrice;
     const player = players.find(p => p.id === playerId);
-    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     if (!player) return;
     addDoc(collection(db, 'expenses'), { playerId, playerName: player.name, itemType, cost, date: new Date().toISOString() });
     setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) - cost }, { merge: true });
-    if (teamKasse && playerId !== teamKasse.id) {
-      setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) + cost }, { merge: true });
-    }
   };
 
   const deleteExpense = (expenseId: string) => {
@@ -263,12 +266,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const expense = expenses.find(e => e.id === expenseId);
     if (!expense) return;
     const player = players.find(p => p.id === expense.playerId);
-    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     deleteDoc(doc(db, 'expenses', expenseId));
     if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true });
-    if (teamKasse && expense.playerId !== teamKasse.id) {
-      setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) - expense.cost }, { merge: true });
-    }
   };
 
   const recordPayment = (playerId: string, amount: number) => {
@@ -311,19 +310,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addTreasuryExpense = (description: string, amount: number) => {
     if (!db || !currentUserProfile) return;
-    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
-    if (!teamKasse) return;
     addDoc(collection(db, 'treasuryExpenses'), { description, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
-    setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) - amount }, { merge: true });
   };
 
   const deleteTreasuryExpense = (expenseId: string) => {
     if (!db) return;
-    const expense = treasuryExpenses.find(e => e.id === expenseId);
-    if (!expense) return;
-    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
     deleteDoc(doc(db, 'treasuryExpenses', expenseId));
-    if (teamKasse) setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) + expense.amount }, { merge: true });
   };
 
   const addFine = (playerId: string, reason: string, amount: number) => {
@@ -370,10 +362,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addBezahlkiste = () => {
     if (!db || !currentUserProfile) return;
-    const teamKasse = players.find(p => p.email === 'kasse@kickoff.de');
-    if (!teamKasse) return;
     addDoc(collection(db, 'treasuryExpenses'), { description: "Bezahlkiste (für Einzelverkauf)", amount: settings.cratePrice, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
-    setDoc(doc(db, 'players', teamKasse.id), { balance: (teamKasse.balance || 0) - settings.cratePrice }, { merge: true });
   };
 
   const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {
@@ -402,6 +391,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, currentUserProfile, settings,
       loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || eventsLoading,
       totalMannschaftskasse,
+      totalBierkasse,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, addFine, deleteFine, updateFineType, addFineType, deleteFineType,

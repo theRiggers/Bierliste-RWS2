@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription as CardDesc }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, ExternalLink, MapPin, Clock, Globe, CalendarDays, Check, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay } from "date-fns"

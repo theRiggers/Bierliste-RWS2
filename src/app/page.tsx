@@ -172,7 +172,6 @@ export default function Dashboard() {
       toast({ variant: "destructive", title: "Fehler", description: "Bitte gültige Daten eingeben." })
       return
     }
-    // Now redirected to Mannschaftskasse as an expense
     addMembershipTransaction(tDesc, amount, 'expense')
     setIsTreasuryOpen(false)
     setTDesc("")
@@ -208,21 +207,36 @@ export default function Dashboard() {
     const monthName = format(new Date(), 'MMMM', { locale: de });
     const amount = monthlyCrateStats.amount.toFixed(2);
     const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.clubhousePaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=Kistenabrechnung%20RWS2%20${encodeURIComponent(monthName)}`;
-    window.open(paypalUrl, '_blank');
+    toast({ title: "PayPal wird geöffnet", description: "Du wirst zur App/Webseite weitergeleitet." });
+    window.location.href = paypalUrl;
   }
 
   const handlePayIndividualDebt = () => {
     const amount = Math.abs(currentUserProfile.balance).toFixed(2);
-    const reference = `Getränkekonto: ${currentUserProfile.name}`;
-    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.treasuryPaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
-    window.open(paypalUrl, '_blank');
+    toast({ title: "PayPal wird geöffnet", description: "Du wirst zur App/Webseite weitergeleitet." });
+    
+    if (settings.paypalMeLink && settings.paypalMeLink.includes('paypal.me')) {
+      const baseUrl = settings.paypalMeLink.endsWith('/') ? settings.paypalMeLink : `${settings.paypalMeLink}/`;
+      window.location.href = `${baseUrl}${amount}`;
+    } else {
+      const reference = `Getränkekonto: ${currentUserProfile.name}`;
+      const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.treasuryPaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
+      window.location.href = paypalUrl;
+    }
   }
 
   const handlePayMembershipFee = () => {
     const amount = feeStatus.open.toFixed(2);
-    const reference = `Mannschaftskasse: ${currentUserProfile.name}`;
-    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.treasuryPaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
-    window.open(paypalUrl, '_blank');
+    toast({ title: "PayPal wird geöffnet", description: "Du wirst zur App/Webseite weitergeleitet." });
+
+    if (settings.paypalMeLink && settings.paypalMeLink.includes('paypal.me')) {
+      const baseUrl = settings.paypalMeLink.endsWith('/') ? settings.paypalMeLink : `${settings.paypalMeLink}/`;
+      window.location.href = `${baseUrl}${amount}`;
+    } else {
+      const reference = `Mannschaftskasse: ${currentUserProfile.name}`;
+      const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.treasuryPaypalEmail)}&amount=${amount}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
+      window.location.href = paypalUrl;
+    }
   }
 
   const TreasuryDialog = ({ variant = "default" }: { variant?: "default" | "mobile" }) => (

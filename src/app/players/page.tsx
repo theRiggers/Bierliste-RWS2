@@ -29,7 +29,7 @@ import {
 export default function PlayersPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, addPlayer, updatePlayer, deletePlayer, recordPayment, addExpense, loading, currentUserProfile } = useStore()
+  const { players, addPlayer, updatePlayer, deletePlayer, recordPayment, addExpense, loading, currentUserProfile, settings } = useStore()
   const [drafting, setDrafting] = useState<string | null>(null)
   
   // States for Adding Player
@@ -150,7 +150,13 @@ export default function PlayersPage() {
     if (player.balance >= 0) return
     setDrafting(player.id)
     try {
-      const result = await draftPaymentReminder({ playerName: player.name, outstandingAmount: Math.abs(player.balance) })
+      // Use dynamic settings for the reminder link
+      const paypalLink = settings.paypalMeLink || settings.treasuryPaypalEmail;
+      const result = await draftPaymentReminder({ 
+        playerName: player.name, 
+        outstandingAmount: Math.abs(player.balance),
+        paypalLink: paypalLink
+      })
       toast({ title: `Erinnerung für ${player.name}`, description: result.reminderMessage })
     } catch (error) {
       toast({ variant: "destructive", title: "KI-Fehler" })

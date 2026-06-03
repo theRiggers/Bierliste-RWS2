@@ -144,7 +144,7 @@ export default function Dashboard() {
 
   const fineStatus = useMemo(() => {
     if (!currentUserProfile) return 0;
-    return fines.filter(f => f.playerId === currentUserProfile.id).reduce((sum, f) => sum + f.amount, 0);
+    return fines.filter(f => f.playerId === currentUserProfile.id && !f.isPaid).reduce((sum, f) => sum + f.amount, 0);
   }, [currentUserProfile, fines]);
 
   if (!mounted || authLoading || storeLoading) {
@@ -211,14 +211,16 @@ export default function Dashboard() {
 
     const subject = selfPaymentType === 'drinks' ? `Getraenkekonto: ${currentUserProfile.name}` : selfPaymentType === 'treasury' ? `Beitrag: ${currentUserProfile.name}` : `Strafen: ${currentUserProfile.name}`;
     
-    if (settings.paypalMeLink && settings.paypalMeLink.includes("paypal.me")) {
-      let link = settings.paypalMeLink.trim();
+    const email = settings.treasuryPaypalEmail || settings.paypalMeLink;
+    if (email && email.includes("paypal.me")) {
+      let link = email.trim();
       if (!link.startsWith('http')) link = `https://${link}`;
       const baseUrl = link.endsWith("/") ? link : `${link}/`;
-      window.open(`${baseUrl}${amount.toFixed(2)}`, '_blank');
+      window.location.href = `${baseUrl}${amount.toFixed(2)}`;
+    } else if (email) {
+      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
     } else {
-      const email = settings.treasuryPaypalEmail || settings.paypalMeLink;
-      window.open(`https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`, '_blank');
+      toast({ variant: "destructive", title: "Fehler", description: "Kein PayPal-Konto hinterlegt." });
     }
     setIsSelfPaymentDialogOpen(false);
   }
@@ -236,9 +238,9 @@ export default function Dashboard() {
       let link = email.trim();
       if (!link.startsWith('http')) link = `https://${link}`;
       const baseUrl = link.endsWith("/") ? link : `${link}/`;
-      window.open(`${baseUrl}${amount.toFixed(2)}`, '_blank');
+      window.location.href = `${baseUrl}${amount.toFixed(2)}`;
     } else {
-      window.open(`https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`, '_blank');
+      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
     }
   }
 

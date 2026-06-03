@@ -1,22 +1,23 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Fine, Player } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Scale, Plus, Trash2, Loader2, UserCircle, AlertCircle } from "lucide-react"
+import { Scale, Plus, Trash2, Loader2, UserCircle, AlertCircle, CheckCircle2, History } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function FinesPage() {
   const { toast } = useToast()
-  const { players, fines, fineCatalog, addFine, deleteFine, currentUserProfile, loading: storeLoading } = useStore()
+  const { players, fines, fineCatalog, addFine, markFineAsPaid, deleteFine, currentUserProfile, loading: storeLoading } = useStore()
   const [mounted, setMounted] = useState(false)
   
   const [selectedPlayer, setSelectedPlayer] = useState("")
@@ -25,6 +26,10 @@ export default function FinesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Filter fines for display
+  const unpaidFines = useMemo(() => fines.filter(f => !f.isPaid), [fines]);
+  const paidFines = useMemo(() => fines.filter(f => f.isPaid), [fines]);
 
   // Auto-fill amount when fine type changes
   useEffect(() => {
@@ -146,35 +151,83 @@ export default function FinesPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg">Offene Strafen</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {fines.map((f) => (
-                  <div key={f.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                        <UserCircle className="h-6 w-6" />
+          <Tabs defaultValue="unpaid" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="unpaid" className="flex items-center gap-2">
+                <Scale className="h-4 w-4" /> Offen ({unpaidFines.length})
+              </TabsTrigger>
+              <TabsTrigger value="paid" className="flex items-center gap-2">
+                <History className="h-4 w-4" /> Bezahlt ({paidFines.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="unpaid">
+              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
+                <CardContent className="p-0">
+                  <div className="divide-y divide-border">
+                    {unpaidFines.map((f) => (
+                      <div key={f.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                            <UserCircle className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm">{f.playerName}</p>
+                            <p className="text-xs text-muted-foreground">{f.reason} • {format(new Date(f.date), 'dd.MM.yy', { locale: de })}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-destructive mr-2">-{f.amount.toFixed(2)} €</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => markFineAsPaid(f.id)}
+                            title="Als bezahlt markieren"
+                          >
+                            <CheckCircle2 className="h-5 w-5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteFine(f.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-sm">{f.playerName}</p>
-                        <p className="text-xs text-muted-foreground">{f.reason} • {format(new Date(f.date), 'dd.MM.yy', { locale: de })}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-bold text-destructive">-{f.amount.toFixed(2)} €</span>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteFine(f.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    ))}
+                    {unpaidFines.length === 0 && <p className="p-8 text-center text-muted-foreground italic">Keine offenen Strafen vorhanden.</p>}
                   </div>
-                ))}
-                {fines.length === 0 && <p className="p-8 text-center text-muted-foreground italic">Keine offenen Strafen vorhanden.</p>}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="paid">
+              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white opacity-80">
+                <CardContent className="p-0">
+                  <div className="divide-y divide-border">
+                    {paidFines.map((f) => (
+                      <div key={f.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                            <CheckCircle2 className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm">{f.playerName}</p>
+                            <p className="text-xs text-muted-foreground line-through">{f.reason} • {format(new Date(f.date), 'dd.MM.yy', { locale: de })}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="font-bold text-emerald-600">{f.amount.toFixed(2)} €</span>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteFine(f.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {paidFines.length === 0 && <p className="p-8 text-center text-muted-foreground italic">Noch keine Strafen bezahlt.</p>}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

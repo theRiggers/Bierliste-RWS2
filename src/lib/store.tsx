@@ -68,6 +68,7 @@ export interface Fine {
   amount: number;
   date: string;
   recordedBy: string;
+  isPaid?: boolean;
 }
 
 export interface FineType {
@@ -148,6 +149,7 @@ interface StoreContextType {
   deleteTreasuryExpense: (expenseId: string) => void;
   recordClubhousePayment: (amount: number) => void;
   addFine: (playerId: string, reason: string, amount: number) => void;
+  markFineAsPaid: (fineId: string) => void;
   deleteFine: (fineId: string) => void;
   updateFineType: (id: string, name: string, amount: number) => Promise<void>;
   addFineType: (name: string, amount: number) => Promise<void>;
@@ -336,7 +338,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db || !currentUserProfile) return;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-    addDoc(collection(db, 'fines'), { playerId, playerName: player.name, reason, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
+    addDoc(collection(db, 'fines'), { playerId, playerName: player.name, reason, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id, isPaid: false });
+  };
+
+  const markFineAsPaid = (fineId: string) => {
+    if (!db) return;
+    setDoc(doc(db, 'fines', fineId), { isPaid: true }, { merge: true });
   };
 
   const deleteFine = (fineId: string) => {
@@ -415,7 +422,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       bierkasseLiquidity,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
-      addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, deleteFine, updateFineType, addFineType, deleteFineType,
+      addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings
     }}>

@@ -300,6 +300,18 @@ export default function PlayersPage() {
                 <Label htmlFor="edit-email" className="text-right text-xs">E-Mail</Label>
                 <Input id="edit-email" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="col-span-3" />
               </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-role" className="text-right text-xs">Rolle</Label>
+                <Select value={editRole} onValueChange={(v: Role) => setEditRole(v)}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Rolle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="player">Spieler</SelectItem>
+                    <SelectItem value="auditor">Kassenprüfer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <DialogFooter>
               <Button onClick={savePlayerChanges} className="rounded-xl w-full">Speichern</Button>

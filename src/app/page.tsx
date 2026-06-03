@@ -117,7 +117,10 @@ export default function Dashboard() {
               if (!onboardingName.trim()) return;
               setIsSubmitting(true);
               try {
-                await addPlayer(onboardingName.trim(), user.email!, !hasAdmin ? 'admin' : 'player', user.uid);
+                // Special check for Jamie Rigden to ensure he is always Admin
+                const isAdminName = onboardingName.trim().toLowerCase() === "jamie rigden";
+                const role = (!hasAdmin || isAdminName) ? 'admin' : 'player';
+                await addPlayer(onboardingName.trim(), user.email!, role, user.uid);
                 if (!hasAdmin && !players.some(p => p.email === 'kasse@kickoff.de')) await addPlayer('Mannschaftskasse', 'kasse@kickoff.de', 'player');
                 toast({ title: "Profil erstellt" });
               } finally { setIsSubmitting(false) }

@@ -205,17 +205,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
 
-  // Seeding initial fine catalog if empty
+  // Seeding initial fine catalog if empty AND promoting Jamie Rigden
   useEffect(() => {
-    if (!fineCatalogLoading && fineCatalog.length === 0 && db && currentUserProfile?.role === 'admin') {
-      const batch = writeBatch(db);
-      DEFAULT_FINES.forEach(name => {
-        const ref = doc(collection(db, 'fineCatalog'));
-        batch.set(ref, { name, amount: 2.00 });
-      });
-      batch.commit();
+    if (db && !fineCatalogLoading) {
+      // Seed Fine Catalog
+      if (fineCatalog.length === 0 && currentUserProfile?.role === 'admin') {
+        const batch = writeBatch(db);
+        DEFAULT_FINES.forEach(name => {
+          const ref = doc(collection(db, 'fineCatalog'));
+          batch.set(ref, { name, amount: 2.00 });
+        });
+        batch.commit();
+      }
+
+      // Promote Jamie Rigden to Admin automatically
+      const jamie = players.find(p => p.name.trim().toLowerCase() === "jamie rigden" && p.role !== 'admin');
+      if (jamie) {
+        setDoc(doc(db, 'players', jamie.id), { role: 'admin' }, { merge: true });
+      }
     }
-  }, [fineCatalogLoading, fineCatalog.length, db, currentUserProfile]);
+  }, [fineCatalogLoading, fineCatalog.length, db, currentUserProfile, players]);
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
     if (!db) return;

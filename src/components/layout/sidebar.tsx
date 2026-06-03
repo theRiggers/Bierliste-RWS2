@@ -3,24 +3,25 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote, Settings, Scale } from "lucide-react"
+import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote, Settings, Scale } from "lucide-center"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { useState } from "react"
 import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { useStore, Role } from "@/lib/store"
 import Image from "next/image"
+import { History as HistoryIcon, Users as UsersIcon, LayoutDashboard as DashboardIcon, Sparkles as SparklesIcon, LogOut as LogOutIcon, Menu as MenuIcon, Banknote as BanknoteIcon, Settings as SettingsIcon, Scale as ScaleIcon } from "lucide-react"
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Verlauf', href: '/history', icon: History },
-  { name: 'Beiträge', href: '/membership-fees', icon: Banknote, roles: ['admin', 'kassenwart'] },
-  { name: 'Strafen', href: '/fines', icon: Scale, roles: ['admin', 'strafenwart'] },
-  { name: 'Spieler', href: '/players', icon: Users, roles: ['admin'] },
-  { name: 'KI-Berichte', href: '/ai-tools', icon: Sparkles, roles: ['admin', 'kassenwart'] },
-  { name: 'Administration', href: '/admin', icon: Settings, roles: ['admin'] },
+  { name: 'Dashboard', href: '/', icon: DashboardIcon },
+  { name: 'Verlauf', href: '/history', icon: HistoryIcon },
+  { name: 'Beiträge', href: '/membership-fees', icon: BanknoteIcon, roles: ['admin', 'kassenwart'] },
+  { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart'] },
+  { name: 'Spieler', href: '/players', icon: UsersIcon, roles: ['admin'] },
+  { name: 'KI-Berichte', href: '/ai-tools', icon: SparklesIcon, roles: ['admin', 'kassenwart'] },
+  { name: 'Administration', href: '/admin', icon: SettingsIcon, roles: ['admin'] },
 ]
 
 interface SidebarProps {
@@ -86,7 +87,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
           </div>
         )}
         <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6">
-          <LogOut className="mr-3 h-5 w-5" /> Abmelden
+          <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
         </Button>
       </div>
     </div>
@@ -119,10 +120,14 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="mr-2 h-10 w-10">
-                <Menu className="h-6 w-6" />
+                <MenuIcon className="h-6 w-6" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation</SheetTitle>
+                <SheetDescription>Hauptmenü der Bierliste RWS2</SheetDescription>
+              </SheetHeader>
               <div className="flex flex-col h-full">
                 <div className="flex h-auto min-h-16 items-center px-6 border-b border-border pt-safe-top">
                   <div className="flex items-center gap-3 h-16">
@@ -161,7 +166,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
                     </div>
                   )}
                   <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
-                    <LogOut className="mr-3 h-5 w-5" /> Abmelden
+                    <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
                   </Button>
                 </div>
               </div>

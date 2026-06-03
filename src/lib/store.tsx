@@ -171,7 +171,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
-  // Derived Memos
+  // Derived Memos (Order is critical!)
   const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
@@ -205,7 +205,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
 
-  // Seeding initial fine catalog if empty AND promoting Jamie Rigden
+  // Seeding initial fine catalog and role checks (Effects after memos)
   useEffect(() => {
     if (db && !fineCatalogLoading) {
       // Seed Fine Catalog
@@ -218,7 +218,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         batch.commit();
       }
 
-      // Promote Jamie Rigden to Admin automatically
+      // Ensure Jamie Rigden is Admin (by name)
       const jamie = players.find(p => p.name.trim().toLowerCase() === "jamie rigden" && p.role !== 'admin');
       if (jamie) {
         setDoc(doc(db, 'players', jamie.id), { role: 'admin' }, { merge: true });

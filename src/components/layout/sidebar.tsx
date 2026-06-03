@@ -3,27 +3,28 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote, Settings } from "lucide-react"
+import { History, Users, LayoutDashboard, Sparkles, LogOut, Menu, Banknote, Settings, Scale } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useState } from "react"
 import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
-import { useStore } from "@/lib/store"
+import { useStore, Role } from "@/lib/store"
 import Image from "next/image"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Verlauf', href: '/history', icon: History },
-  { name: 'Beiträge', href: '/membership-fees', icon: Banknote, auditorOnly: true },
-  { name: 'Spieler', href: '/players', icon: Users, auditorOnly: true },
-  { name: 'KI-Berichte', href: '/ai-tools', icon: Sparkles, auditorOnly: true },
-  { name: 'Administration', href: '/admin', icon: Settings, auditorOnly: true },
+  { name: 'Beiträge', href: '/membership-fees', icon: Banknote, roles: ['admin', 'kassenwart'] },
+  { name: 'Strafen', href: '/fines', icon: Scale, roles: ['admin', 'strafenwart'] },
+  { name: 'Spieler', href: '/players', icon: Users, roles: ['admin'] },
+  { name: 'KI-Berichte', href: '/ai-tools', icon: Sparkles, roles: ['admin', 'kassenwart'] },
+  { name: 'Administration', href: '/admin', icon: Settings, roles: ['admin'] },
 ]
 
 interface SidebarProps {
-  userRole?: 'player' | 'auditor'
+  userRole?: Role
 }
 
 export function Sidebar({ userRole = 'player' }: SidebarProps) {
@@ -43,13 +44,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
       <div className="flex h-16 items-center px-6 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 flex-shrink-0">
-            <Image 
-              src="/logo.png" 
-              alt="RW Sutthausen" 
-              fill 
-              className="object-contain"
-              priority
-            />
+            <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" priority />
           </div>
           <span className="text-xl font-bold font-headline text-primary">Bierliste RWS2</span>
         </div>
@@ -57,15 +52,13 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
       
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
         {navigation.map((item) => {
-          if (item.auditorOnly && userRole !== 'auditor') return null
+          if (item.roles && !item.roles.includes(userRole)) return null
           const isActive = pathname === item.href
           return (
             <Link key={item.name} href={item.href}>
               <div className={cn(
                 "group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200",
-                isActive 
-                  ? "bg-secondary text-primary" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                isActive ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}>
                 <item.icon className={cn(
                   "mr-3 h-5 w-5 transition-colors",
@@ -87,18 +80,13 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
-                <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+                <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role || 'Spieler'}</p>
               </div>
             </div>
           </div>
         )}
-        <Button 
-          variant="ghost" 
-          onClick={handleLogout}
-          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6"
-        >
-          <LogOut className="mr-3 h-5 w-5" />
-          Abmelden
+        <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6">
+          <LogOut className="mr-3 h-5 w-5" /> Abmelden
         </Button>
       </div>
     </div>
@@ -111,7 +99,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
   )
 }
 
-export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'player' | 'auditor', rightElement?: React.ReactNode }) {
+export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, rightElement?: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
@@ -135,7 +123,6 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72">
-              <SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle></SheetHeader>
               <div className="flex flex-col h-full">
                 <div className="flex h-auto min-h-16 items-center px-6 border-b border-border pt-safe-top">
                   <div className="flex items-center gap-3 h-16">
@@ -147,7 +134,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
                 </div>
                 <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
                   {navigation.map((item) => {
-                    if (item.auditorOnly && userRole !== 'auditor') return null
+                    if (item.roles && !item.roles.includes(userRole || 'player')) return null
                     const isActive = pathname === item.href
                     return (
                       <Link key={item.name} href={item.href} onClick={() => setIsOpen(false)}>
@@ -168,7 +155,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role === 'auditor' ? 'Kassenprüfer' : 'Spieler'}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role || 'Spieler'}</p>
                         </div>
                       </div>
                     </div>
@@ -187,10 +174,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: 'playe
             <span className="font-bold text-lg text-primary">Bierliste RWS2</span>
           </div>
         </div>
-        
-        <div className="flex items-center">
-          {rightElement}
-        </div>
+        <div className="flex items-center">{rightElement}</div>
       </div>
     </div>
   )

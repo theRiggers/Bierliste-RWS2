@@ -117,7 +117,6 @@ export default function Dashboard() {
               if (!onboardingName.trim()) return;
               setIsSubmitting(true);
               try {
-                // Special check for Jamie Rigden to ensure he is always Admin
                 const isAdminName = onboardingName.trim().toLowerCase() === "jamie rigden";
                 const role = (!hasAdmin || isAdminName) ? 'admin' : 'player';
                 await addPlayer(onboardingName.trim(), user.email!, role, user.uid);
@@ -131,6 +130,25 @@ export default function Dashboard() {
         </Card>
       </div>
     )
+  }
+
+  const handlePay = (type: 'drinks' | 'treasury' | 'fines') => {
+    const amount = type === 'drinks' ? Math.abs(currentUserProfile.balance) : type === 'treasury' ? feeStatus.open : fineStatus;
+    if (amount <= 0) {
+      toast({ title: "Alles erledigt!", description: "Du hast keine offenen Beträge in dieser Kategorie." });
+      return;
+    }
+
+    const subject = type === 'drinks' ? `Getraenkekonto: ${currentUserProfile.name}` : type === 'treasury' ? `Beitrag: ${currentUserProfile.name}` : `Strafen: ${currentUserProfile.name}`;
+    
+    // Fallback: If no paypal link exists, use email
+    if (settings.paypalMeLink && settings.paypalMeLink.includes("paypal.me")) {
+      const baseUrl = settings.paypalMeLink.endsWith("/") ? settings.paypalMeLink : `${settings.paypalMeLink}/`;
+      window.location.href = `${baseUrl}${amount.toFixed(2)}`;
+    } else {
+      const email = settings.treasuryPaypalEmail;
+      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
+    }
   }
 
   const teamKasse = players.find(p => p.email === 'kasse@kickoff.de') || { balance: 0 }
@@ -150,7 +168,7 @@ export default function Dashboard() {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 pb-20 md:pb-8">
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
-            <Card className="border-none shadow-md bg-white rounded-2xl">
+            <Card className="border-none shadow-md bg-white rounded-2xl relative overflow-hidden group">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-medium text-muted-foreground">Getränkekonto</p>
@@ -159,7 +177,14 @@ export default function Dashboard() {
                 <h2 className={cn("text-2xl font-bold", currentUserProfile.balance < 0 ? 'text-destructive' : 'text-emerald-600')}>
                   {currentUserProfile.balance.toFixed(2)} €
                 </h2>
-                <p className="text-[10px] text-muted-foreground mt-1">{currentUserProfile.balance < 0 ? 'Schulden' : 'Guthaben'}</p>
+                <div className="flex items-center justify-between mt-2">
+                   <p className="text-[10px] text-muted-foreground">{currentUserProfile.balance < 0 ? 'Schulden' : 'Guthaben'}</p>
+                   {currentUserProfile.balance < 0 && (
+                     <Button size="sm" variant="link" onClick={() => handlePay('drinks')} className="h-6 p-0 text-xs font-bold text-primary flex items-center gap-1">
+                        Bezahlen <ExternalLink className="h-3 w-3" />
+                     </Button>
+                   )}
+                </div>
               </CardContent>
             </Card>
 
@@ -169,9 +194,16 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground">Mannschaftskasse</p>
                   <div className="p-2 bg-blue-100 rounded-full text-blue-600"><Banknote className="h-4 w-4" /></div>
                 </div>
-                <h2 className={cn("text-2xl font-bold", feeStatus.open > 0 ? 'text-destructive' : 'text-emerald-600')}>
-                  {feeStatus.open > 0 ? `-${feeStatus.open.toFixed(2)}` : feeStatus.open.toFixed(2)} €
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className={cn("text-2xl font-bold", feeStatus.open > 0 ? 'text-destructive' : 'text-emerald-600')}>
+                    {feeStatus.open > 0 ? `-${feeStatus.open.toFixed(2)}` : feeStatus.open.toFixed(2)} €
+                  </h2>
+                  {feeStatus.open > 0 && (
+                    <Button size="sm" variant="link" onClick={() => handlePay('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 flex items-center gap-1">
+                      Bezahlen <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <div className="mt-4 grid grid-cols-5 gap-1 pt-4 border-t border-border">
                   {feeStatus.monthsStatus.map((m) => (
                     <div key={m.month} className="flex flex-col items-center">
@@ -191,9 +223,16 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground">Strafenkonto</p>
                   <div className="p-2 bg-amber-100 rounded-full text-amber-600"><Scale className="h-4 w-4" /></div>
                 </div>
-                <h2 className={cn("text-2xl font-bold", fineStatus > 0 ? 'text-destructive' : 'text-emerald-600')}>
-                  {fineStatus > 0 ? `-${fineStatus.toFixed(2)}` : fineStatus.toFixed(2)} €
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className={cn("text-2xl font-bold", fineStatus > 0 ? 'text-destructive' : 'text-emerald-600')}>
+                    {fineStatus > 0 ? `-${fineStatus.toFixed(2)}` : fineStatus.toFixed(2)} €
+                  </h2>
+                  {fineStatus > 0 && (
+                    <Button size="sm" variant="link" onClick={() => handlePay('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 flex items-center gap-1">
+                      Bezahlen <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <p className="text-[10px] text-muted-foreground mt-1">Offene Strafen</p>
               </CardContent>
             </Card>

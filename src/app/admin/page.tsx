@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Mail, Scale, Plus, Trash2 } from "lucide-react"
+import { Loader2, Settings, Save, Beer, Package, Banknote, Link as LinkIcon, Mail, Scale, Plus, Trash2, Github, Copy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -108,6 +107,11 @@ export default function AdminPage() {
     await updateFineType(id, name, val)
   }
 
+  const copyGitCommand = () => {
+    navigator.clipboard.writeText('git add . && git commit -m "Update" && git push')
+    toast({ title: "Befehl kopiert", description: "Füge ihn jetzt im Terminal ein." })
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRole={currentUserProfile.role} />
@@ -166,6 +170,14 @@ export default function AdminPage() {
                   </CardHeader>
                   <CardContent className="pt-6 space-y-6">
                     <div className="space-y-2">
+                      <Label htmlFor="paypal-me">PayPal.me Link (Optional für App-Start)</Label>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="paypal-me" placeholder="https://paypal.me/DeinName" value={paypalMeLink} onChange={(e) => setPaypalMeLink(e.target.value)} className="pl-10" />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground italic">Trage hier deinen PayPal.me Link ein, um den direkten Start der PayPal-App zu forcieren.</p>
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="treasury-email">PayPal E-Mail Schatzmeister</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -179,6 +191,25 @@ export default function AdminPage() {
                         <Input id="clubhouse-email" placeholder="marlene@verein.de" value={clubhouseEmail} onChange={(e) => setClubhouseEmail(e.target.value)} className="pl-10" />
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-slate-900 text-white">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Github className="h-5 w-5" />
+                      Änderungen live schalten
+                    </CardTitle>
+                    <CardDescription className="text-slate-400">Damit neue Features im Internet erscheinen, musst du sie pushen.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-3 bg-slate-800 rounded-xl font-mono text-xs break-all border border-slate-700 flex items-center justify-between gap-4">
+                      <code className="text-slate-300">git add . && git commit -m "Update" && git push</code>
+                      <Button size="icon" variant="ghost" onClick={copyGitCommand} className="h-8 w-8 text-slate-400 hover:text-white">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-slate-500">Kopiere den Befehl und füge ihn in das Terminal ein (F1 {"->"} "Terminal").</p>
                   </CardContent>
                 </Card>
 

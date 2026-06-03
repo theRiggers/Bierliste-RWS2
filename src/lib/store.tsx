@@ -38,7 +38,7 @@ export interface MembershipFee {
   playerId: string;
   type: 'monthly' | 'annual';
   month?: number; // 0-11
-  year: number; // Startjahr der Saison (z.B. 2024)
+  year: number; // Startjahr der Saison
   amount: number;
   datePaid: string;
 }
@@ -81,7 +81,7 @@ export interface TeamEvent {
   title: string;
   description?: string;
   type: 'training' | 'match' | 'social';
-  date: string; // ISO String
+  date: string; 
   location?: string;
 }
 
@@ -97,21 +97,20 @@ export interface AppSettings {
   fupaLink?: string;
 }
 
-// Fallback constants
 export const BEER_PRICE = 1.50;
 export const CRATE_PRICE = 35.00;
 export const MONTHLY_FEE = 15.00;
 export const ANNUAL_FEE = 150.00;
-export const FEE_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4]; // Aug bis Mai
+export const FEE_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 export const PAYPAL_ME_LINK = "";
 export const CLUBHOUSE_PAYPAL_EMAIL = "";
 export const TREASURY_PAYPAL_EMAIL = "";
 
 export const DEFAULT_FINES = [
-  "Dumme Aktion", "Arroganzspruch", "Tunnel beim Kreisspiel", "Sachen liegen lassen (pro Teil)",
-  "Während Training pinkeln müssen", "Nicht aufräumen nach dem Training", "Zu spät absagen beim Training",
-  "Zu spät beim Training", "Trinken/Rauchen im Trikot", "Zu spät beim Spiel", "Gar nicht absagen beim Training",
-  "Verkatert beim Spiel", "Zu spät absagen beim Spiel", "Tunnel Mallerunde"
+  "Dumme Aktion", "Arroganzspruch", "Tunnel beim Kreisspiel", "Sachen liegen lassen",
+  "Während Training pinkeln", "Nicht aufräumen", "Zu spät absagen",
+  "Zu spät zum Training", "Trinken im Trikot", "Zu spät zum Spiel",
+  "Gar nicht absagen", "Verkatert beim Spiel", "Tunnel Mallerunde"
 ];
 
 interface StoreContextType {
@@ -129,6 +128,7 @@ interface StoreContextType {
   loading: boolean;
   totalMannschaftskasse: number;
   totalBierkasse: number;
+  bierkasseLiquidity: number;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   deleteExpense: (expenseId: string) => void;
   recordPayment: (playerId: string, amount: number) => void;
@@ -139,6 +139,7 @@ interface StoreContextType {
   deleteMembershipTransaction: (transactionId: string) => void;
   addTreasuryExpense: (description: string, amount: number) => void;
   deleteTreasuryExpense: (expenseId: string) => void;
+  recordClubhousePayment: (amount: number) => void;
   addFine: (playerId: string, reason: string, amount: number) => void;
   deleteFine: (fineId: string) => void;
   updateFineType: (id: string, name: string, amount: number) => Promise<void>;
@@ -163,10 +164,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const playersQuery = useMemo(() => db ? collection(db, 'players') : null, [db]);
   const { data: playersData, loading: playersLoading } = useCollection<Omit<Player, 'id'>>(playersQuery);
 
-  const expensesQuery = useMemo(() => db ? query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(100)) : null, [db]);
+  const expensesQuery = useMemo(() => db ? query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(150)) : null, [db]);
   const { data: expensesData, loading: expensesLoading } = useCollection<Omit<Expense, 'id'>>(expensesQuery);
 
-  const paymentsQuery = useMemo(() => db ? query(collection(db, 'payments'), orderBy('date', 'desc'), limit(100)) : null, [db]);
+  const paymentsQuery = useMemo(() => db ? query(collection(db, 'payments'), orderBy('date', 'desc'), limit(150)) : null, [db]);
   const { data: paymentsData, loading: paymentsLoading } = useCollection<Omit<Payment, 'id'>>(paymentsQuery);
 
   const feesQuery = useMemo(() => db ? collection(db, 'membershipFees') : null, [db]);
@@ -175,7 +176,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const mTransactionsQuery = useMemo(() => db ? query(collection(db, 'membershipTransactions'), orderBy('date', 'desc')) : null, [db]);
   const { data: mTransactionsData, loading: mTransactionsLoading } = useCollection<Omit<MembershipTransaction, 'id'>>(mTransactionsQuery);
 
-  const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(100)) : null, [db]);
+  const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(150)) : null, [db]);
   const { data: tExpensesData, loading: tExpensesLoading } = useCollection<Omit<TreasuryExpense, 'id'>>(tExpensesQuery);
 
   const finesQuery = useMemo(() => db ? query(collection(db, 'fines'), orderBy('date', 'desc')) : null, [db]);
@@ -190,7 +191,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
-  // Derived Memos
   const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
@@ -227,30 +227,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
 
+  const bierkasseLiquidity = useMemo(() => {
+    const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
+    const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
+    return cashIn - cashOut;
+  }, [payments, treasuryExpenses]);
+
   const totalBierkasse = useMemo(() => {
-    const cashOnHand = payments.reduce((sum, p) => sum + p.amount, 0) - treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
-    const outstandingReceivables = players.reduce((sum, p) => p.balance < 0 ? sum + Math.abs(p.balance) : sum, 0);
-    // Gesamtwert = Bargeld + Forderungen an Spieler
-    return cashOnHand + outstandingReceivables;
-  }, [payments, treasuryExpenses, players]);
+    const outstanding = players.reduce((sum, p) => p.balance < 0 ? sum + Math.abs(p.balance) : sum, 0);
+    return bierkasseLiquidity + outstanding;
+  }, [bierkasseLiquidity, players]);
 
   useEffect(() => {
-    if (db && !fineCatalogLoading) {
-      if (fineCatalog.length === 0 && currentUserProfile?.role === 'admin') {
-        const batch = writeBatch(db);
-        DEFAULT_FINES.forEach(name => {
-          const ref = doc(collection(db, 'fineCatalog'));
-          batch.set(ref, { name, amount: 2.00 });
-        });
-        batch.commit();
-      }
-      
-      const jamie = players.find(p => p.name.trim().toLowerCase() === "jamie rigden");
-      if (jamie && jamie.role !== 'admin') {
-        setDoc(doc(db, 'players', jamie.id), { role: 'admin' }, { merge: true });
-      }
+    if (db && !fineCatalogLoading && fineCatalog.length === 0 && currentUserProfile?.role === 'admin') {
+      const batch = writeBatch(db);
+      DEFAULT_FINES.forEach(name => {
+        const ref = doc(collection(db, 'fineCatalog'));
+        batch.set(ref, { name, amount: 2.00 });
+      });
+      batch.commit();
     }
-  }, [fineCatalogLoading, fineCatalog.length, db, currentUserProfile, players]);
+  }, [fineCatalogLoading, fineCatalog.length, db, currentUserProfile]);
 
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
     if (!db) return;
@@ -313,6 +310,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addDoc(collection(db, 'treasuryExpenses'), { description, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
   };
 
+  const recordClubhousePayment = (amount: number) => {
+    if (!db || !currentUserProfile) return;
+    addDoc(collection(db, 'treasuryExpenses'), { 
+      description: "Abrechnung Vereinsheim (Marlene)", 
+      amount, 
+      date: new Date().toISOString(), 
+      recordedBy: currentUserProfile.id 
+    });
+  };
+
   const deleteTreasuryExpense = (expenseId: string) => {
     if (!db) return;
     deleteDoc(doc(db, 'treasuryExpenses', expenseId));
@@ -361,8 +368,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addBezahlkiste = () => {
-    if (!db || !currentUserProfile) return;
-    addDoc(collection(db, 'treasuryExpenses'), { description: "Bezahlkiste (für Einzelverkauf)", amount: settings.cratePrice, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
+    if (!db) return;
+    addDoc(collection(db, 'expenses'), { 
+      playerId: 'clubhouse', 
+      playerName: 'Bezahlkiste (Mannschaft)', 
+      itemType: 'crate', 
+      cost: settings.cratePrice, 
+      date: new Date().toISOString() 
+    });
   };
 
   const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {
@@ -392,9 +405,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || eventsLoading,
       totalMannschaftskasse,
       totalBierkasse,
+      bierkasseLiquidity,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
-      addTreasuryExpense, deleteTreasuryExpense, addFine, deleteFine, updateFineType, addFineType, deleteFineType,
+      addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings
     }}>

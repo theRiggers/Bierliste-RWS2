@@ -34,7 +34,7 @@ import {
   Info,
   Calculator
 } from "lucide-react"
-import { format, startOfMonth, endOfMonth, isWithinInterval, isAfter } from "date-fns"
+import { format, isAfter } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
@@ -54,7 +54,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, totalMannschaftskasse, totalBierkasse, currentUserProfile, settings, addPlayer, recordPayment, addTreasuryExpense, addBezahlkiste, addMembershipTransaction, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity, currentUserProfile, settings, addPlayer, recordPayment, recordClubhousePayment, addBezahlkiste, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
@@ -75,27 +75,23 @@ export default function Dashboard() {
     return futureEvents[0] || null;
   }, [teamEvents]);
 
-  const monthlyCrateStats = useMemo(() => {
-    const now = new Date();
-    const start = startOfMonth(now);
-    const end = endOfMonth(now);
+  const clubhouseStats = useMemo(() => {
+    // Alle Kisten (Spieler + Mannschaft) zählen
+    const allCrates = expenses.filter(e => e.itemType === 'crate');
+    const totalCrateCost = allCrates.length * settings.cratePrice;
     
-    const pCrates = expenses.filter(e => e.itemType === 'crate' && isWithinInterval(new Date(e.date), { start, end }));
-    const pBeers = expenses.filter(e => e.itemType === 'beer' && isWithinInterval(new Date(e.date), { start, end }));
-    const bKisten = treasuryExpenses.filter(t => t.description.includes("Bezahlkiste") && isWithinInterval(new Date(t.date), { start, end }));
+    // Alle Zahlungen an das Vereinsheim zählen
+    const paidToClubhouse = treasuryExpenses
+      .filter(t => t.description.includes("Vereinsheim"))
+      .reduce((sum, t) => sum + t.amount, 0);
     
-    const crateCount = pCrates.length + bKisten.length;
-    const totalCrateCost = crateCount * settings.cratePrice;
-    const beerRevenue = pBeers.length * settings.beerPrice;
-    
-    // Verrechnung: Crates - Beers
-    const netAmount = totalCrateCost - beerRevenue;
+    const openDebt = Math.max(0, totalCrateCost - paidToClubhouse);
 
     return { 
-      count: crateCount, 
+      count: allCrates.length, 
       totalCost: totalCrateCost,
-      beerRevenue: beerRevenue,
-      netAmount: Math.max(0, netAmount)
+      paid: paidToClubhouse,
+      openDebt
     };
   }, [expenses, treasuryExpenses, settings]);
 
@@ -159,8 +155,7 @@ export default function Dashboard() {
               if (!onboardingName.trim()) return;
               setIsSubmitting(true);
               try {
-                const isAdminName = onboardingName.trim().toLowerCase() === "jamie rigden";
-                const role = (!hasAdmin || isAdminName) ? 'admin' : 'player';
+                const role = !hasAdmin ? 'admin' : 'player';
                 await addPlayer(onboardingName.trim(), user.email!, role, user.uid);
                 toast({ title: "Profil erstellt" });
               } finally { setIsSubmitting(false) }
@@ -176,7 +171,7 @@ export default function Dashboard() {
   const handlePay = (type: 'drinks' | 'treasury' | 'fines') => {
     const amount = type === 'drinks' ? Math.abs(currentUserProfile.balance) : type === 'treasury' ? feeStatus.open : fineStatus;
     if (amount <= 0) {
-      toast({ title: "Alles erledigt!", description: "Du hast keine offenen Beträge in dieser Kategorie." });
+      toast({ title: "Alles erledigt!" });
       return;
     }
 
@@ -194,13 +189,13 @@ export default function Dashboard() {
   }
 
   const handlePayClubhouse = () => {
-    const amount = monthlyCrateStats.netAmount;
+    const amount = clubhouseStats.openDebt;
     const email = settings.clubhousePaypalEmail;
     if (!email) {
-      toast({ variant: "destructive", title: "Fehler", description: "Keine PayPal E-Mail für das Vereinsheim hinterlegt." });
+      toast({ variant: "destructive", title: "Fehler", description: "Keine PayPal E-Mail hinterlegt." });
       return;
     }
-    const subject = `Getränke-Abrechnung ${format(new Date(), 'MMMM', { locale: de })}`;
+    const subject = `Getränke-Abrechnung Vereinsheim`;
     
     if (email.includes("paypal.me")) {
       let link = email.trim();
@@ -212,7 +207,13 @@ export default function Dashboard() {
     }
   }
 
-  const handleRecordPayment = async () => {
+  const handleRecordClubhousePaymentAction = () => {
+    if (clubhouseStats.openDebt <= 0) return;
+    recordClubhousePayment(clubhouseStats.openDebt);
+    toast({ title: "Abrechnung verbucht", description: "Die Bierkasse wurde belastet." });
+  }
+
+  const handleRecordPaymentAction = async () => {
     const amount = parseFloat(paymentAmount);
     if (!paymentPlayerId || isNaN(amount) || amount <= 0) return;
     setIsSubmitting(true);
@@ -249,13 +250,13 @@ export default function Dashboard() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Zahlung erfassen</DialogTitle>
-                    <DialogDescription>Verbucht eine Zahlung (Bier/Kisten) eines Spielers.</DialogDescription>
+                    <DialogDescription>Verbucht eine Zahlung eines Spielers in die Bierkasse.</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
                       <Label>Spieler</Label>
                       <Select value={paymentPlayerId} onValueChange={setPaymentPlayerId}>
-                        <SelectTrigger><SelectValue placeholder="Wähle einen Spieler" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Spieler wählen" /></SelectTrigger>
                         <SelectContent>
                           {players.filter(p => p.email !== 'kasse@kickoff.de').map(p => (
                             <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -269,7 +270,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleRecordPayment} disabled={isSubmitting || !paymentPlayerId} className="w-full rounded-xl bg-emerald-600">
+                    <Button onClick={handleRecordPaymentAction} disabled={isSubmitting || !paymentPlayerId} className="w-full rounded-xl bg-emerald-600">
                       {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Zahlung speichern"}
                     </Button>
                   </DialogFooter>
@@ -282,7 +283,7 @@ export default function Dashboard() {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 pb-20 md:pb-8">
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
-            <Card className="border-none shadow-md bg-white rounded-2xl relative overflow-hidden group">
+            <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-medium text-muted-foreground">Mein Getränkekonto</p>
@@ -292,7 +293,7 @@ export default function Dashboard() {
                   {currentUserProfile.balance.toFixed(2)} €
                 </h2>
                 <div className="flex items-center justify-between mt-2">
-                   <p className="text-[10px] text-muted-foreground">{currentUserProfile.balance < 0 ? 'Schulden' : 'Guthaben'}</p>
+                   <p className="text-[10px] text-muted-foreground">{currentUserProfile.balance < 0 ? 'Offen' : 'Guthaben'}</p>
                    {currentUserProfile.balance < 0 && (
                      <Button size="sm" variant="link" onClick={() => handlePay('drinks')} className="h-6 p-0 text-xs font-bold text-primary flex items-center gap-1">
                         Bezahlen <ExternalLink className="h-3 w-3" />
@@ -342,7 +343,7 @@ export default function Dashboard() {
                     <h2 className={cn("text-2xl font-bold", totalBierkasse < 0 ? 'text-destructive' : 'text-emerald-600')}>
                       {totalBierkasse.toFixed(2)} €
                     </h2>
-                    <p className="text-[10px] text-muted-foreground mt-1">Gesamtwert (Inkl. Außenstände)</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Guthaben + Außenstände</p>
                   </CardContent>
                 </Card>
 
@@ -360,11 +361,10 @@ export default function Dashboard() {
             )}
           </div>
 
-          <Card className="border-none shadow-lg rounded-2xl bg-white overflow-hidden border-l-4 border-l-blue-500 animate-in fade-in slide-in-from-top-4">
+          <Card className="border-none shadow-lg rounded-2xl bg-white border-l-4 border-l-blue-500">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
-                <CalendarDays className="h-5 w-5" />
-                Nächster Termin
+                <CalendarDays className="h-5 w-5" /> Nächster Termin
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -373,72 +373,59 @@ export default function Dashboard() {
                   <div className="text-center min-w-[55px] bg-blue-50 p-2 rounded-xl border border-blue-100">
                     <p className="text-[10px] uppercase font-black text-blue-600">{format(new Date(nextEvent.date), 'EEE', { locale: de })}</p>
                     <p className="text-xl font-black text-blue-900">{format(new Date(nextEvent.date), 'dd')}</p>
-                    <p className="text-[10px] font-bold text-blue-400">{format(new Date(nextEvent.date), 'MMM', { locale: de })}</p>
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-black bg-blue-100 text-blue-700 border border-blue-200 uppercase">
-                        {nextEvent.type === 'training' ? 'Training' : nextEvent.type === 'match' ? 'Spiel' : 'Event'}
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-base leading-tight">{nextEvent.title}</h4>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground font-medium">
-                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(nextEvent.date), 'HH:mm')} Uhr</span>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-base">{nextEvent.title}</h4>
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(nextEvent.date), 'HH:mm')}</span>
                        {nextEvent.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {nextEvent.location}</span>}
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')} className="shrink-0 text-muted-foreground hover:text-blue-600">
+                  <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')}>
                     <ChevronRight className="h-6 w-6" />
                   </Button>
                 </div>
               ) : (
-                <div className="py-4 text-center">
-                  <p className="text-sm text-muted-foreground italic flex items-center justify-center gap-2">
-                    <CalendarDays className="h-4 w-4 opacity-50" /> Keine Termine geplant.
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground italic">Keine Termine geplant.</p>
               )}
             </CardContent>
           </Card>
 
           {isKassenwart && (
-            <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500 overflow-hidden">
+            <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500">
               <CardHeader className="bg-amber-50/50 pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
                     <ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung (Marlene)
                   </CardTitle>
                   <Badge variant="outline" className="bg-white text-amber-700 border-amber-200">
-                    {format(new Date(), 'MMMM', { locale: de })}
+                    Soll: {clubhouseStats.totalCost.toFixed(2)}€
                   </Badge>
                 </div>
-                <CardDescription>Berechnung: (Kisten × Preis) – Einzelbier-Einnahmen.</CardDescription>
+                <CardDescription>Berechnung nur basierend auf Kisten (Spieler + Bezahlkisten).</CardDescription>
               </CardHeader>
               <CardContent className="pt-4 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 w-full md:w-auto">
+                <div className="grid grid-cols-2 gap-6 w-full md:w-auto">
                   <div className="space-y-1">
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Kisten Total</p>
-                    <p className="text-2xl font-black text-amber-700">{monthlyCrateStats.count}</p>
-                    <p className="text-[10px] text-muted-foreground">({monthlyCrateStats.totalCost.toFixed(2)}€)</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Kisten Total</p>
+                    <p className="text-2xl font-black text-amber-700">{clubhouseStats.count}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Bier-Einnahmen</p>
-                    <p className="text-2xl font-black text-emerald-600">-{monthlyCrateStats.beerRevenue.toFixed(2)}€</p>
-                    <p className="text-[10px] text-muted-foreground italic">von Bezahlkisten</p>
-                  </div>
-                  <div className="space-y-1 col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-amber-200 pt-3 sm:pt-0 sm:pl-6">
-                    <p className="text-[10px] text-amber-800/60 font-bold uppercase tracking-wider flex items-center gap-1">
-                      <Calculator className="h-3 w-3" /> Offen
+                    <p className="text-[10px] text-amber-800/60 font-bold uppercase flex items-center gap-1">
+                      <Calculator className="h-3 w-3" /> Noch Offen
                     </p>
-                    <p className="text-3xl font-black text-amber-600">{monthlyCrateStats.netAmount.toFixed(2)} €</p>
+                    <p className="text-3xl font-black text-amber-600">{clubhouseStats.openDebt.toFixed(2)} €</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                   <Button variant="outline" onClick={() => addBezahlkiste()} className="flex-1 md:flex-none rounded-xl border-amber-600 text-amber-700 hover:bg-amber-50">
+                   <Button variant="outline" onClick={() => addBezahlkiste()} className="rounded-xl border-amber-600 text-amber-700">
                      <PlusCircle className="h-4 w-4 mr-2" /> Bezahlkiste
                    </Button>
-                   <Button onClick={handlePayClubhouse} disabled={monthlyCrateStats.netAmount <= 0 || !settings.clubhousePaypalEmail} className="flex-1 md:flex-none rounded-xl bg-amber-600 text-white shadow-lg shadow-amber-200 font-bold">
-                     <ExternalLink className="h-4 w-4 mr-2" /> Abrechnen
+                   <Button onClick={handlePayClubhouse} className="rounded-xl bg-amber-600 text-white font-bold">
+                     <ExternalLink className="h-4 w-4 mr-2" /> PayPal
+                   </Button>
+                   <Button variant="secondary" onClick={handleRecordClubhousePaymentAction} disabled={clubhouseStats.openDebt <= 0} className="rounded-xl font-bold">
+                     <Check className="h-4 w-4 mr-2" /> Als bezahlt markieren
                    </Button>
                 </div>
               </CardContent>

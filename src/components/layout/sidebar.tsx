@@ -15,7 +15,6 @@ import {
   History as HistoryIcon, 
   Users as UsersIcon, 
   LayoutDashboard as DashboardIcon, 
-  Sparkles as SparklesIcon, 
   LogOut as LogOutIcon, 
   Menu as MenuIcon, 
   Banknote as BanknoteIcon, 
@@ -29,7 +28,6 @@ const navigation = [
   { name: 'Beiträge', href: '/membership-fees', icon: BanknoteIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart'] },
   { name: 'Spieler', href: '/players', icon: UsersIcon, roles: ['admin'] },
-  { name: 'KI-Berichte', href: '/ai-tools', icon: SparklesIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Administration', href: '/admin', icon: SettingsIcon, roles: ['admin'] },
 ]
 

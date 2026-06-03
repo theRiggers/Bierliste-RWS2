@@ -105,7 +105,8 @@ export default function HistoryPage() {
 
   if (!user || !currentUserProfile) return null
 
-  const isAuditor = currentUserProfile.role === 'auditor'
+  // Admins and Kassenwarte can delete entries
+  const canDelete = currentUserProfile.role === 'admin' || currentUserProfile.role === 'kassenwart'
 
   const formatDate = (date: string | Date, pattern: string) => {
     return format(new Date(date), pattern, { locale: de })
@@ -235,7 +236,7 @@ export default function HistoryPage() {
                       )}>
                         {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
                       </span>
-                      {isAuditor && (
+                      {canDelete && (
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -263,7 +264,7 @@ export default function HistoryPage() {
                       <TableHead className="font-bold">Spieler / Zweck</TableHead>
                       <TableHead className="font-bold">Typ</TableHead>
                       <TableHead className="text-right font-bold">Betrag</TableHead>
-                      {isAuditor && <TableHead className="w-[50px]"></TableHead>}
+                      {canDelete && <TableHead className="w-[50px]"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -294,7 +295,7 @@ export default function HistoryPage() {
                         )}>
                           {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
                         </TableCell>
-                        {isAuditor && (
+                        {canDelete && (
                           <TableCell className="text-right">
                             <Button 
                               variant="ghost" 

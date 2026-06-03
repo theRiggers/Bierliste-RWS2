@@ -42,7 +42,9 @@ export default function MembershipFeesPage() {
     )
   }
 
-  if (!currentUserProfile || currentUserProfile.role !== 'auditor') {
+  const isKassenwart = currentUserProfile?.role === 'kassenwart' || currentUserProfile?.role === 'admin'
+
+  if (!currentUserProfile || !isKassenwart) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
@@ -91,9 +93,9 @@ export default function MembershipFeesPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole="auditor" />
+      <Sidebar userRole={currentUserProfile.role} />
       <MobileNavTrigger 
-        userRole="auditor" 
+        userRole={currentUserProfile.role} 
         rightElement={<SeasonSelector variant="mobile" />} 
       />
       

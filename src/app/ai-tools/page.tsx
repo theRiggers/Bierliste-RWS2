@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 export default function AiToolsPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, expenses, recordPayment, loading: storeLoading } = useStore()
+  const { players, expenses, recordPayment, loading: storeLoading, currentUserProfile } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
   
   // States for results
@@ -54,6 +54,15 @@ export default function AiToolsPage() {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!currentUserProfile || (currentUserProfile.role !== 'admin' && currentUserProfile.role !== 'kassenwart')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
+        <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
+        <Button onClick={() => window.location.href = "/"} className="mt-4">Zurück</Button>
       </div>
     )
   }
@@ -120,8 +129,8 @@ export default function AiToolsPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole="auditor" />
-      <MobileNavTrigger userRole="auditor" />
+      <Sidebar userRole={currentUserProfile.role} />
+      <MobileNavTrigger userRole={currentUserProfile.role} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">

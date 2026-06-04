@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -28,7 +29,6 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: DashboardIcon },
   { name: 'Kalender', href: '/calendar', icon: CalendarIcon },
   { name: 'Verlauf', href: '/history', icon: HistoryIcon },
-  { name: 'Beiträge', href: '/membership-fees', icon: BanknoteIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Mannschaftskasse', href: '/treasury', icon: TreasuryIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart'] },
   { name: 'Spieler', href: '/players', icon: UsersIcon, roles: ['admin', 'kassenwart'] },

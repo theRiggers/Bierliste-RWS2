@@ -192,7 +192,7 @@ export default function AdminPage() {
                     </div>
                     <div className="grid gap-6 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="clubhouse-paypal">PayPal Vereinsheim (Marlene)</Label>
+                        <Label htmlFor="clubhouse-paypal">PayPal Vereinsheim</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input id="clubhouse-paypal" placeholder="E-Mail oder PayPal.me" value={clubhouseEmail} onChange={(e) => setClubhouseEmail(e.target.value)} className="pl-10" />

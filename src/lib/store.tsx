@@ -197,7 +197,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const players = useMemo(() => playersData?.map(d => {
     const rawData = d.data;
-    // Migration: If old 'role' exists but no 'roles', convert to array
     const roles = rawData.roles || (rawData.role ? [rawData.role] : ['player']);
     return { ...rawData, id: d.id, roles } as Player;
   }) || [], [playersData]);
@@ -323,7 +322,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const recordClubhousePayment = (amount: number) => {
     if (!db || !currentUserProfile) return;
     addDoc(collection(db, 'treasuryExpenses'), { 
-      description: "Abrechnung Vereinsheim (Marlene)", 
+      description: "Abrechnung Vereinsheim", 
       amount, 
       date: new Date().toISOString(), 
       recordedBy: currentUserProfile.id 

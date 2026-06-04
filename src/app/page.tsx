@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useStore, FEE_MONTHS } from "@/lib/store"
+import { useStore, FEE_MONTHS, Role } from "@/lib/store"
 import { 
   Wallet, 
   Beer, 
@@ -271,7 +271,7 @@ export default function Dashboard() {
     navigator.clipboard.writeText(reference);
     toast({ 
       title: "Betreff kopiert!", 
-      description: "Der Verwendungszweck für Marlene wurde kopiert. Bitte in der PayPal-App einfügen." 
+      description: "Der Verwendungszweck wurde kopiert. Bitte in der PayPal-App einfügen." 
     });
 
     if (emailOrLink.includes("paypal.me")) {
@@ -517,7 +517,7 @@ export default function Dashboard() {
               <CardHeader className="bg-amber-50/50 pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
-                    <ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung (Marlene)
+                    <ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung
                   </CardTitle>
                   <Badge variant="outline" className="bg-white text-amber-700 border-amber-200">
                     Soll: {clubhouseStats.totalCost.toFixed(2)}€

@@ -560,7 +560,7 @@ export default function Dashboard() {
 
           <div>
             <h3 className="text-lg font-semibold mb-4 px-1">Getränk erfassen</h3>
-            <ExpenseActions currentUserId={currentUserProfile.id} />
+            <ExpenseActions currentUserId={currentUserProfile.id} userRole={currentUserProfile.role} />
           </div>
 
           <div>

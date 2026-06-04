@@ -30,8 +30,8 @@ export default function HowToPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile?.role} />
-      <MobileNavTrigger userRole={currentUserProfile?.role} />
+      <Sidebar userRoles={currentUserProfile?.roles} />
+      <MobileNavTrigger userRoles={currentUserProfile?.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
@@ -124,7 +124,7 @@ export default function HowToPage() {
                     <div className="bg-muted h-10 w-10 rounded-full flex items-center justify-center font-bold text-primary shrink-0">3</div>
                     <div className="space-y-1">
                       <p className="font-bold">Hinzufügen bestätigen</p>
-                      <p className="text-xs text-muted-foreground">Klicke oben rechts auf "Hinzufügen". Die App erscheint nun auf deinem Homescreen.</p>
+                      <p className="text-xs text-muted-foreground">Klicke oben rechts on "Hinzufügen". Die App erscheint nun auf deinem Homescreen.</p>
                     </div>
                   </div>
                 </CardContent>

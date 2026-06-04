@@ -81,7 +81,7 @@ export default function TreasuryPage() {
     )
   }
 
-  const isKassenwart = currentUserProfile?.role === 'kassenwart' || currentUserProfile?.role === 'admin'
+  const isKassenwart = currentUserProfile?.roles?.includes('kassenwart') || currentUserProfile?.roles?.includes('admin')
 
   if (!currentUserProfile || !isKassenwart) {
     return (
@@ -153,8 +153,8 @@ export default function TreasuryPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile.role} />
-      <MobileNavTrigger userRole={currentUserProfile.role} />
+      <Sidebar userRoles={currentUserProfile.roles} />
+      <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">

@@ -47,8 +47,8 @@ export default function FinesPage() {
     )
   }
 
-  const isAdmin = currentUserProfile?.role === 'admin'
-  const isStrafenwart = currentUserProfile?.role === 'strafenwart'
+  const isAdmin = currentUserProfile?.roles?.includes('admin')
+  const isStrafenwart = currentUserProfile?.roles?.includes('strafenwart') || isAdmin
 
   if (!currentUserProfile || (!isAdmin && !isStrafenwart)) {
     return (
@@ -81,8 +81,8 @@ export default function FinesPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile.role} />
-      <MobileNavTrigger userRole={currentUserProfile.role} />
+      <Sidebar userRoles={currentUserProfile.roles} />
+      <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">

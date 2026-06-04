@@ -76,7 +76,7 @@ export default function CalendarPage() {
     )
   }
 
-  const isEditor = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'coach' || currentUserProfile?.role === 'assistant_coach'
+  const isEditor = currentUserProfile?.roles?.some(r => ['admin', 'coach', 'assistant_coach'].includes(r))
 
   const handleExportAll = () => {
     if (upcomingEvents.length === 0) {
@@ -215,8 +215,8 @@ export default function CalendarPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile?.role} />
-      <MobileNavTrigger userRole={currentUserProfile?.role} />
+      <Sidebar userRoles={currentUserProfile?.roles} />
+      <MobileNavTrigger userRoles={currentUserProfile?.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">

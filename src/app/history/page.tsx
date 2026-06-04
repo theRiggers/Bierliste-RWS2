@@ -106,7 +106,9 @@ export default function HistoryPage() {
   if (!user || !currentUserProfile) return null
 
   // Admins and Kassenwarte can delete entries
-  const canDelete = currentUserProfile.role === 'admin' || currentUserProfile.role === 'kassenwart'
+  const isAdmin = currentUserProfile.roles.includes('admin')
+  const isKassenwart = currentUserProfile.roles.includes('kassenwart') || isAdmin
+  const canDelete = isKassenwart
 
   const formatDate = (date: string | Date, pattern: string) => {
     return format(new Date(date), pattern, { locale: de })
@@ -170,8 +172,8 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile.role} />
-      <MobileNavTrigger userRole={currentUserProfile.role} />
+      <Sidebar userRoles={currentUserProfile.roles} />
+      <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">

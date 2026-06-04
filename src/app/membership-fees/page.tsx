@@ -41,7 +41,8 @@ export default function MembershipFeesPage() {
     )
   }
 
-  const isKassenwart = currentUserProfile?.role === 'kassenwart' || currentUserProfile?.role === 'admin'
+  const isAdmin = currentUserProfile?.roles.includes('admin')
+  const isKassenwart = currentUserProfile?.roles.includes('kassenwart') || isAdmin
 
   if (!currentUserProfile || !isKassenwart) {
     return (
@@ -92,9 +93,9 @@ export default function MembershipFeesPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile.role} />
+      <Sidebar userRoles={currentUserProfile.roles} />
       <MobileNavTrigger 
-        userRole={currentUserProfile.role} 
+        userRoles={currentUserProfile.roles} 
         rightElement={<SeasonSelector variant="mobile" />} 
       />
       

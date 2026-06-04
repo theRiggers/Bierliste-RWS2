@@ -58,7 +58,10 @@ export default function AiToolsPage() {
     )
   }
 
-  if (!currentUserProfile || (currentUserProfile.role !== 'admin' && currentUserProfile.role !== 'kassenwart')) {
+  const isAdmin = currentUserProfile?.roles.includes('admin')
+  const isKassenwart = currentUserProfile?.roles.includes('kassenwart') || isAdmin
+
+  if (!currentUserProfile || !isKassenwart) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
@@ -129,8 +132,8 @@ export default function AiToolsPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile.role} />
-      <MobileNavTrigger userRole={currentUserProfile.role} />
+      <Sidebar userRoles={currentUserProfile.roles} />
+      <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">

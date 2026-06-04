@@ -33,7 +33,8 @@ import {
   ChevronRight,
   Info,
   Calculator,
-  Medal
+  Medal,
+  Copy
 } from "lucide-react"
 import { format, isAfter } from "date-fns"
 import { de } from "date-fns/locale"
@@ -234,8 +235,8 @@ export default function Dashboard() {
       return;
     }
 
-    const typeLabel = selfPaymentType === 'drinks' ? 'Getraenkekonto' : selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen';
-    const subject = `2. Herren RWS - ${typeLabel}: ${currentUserProfile.name}`;
+    const typeLabel = selfPaymentType === 'drinks' ? 'Getränke' : selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen';
+    const reference = `2. Herren RWS - ${typeLabel}: ${currentUserProfile.name}`;
     
     const emailOrLink = settings.treasuryPaypalEmail || settings.paypalMeLink;
     if (!emailOrLink) {
@@ -243,13 +244,21 @@ export default function Dashboard() {
       return;
     }
 
+    // Copy reference to clipboard for easy pasting in the app
+    navigator.clipboard.writeText(reference);
+    toast({ 
+      title: "Betreff kopiert!", 
+      description: "Der Verwendungszweck wurde kopiert. Bitte füge ihn in der PayPal-App ein." 
+    });
+
     if (emailOrLink.includes("paypal.me")) {
       let link = emailOrLink.trim();
       if (!link.startsWith('http')) link = `https://${link}`;
       const baseUrl = link.endsWith("/") ? link : `${link}/`;
+      // Use window.location.href for better deep linking on mobile
       window.location.href = `${baseUrl}${amount.toFixed(2)}`;
     } else {
-      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(emailOrLink)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
+      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(emailOrLink)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
     }
     setIsSelfPaymentDialogOpen(false);
   }
@@ -261,15 +270,22 @@ export default function Dashboard() {
       toast({ variant: "destructive", title: "Fehler", description: "Keine PayPal E-Mail für das Vereinsheim hinterlegt." });
       return;
     }
-    const subject = `2. Herren RWS - Getränke-Abrechnung Vereinsheim`;
+    const reference = `2. Herren RWS - Getränke-Abrechnung Vereinsheim`;
     
+    // Copy reference to clipboard
+    navigator.clipboard.writeText(reference);
+    toast({ 
+      title: "Betreff kopiert!", 
+      description: "Der Verwendungszweck für Marlene wurde kopiert. Bitte in der PayPal-App einfügen." 
+    });
+
     if (emailOrLink.includes("paypal.me")) {
       let link = emailOrLink.trim();
       if (!link.startsWith('http')) link = `https://${link}`;
       const baseUrl = link.endsWith("/") ? link : `${link}/`;
       window.location.href = `${baseUrl}${amount.toFixed(2)}`;
     } else {
-      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(emailOrLink)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
+      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(emailOrLink)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
     }
   }
 
@@ -626,6 +642,17 @@ export default function Dashboard() {
                   />
                   <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
+              </div>
+              
+              <div className="p-3 bg-muted/50 rounded-xl border space-y-2">
+                <div className="flex items-center justify-between">
+                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">Vorgeschlagener Betreff:</Label>
+                   <Copy className="h-3 w-3 text-muted-foreground" />
+                </div>
+                <p className="text-xs font-medium break-all">
+                  2. Herren RWS - {selfPaymentType === 'drinks' ? 'Getränke' : selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen'}: {currentUserProfile.name}
+                </p>
+                <p className="text-[10px] text-emerald-600 font-medium">Wird automatisch kopiert beim Klick auf "Weiter".</p>
               </div>
             </div>
             <DialogFooter>

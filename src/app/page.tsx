@@ -481,7 +481,7 @@ export default function Dashboard() {
             <Card className="border-none shadow-lg rounded-2xl bg-white border-l-4 border-l-amber-500 h-full">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
-                  <Trophy className="h-5 w-5" /> Ehrentabelle (Kumulierte Kosten)
+                  <Trophy className="h-5 w-5" /> Ehrentabelle
                 </CardTitle>
                 <CardDescription>Gesamte Ausgaben für Getränke und Strafen.</CardDescription>
               </CardHeader>

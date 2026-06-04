@@ -32,7 +32,8 @@ import {
   Trophy,
   ChevronRight,
   Info,
-  Calculator
+  Calculator,
+  Medal
 } from "lucide-react"
 import { format, isAfter } from "date-fns"
 import { de } from "date-fns/locale"
@@ -146,6 +147,30 @@ export default function Dashboard() {
     if (!currentUserProfile) return 0;
     return fines.filter(f => f.playerId === currentUserProfile.id && !f.isPaid).reduce((sum, f) => sum + f.amount, 0);
   }, [currentUserProfile, fines]);
+
+  const costsRanking = useMemo(() => {
+    const rankingMap = new Map<string, { id: string, name: string, total: number }>();
+    
+    players.forEach(p => {
+      if (p.email !== 'kasse@kickoff.de') {
+        rankingMap.set(p.id, { id: p.id, name: p.name, total: 0 });
+      }
+    });
+
+    expenses.forEach(e => {
+      const entry = rankingMap.get(e.playerId);
+      if (entry) entry.total += e.cost;
+    });
+
+    fines.forEach(f => {
+      const entry = rankingMap.get(f.playerId);
+      if (entry) entry.total += f.amount;
+    });
+
+    return Array.from(rankingMap.values())
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+  }, [players, expenses, fines]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -407,35 +432,70 @@ export default function Dashboard() {
             )}
           </div>
 
-          <Card className="border-none shadow-lg rounded-2xl bg-white border-l-4 border-l-blue-500">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
-                <CalendarDays className="h-5 w-5" /> Nächster Termin
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {nextEvent ? (
-                <div className="flex items-center gap-4">
-                  <div className="text-center min-w-[55px] bg-blue-50 p-2 rounded-xl border border-blue-100">
-                    <p className="text-[10px] uppercase font-black text-blue-600">{format(new Date(nextEvent.date), 'EEE', { locale: de })}</p>
-                    <p className="text-xl font-black text-blue-900">{format(new Date(nextEvent.date), 'dd')}</p>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-base">{nextEvent.title}</h4>
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(nextEvent.date), 'HH:mm')}</span>
-                       {nextEvent.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {nextEvent.location}</span>}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="border-none shadow-lg rounded-2xl bg-white border-l-4 border-l-blue-500 h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                  <CalendarDays className="h-5 w-5" /> Nächster Termin
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {nextEvent ? (
+                  <div className="flex items-center gap-4">
+                    <div className="text-center min-w-[55px] bg-blue-50 p-2 rounded-xl border border-blue-100">
+                      <p className="text-[10px] uppercase font-black text-blue-600">{format(new Date(nextEvent.date), 'EEE', { locale: de })}</p>
+                      <p className="text-xl font-black text-blue-900">{format(new Date(nextEvent.date), 'dd')}</p>
                     </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-base">{nextEvent.title}</h4>
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(nextEvent.date), 'HH:mm')}</span>
+                         {nextEvent.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {nextEvent.location}</span>}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')}>
+                      <ChevronRight className="h-6 w-6" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')}>
-                    <ChevronRight className="h-6 w-6" />
-                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">Keine Termine geplant.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-lg rounded-2xl bg-white border-l-4 border-l-amber-500 h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
+                  <Trophy className="h-5 w-5" /> Ehrentabelle (Kumulierte Kosten)
+                </CardTitle>
+                <CardDescription>Gesamte Ausgaben für Getränke und Strafen.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border px-6 pb-4">
+                  {costsRanking.map((p, idx) => (
+                    <div key={p.id} className="py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold",
+                          idx === 0 ? "bg-yellow-400 text-yellow-900" : 
+                          idx === 1 ? "bg-slate-300 text-slate-700" : 
+                          idx === 2 ? "bg-amber-600 text-amber-50" : "bg-muted text-muted-foreground"
+                        )}>
+                          {idx + 1}
+                        </div>
+                        <span className={cn("text-sm font-semibold", idx < 3 ? "text-foreground" : "text-muted-foreground")}>{p.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black">{p.total.toFixed(2)} €</span>
+                        {idx < 3 && <Medal className={cn("h-4 w-4", idx === 0 ? "text-yellow-500" : idx === 1 ? "text-slate-400" : "text-amber-700")} />}
+                      </div>
+                    </div>
+                  ))}
+                  {costsRanking.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground italic">Noch keine Daten vorhanden.</p>}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">Keine Termine geplant.</p>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
           {isKassenwart && (
             <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500">

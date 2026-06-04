@@ -11,7 +11,7 @@ export interface Player {
   id: string;
   name: string;
   email: string;
-  role: Role;
+  roles: Role[];
   balance: number;
 }
 
@@ -103,11 +103,6 @@ export const CRATE_PRICE = 35.00;
 export const MONTHLY_FEE = 15.00;
 export const ANNUAL_FEE = 150.00;
 
-/**
- * FEE_MONTHS: Die Monate, die kostenpflichtig sind.
- * Saisonstart: 01.07. (Monat 6)
- * Kostenpflichtig (10 Monate): Aug(7) bis Mai(4)
- */
 export const FEE_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
 export const PAYPAL_ME_LINK = "";
@@ -158,7 +153,7 @@ interface StoreContextType {
   updateTeamEvent: (id: string, updates: Partial<TeamEvent>) => Promise<void>;
   deleteTeamEvent: (id: string) => Promise<void>;
   addBezahlkiste: () => void;
-  addPlayer: (name: string, email: string, role: Role, uid?: string) => Promise<void>;
+  addPlayer: (name: string, email: string, roles: Role[], uid?: string) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   deletePlayer: (id: string) => Promise<void>;
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
@@ -171,7 +166,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useUser();
 
   const playersQuery = useMemo(() => db ? collection(db, 'players') : null, [db]);
-  const { data: playersData, loading: playersLoading } = useCollection<Omit<Player, 'id'>>(playersQuery);
+  const { data: playersData, loading: playersLoading } = useCollection<any>(playersQuery);
 
   const expensesQuery = useMemo(() => db ? query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(150)) : null, [db]);
   const { data: expensesData, loading: expensesLoading } = useCollection<Omit<Expense, 'id'>>(expensesQuery);
@@ -200,7 +195,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
-  const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
+  const players = useMemo(() => playersData?.map(d => {
+    const rawData = d.data;
+    // Migration: If old 'role' exists but no 'roles', convert to array
+    const roles = rawData.roles || (rawData.role ? [rawData.role] : ['player']);
+    return { ...rawData, id: d.id, roles } as Player;
+  }) || [], [playersData]);
+
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
   const membershipFees = useMemo(() => feesData?.map(d => ({ ...d.data, id: d.id })) || [], [feesData]);
@@ -248,7 +249,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [bierkasseLiquidity, players]);
 
   useEffect(() => {
-    if (db && !fineCatalogLoading && fineCatalog.length === 0 && currentUserProfile?.role === 'admin') {
+    if (db && !fineCatalogLoading && fineCatalog.length === 0 && currentUserProfile?.roles.includes('admin')) {
       const batch = writeBatch(db);
       DEFAULT_FINES.forEach(name => {
         const ref = doc(collection(db, 'fineCatalog'));
@@ -392,10 +393,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const addPlayer = async (name: string, email: string, role: Role, uid?: string) => {
+  const addPlayer = async (name: string, email: string, roles: Role[], uid?: string) => {
     if (!db) return;
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
-    await setDoc(playerRef, { name, email, role, balance: 0.00 }, { merge: true });
+    await setDoc(playerRef, { name, email, roles, balance: 0.00 }, { merge: true });
   };
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {

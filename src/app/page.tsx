@@ -106,7 +106,6 @@ export default function Dashboard() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    // Saisonwechsel am 01.07. (Monat 6)
     const seasonYear = currentMonth < 6 ? currentYear - 1 : currentYear;
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
@@ -120,7 +119,6 @@ export default function Dashboard() {
       if (currentMIdxInList !== -1) {
         isPastOrCurrent = mIdxInList <= currentMIdxInList;
       } else {
-        // July(6) is before start, June(5) is after end
         if (currentMonth === 5) isPastOrCurrent = true; 
         else isPastOrCurrent = false;
       }
@@ -184,7 +182,7 @@ export default function Dashboard() {
   if (!user) return null
 
   if (!currentUserProfile) {
-    const hasAdmin = players.some(p => p.role === 'admin')
+    const hasAdmin = players.some(p => p.roles.includes('admin'))
     return (
       <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">
         <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
@@ -204,8 +202,8 @@ export default function Dashboard() {
               if (!onboardingName.trim()) return;
               setIsSubmitting(true);
               try {
-                const role = !hasAdmin ? 'admin' : 'player';
-                await addPlayer(onboardingName.trim(), user.email!, role, user.uid);
+                const roles: Role[] = !hasAdmin ? ['admin'] : ['player'];
+                await addPlayer(onboardingName.trim(), user.email!, roles, user.uid);
                 toast({ title: "Profil erstellt" });
               } finally { setIsSubmitting(false) }
             }} disabled={!onboardingName.trim() || isSubmitting}>
@@ -244,7 +242,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Copy reference to clipboard for easy pasting in the app
     navigator.clipboard.writeText(reference);
     toast({ 
       title: "Betreff kopiert!", 
@@ -255,7 +252,6 @@ export default function Dashboard() {
       let link = emailOrLink.trim();
       if (!link.startsWith('http')) link = `https://${link}`;
       const baseUrl = link.endsWith("/") ? link : `${link}/`;
-      // Use window.location.href for better deep linking on mobile
       window.location.href = `${baseUrl}${amount.toFixed(2)}`;
     } else {
       window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(emailOrLink)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(reference)}`;
@@ -272,7 +268,6 @@ export default function Dashboard() {
     }
     const reference = `2. Herren RWS - Getränke-Abrechnung Vereinsheim`;
     
-    // Copy reference to clipboard
     navigator.clipboard.writeText(reference);
     toast({ 
       title: "Betreff kopiert!", 
@@ -310,14 +305,14 @@ export default function Dashboard() {
     }
   }
 
-  const isAdmin = currentUserProfile.role === 'admin'
-  const isKassenwart = currentUserProfile.role === 'kassenwart' || isAdmin
+  const isAdmin = currentUserProfile.roles.includes('admin')
+  const isKassenwart = currentUserProfile.roles.includes('kassenwart') || isAdmin
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile.role} />
+      <Sidebar userRoles={currentUserProfile.roles} />
       <MobileNavTrigger 
-        userRole={currentUserProfile.role} 
+        userRoles={currentUserProfile.roles} 
         rightElement={
           isKassenwart && (
             <Button 
@@ -560,7 +555,7 @@ export default function Dashboard() {
 
           <div>
             <h3 className="text-lg font-semibold mb-4 px-1">Getränk erfassen</h3>
-            <ExpenseActions currentUserId={currentUserProfile.id} userRole={currentUserProfile.role} />
+            <ExpenseActions currentUserId={currentUserProfile.id} userRoles={currentUserProfile.roles} />
           </div>
 
           <div>

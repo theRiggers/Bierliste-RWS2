@@ -6,27 +6,26 @@ import { Beer, Package, PlusCircle, UserCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { useStore } from "@/lib/store"
+import { useStore, Role } from "@/lib/store"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 
 interface ExpenseActionsProps {
   currentUserId: string;
-  userRole?: string;
+  userRoles?: Role[];
 }
 
-export function ExpenseActions({ currentUserId, userRole }: ExpenseActionsProps) {
+export function ExpenseActions({ currentUserId, userRoles = ['player'] }: ExpenseActionsProps) {
   const { toast } = useToast()
   const { addExpense, settings, players } = useStore()
   const [loading, setLoading] = useState<string | null>(null)
   const [targetPlayerId, setTargetPlayerId] = useState(currentUserId)
 
-  // Update target if currentUserId changes (e.g. on login)
   useEffect(() => {
     setTargetPlayerId(currentUserId)
   }, [currentUserId])
 
-  const isPrivileged = userRole === 'admin' || userRole === 'kassenwart'
+  const isPrivileged = userRoles.includes('admin') || userRoles.includes('kassenwart')
 
   const handleAdd = (type: 'beer' | 'crate') => {
     setLoading(type)

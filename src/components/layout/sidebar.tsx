@@ -37,10 +37,10 @@ const navigation = [
 ]
 
 interface SidebarProps {
-  userRole?: Role
+  userRoles?: Role[]
 }
 
-export function Sidebar({ userRole = 'player' }: SidebarProps) {
+export function Sidebar({ userRoles = ['player'] }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const auth = useAuth()
@@ -65,7 +65,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
       
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
         {navigation.map((item) => {
-          if (item.roles && !item.roles.includes(userRole)) return null
+          if (item.roles && !item.roles.some(r => userRoles.includes(r as Role))) return null
           const isActive = pathname === item.href
           return (
             <Link key={item.name} href={item.href}>
@@ -93,7 +93,12 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
-                <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role || 'Spieler'}</p>
+                <div className="flex flex-wrap gap-0.5 mt-0.5">
+                  {currentUserProfile?.roles.slice(0, 2).map(r => (
+                    <span key={r} className="text-[9px] bg-primary/10 text-primary px-1 rounded capitalize">{r}</span>
+                  ))}
+                  {currentUserProfile && currentUserProfile.roles.length > 2 && <span className="text-[9px] text-muted-foreground">...</span>}
+                </div>
               </div>
             </div>
           </div>
@@ -112,7 +117,7 @@ export function Sidebar({ userRole = 'player' }: SidebarProps) {
   )
 }
 
-export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, rightElement?: React.ReactNode }) {
+export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { userRoles?: Role[], rightElement?: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
@@ -151,7 +156,7 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
                 </div>
                 <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
                   {navigation.map((item) => {
-                    if (item.roles && !item.roles.includes(userRole || 'player')) return null
+                    if (item.roles && !item.roles.some(r => userRoles.includes(r as Role))) return null
                     const isActive = pathname === item.href
                     return (
                       <Link key={item.name} href={item.href} onClick={() => setIsOpen(false)}>
@@ -172,7 +177,11 @@ export function MobileNavTrigger({ userRole, rightElement }: { userRole?: Role, 
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{currentUserProfile?.role || 'Spieler'}</p>
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {currentUserProfile?.roles.map(r => (
+                              <span key={r} className="text-[8px] bg-primary/10 text-primary px-1 rounded uppercase font-bold">{r}</span>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -6,15 +6,24 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+
+const AVAILABLE_ROLES: { id: Role, label: string }[] = [
+  { id: 'player', label: 'Spieler' },
+  { id: 'coach', label: 'Trainer' },
+  { id: 'assistant_coach', label: 'Co-Trainer' },
+  { id: 'admin', label: 'Admin' },
+  { id: 'kassenwart', label: 'Kassenwart' },
+  { id: 'strafenwart', label: 'Strafenwart' },
+];
 
 export default function PlayersPage() {
   const { toast } = useToast()
@@ -24,13 +33,13 @@ export default function PlayersPage() {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newEmail, setNewEmail] = useState("")
-  const [newRole, setNewRole] = useState<Role>("player")
+  const [newRoles, setNewRoles] = useState<Role[]>(["player"])
 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [editName, setEditName] = useState("")
   const [editEmail, setEditEmail] = useState("")
-  const [editRole, setEditRole] = useState<Role>("player")
+  const [editRoles, setEditRoles] = useState<Role[]>([])
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null)
@@ -51,10 +60,12 @@ export default function PlayersPage() {
     )
   }
 
-  const isAdmin = currentUserProfile?.role === 'admin'
-  const isKassenwart = currentUserProfile?.role === 'kassenwart' || isAdmin
+  if (!currentUserProfile) return null;
 
-  if (!currentUserProfile || (!isAdmin && !isKassenwart)) {
+  const isAdmin = currentUserProfile.roles.includes('admin')
+  const isKassenwart = currentUserProfile.roles.includes('kassenwart') || isAdmin
+
+  if (!isAdmin && !isKassenwart) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
@@ -66,16 +77,16 @@ export default function PlayersPage() {
   const displayPlayers = players.filter(p => p.email !== 'kasse@kickoff.de')
 
   const handleAddPlayer = async () => {
-    if (!newName || !newEmail) return
-    await addPlayer(newName, newEmail, newRole)
+    if (!newName || !newEmail || newRoles.length === 0) return
+    await addPlayer(newName, newEmail, newRoles)
     setIsAddOpen(false)
-    setNewName(""); setNewEmail(""); setNewRole("player")
+    setNewName(""); setNewEmail(""); setNewRoles(["player"])
     toast({ title: "Erfolgreich" })
   }
 
   const savePlayerChanges = () => {
-    if (!editingPlayer || !editName || !editEmail) return
-    updatePlayer(editingPlayer.id, { name: editName, email: editEmail, role: editRole })
+    if (!editingPlayer || !editName || !editEmail || editRoles.length === 0) return
+    updatePlayer(editingPlayer.id, { name: editName, email: editEmail, roles: editRoles })
     setIsEditOpen(false)
     toast({ title: "Aktualisiert" })
   }
@@ -108,10 +119,20 @@ export default function PlayersPage() {
     }
   }
 
+  const toggleRole = (role: Role, list: Role[], setter: (roles: Role[]) => void) => {
+    if (list.includes(role)) {
+      if (list.length > 1) {
+        setter(list.filter(r => r !== role));
+      }
+    } else {
+      setter([...list, role]);
+    }
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRole={currentUserProfile.role} />
-      <MobileNavTrigger userRole={currentUserProfile.role} />
+      <Sidebar userRoles={currentUserProfile.roles} />
+      <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
@@ -119,26 +140,30 @@ export default function PlayersPage() {
           {isAdmin && (
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
               <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} className="col-span-3" /></div>
-                  <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} className="col-span-3" /></div>
-                  <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Rolle</Label>
-                    <Select value={newRole} onValueChange={(v: any) => setNewRole(v)}>
-                      <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="player">Spieler</SelectItem>
-                        <SelectItem value="coach">Trainer</SelectItem>
-                        <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="kassenwart">Kassenwart</SelectItem>
-                        <SelectItem value="strafenwart">Strafenwart</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="grid gap-6 py-4">
+                  <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
+                  <div className="space-y-2"><Label>E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
+                  <div className="space-y-3">
+                    <Label>Rollen (Mehrfachauswahl möglich)</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {AVAILABLE_ROLES.map(role => (
+                        <div key={role.id} className="flex items-center space-x-2 p-2 rounded-lg border hover:bg-muted/50 transition-colors">
+                          <Checkbox 
+                            id={`role-${role.id}`} 
+                            checked={newRoles.includes(role.id)}
+                            onCheckedChange={() => toggleRole(role.id, newRoles, setNewRoles)}
+                          />
+                          <label htmlFor={`role-${role.id}`} className="text-xs font-medium leading-none cursor-pointer flex-1">
+                            {role.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <DialogFooter><Button onClick={handleAddPlayer} className="w-full">Anlegen</Button></DialogFooter>
+                <DialogFooter><Button onClick={handleAddPlayer} className="w-full h-11 rounded-xl">Anlegen</Button></DialogFooter>
               </DialogContent>
             </Dialog>
           )}
@@ -148,31 +173,9 @@ export default function PlayersPage() {
           <div className="md:hidden flex justify-between items-center mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>
             {isAdmin && (
-              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogTrigger asChild><Button size="sm" className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-1" /> Neu</Button></DialogTrigger>
-                <DialogContent className="max-w-[90vw] rounded-2xl">
-                  <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
-                    <div className="space-y-2"><Label>E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
-                    <div className="space-y-2">
-                      <Label>Rolle</Label>
-                      <Select value={newRole} onValueChange={(v: any) => setNewRole(v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="player">Spieler</SelectItem>
-                          <SelectItem value="coach">Trainer</SelectItem>
-                          <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="kassenwart">Kassenwart</SelectItem>
-                          <SelectItem value="strafenwart">Strafenwart</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter><Button onClick={handleAddPlayer} className="w-full">Anlegen</Button></DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button size="sm" className="cyan-glow rounded-xl" onClick={() => setIsAddOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-1" /> Neu
+              </Button>
             )}
           </div>
 
@@ -182,7 +185,13 @@ export default function PlayersPage() {
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary"><UserCircle className="h-8 w-8" /></div>
-                    <Badge variant={player.role === 'admin' ? 'default' : 'secondary'}>{player.role}</Badge>
+                    <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">
+                      {player.roles.map(r => (
+                        <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">
+                          {AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                   <h3 className="text-xl font-bold mb-4">{player.name}</h3>
                   <div className="flex items-center justify-between py-3 border-t">
@@ -217,7 +226,7 @@ export default function PlayersPage() {
                           <Button 
                             size="icon" 
                             variant="ghost" 
-                            onClick={() => { setEditingPlayer(player); setEditName(player.name); setEditEmail(player.email); setEditRole(player.role); setIsEditOpen(true); }}
+                            onClick={() => { setEditingPlayer(player); setEditName(player.name); setEditEmail(player.email); setEditRoles(player.roles); setIsEditOpen(true); }}
                           >
                             <ChevronRight className="h-4 w-4" />
                           </Button>
@@ -232,27 +241,30 @@ export default function PlayersPage() {
         </div>
 
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+          <DialogContent className="max-w-[95vw] md:max-w-md rounded-2xl">
             <DialogHeader><DialogTitle>Spieler bearbeiten</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
               <div className="space-y-2"><Label>Name</Label><Input value={editName} onChange={e => setEditName(e.target.value)} /></div>
               <div className="space-y-2"><Label>E-Mail</Label><Input value={editEmail} onChange={e => setEditEmail(e.target.value)} /></div>
-              <div className="space-y-2">
-                <Label>Rolle</Label>
-                <Select value={editRole} onValueChange={(v: any) => setEditRole(v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="player">Spieler</SelectItem>
-                    <SelectItem value="coach">Trainer</SelectItem>
-                    <SelectItem value="assistant_coach">Co-Trainer</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="kassenwart">Kassenwart</SelectItem>
-                    <SelectItem value="strafenwart">Strafenwart</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3">
+                <Label>Rollen</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {AVAILABLE_ROLES.map(role => (
+                    <div key={role.id} className="flex items-center space-x-2 p-2 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <Checkbox 
+                        id={`edit-role-${role.id}`} 
+                        checked={editRoles.includes(role.id)}
+                        onCheckedChange={() => toggleRole(role.id, editRoles, setEditRoles)}
+                      />
+                      <label htmlFor={`edit-role-${role.id}`} className="text-xs font-medium leading-none cursor-pointer flex-1">
+                        {role.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            <DialogFooter><Button onClick={savePlayerChanges} className="w-full">Speichern</Button></DialogFooter>
+            <DialogFooter><Button onClick={savePlayerChanges} className="w-full h-11 rounded-xl">Speichern</Button></DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -269,7 +281,7 @@ export default function PlayersPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleRecordPayment} disabled={isSubmitting} className="w-full rounded-xl bg-emerald-600">
+              <Button onClick={handleRecordPayment} disabled={isSubmitting} className="w-full rounded-xl h-11 bg-emerald-600">
                 {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Verbuchen"}
               </Button>
             </DialogFooter>

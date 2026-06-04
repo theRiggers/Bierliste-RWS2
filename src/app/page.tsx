@@ -234,38 +234,42 @@ export default function Dashboard() {
       return;
     }
 
-    const subject = selfPaymentType === 'drinks' ? `Getraenkekonto: ${currentUserProfile.name}` : selfPaymentType === 'treasury' ? `Beitrag: ${currentUserProfile.name}` : `Strafen: ${currentUserProfile.name}`;
+    const typeLabel = selfPaymentType === 'drinks' ? 'Getraenkekonto' : selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen';
+    const subject = `2. Herren RWS - ${typeLabel}: ${currentUserProfile.name}`;
     
-    const email = settings.treasuryPaypalEmail || settings.paypalMeLink;
-    if (email && email.includes("paypal.me")) {
-      let link = email.trim();
+    const emailOrLink = settings.treasuryPaypalEmail || settings.paypalMeLink;
+    if (!emailOrLink) {
+      toast({ variant: "destructive", title: "Fehler", description: "Keine PayPal Mannschaftskasse hinterlegt." });
+      return;
+    }
+
+    if (emailOrLink.includes("paypal.me")) {
+      let link = emailOrLink.trim();
       if (!link.startsWith('http')) link = `https://${link}`;
       const baseUrl = link.endsWith("/") ? link : `${link}/`;
       window.location.href = `${baseUrl}${amount.toFixed(2)}`;
-    } else if (email) {
-      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
     } else {
-      toast({ variant: "destructive", title: "Fehler", description: "Kein PayPal-Konto hinterlegt." });
+      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(emailOrLink)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
     }
     setIsSelfPaymentDialogOpen(false);
   }
 
   const handlePayClubhouse = () => {
     const amount = clubhouseStats.openDebt;
-    const email = settings.clubhousePaypalEmail;
-    if (!email) {
-      toast({ variant: "destructive", title: "Fehler", description: "Keine PayPal E-Mail hinterlegt." });
+    const emailOrLink = settings.clubhousePaypalEmail;
+    if (!emailOrLink) {
+      toast({ variant: "destructive", title: "Fehler", description: "Keine PayPal E-Mail für das Vereinsheim hinterlegt." });
       return;
     }
-    const subject = `Getränke-Abrechnung Vereinsheim`;
+    const subject = `2. Herren RWS - Getränke-Abrechnung Vereinsheim`;
     
-    if (email.includes("paypal.me")) {
-      let link = email.trim();
+    if (emailOrLink.includes("paypal.me")) {
+      let link = emailOrLink.trim();
       if (!link.startsWith('http')) link = `https://${link}`;
       const baseUrl = link.endsWith("/") ? link : `${link}/`;
       window.location.href = `${baseUrl}${amount.toFixed(2)}`;
     } else {
-      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
+      window.location.href = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(emailOrLink)}&amount=${amount.toFixed(2)}&currency_code=EUR&item_name=${encodeURIComponent(subject)}`;
     }
   }
 

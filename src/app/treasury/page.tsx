@@ -173,7 +173,7 @@ export default function TreasuryPage() {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full pb-20">
           <div className="md:hidden flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-primary font-headline">M-Kasse</h1>
+            <h1 className="text-2xl font-bold text-primary font-headline">Mannschaftskasse</h1>
             <Badge variant="outline" className={cn("font-black", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600')}>
               {totalMannschaftskasse.toFixed(2)} €
             </Badge>

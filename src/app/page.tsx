@@ -346,6 +346,10 @@ export default function Dashboard() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 pb-20 md:pb-8">
+          <div className="md:hidden flex flex-col gap-4 mb-4">
+            <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-none shadow-md bg-white rounded-2xl">
               <CardContent className="pt-6">
@@ -436,7 +440,7 @@ export default function Dashboard() {
                 <Card className="border-none shadow-md bg-white rounded-2xl">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-medium text-muted-foreground">M-Kasse (Gesamt)</p>
+                      <p className="text-xs font-medium text-muted-foreground">Mannschaftskasse (Gesamt)</p>
                       <div className="p-2 bg-emerald-100 rounded-full text-emerald-600"><TrendingUp className="h-4 w-4" /></div>
                     </div>
                     <h2 className="text-2xl font-bold text-emerald-600">{totalMannschaftskasse.toFixed(2)} €</h2>

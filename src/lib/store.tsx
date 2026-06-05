@@ -245,8 +245,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [payments, treasuryExpenses]);
 
   const totalBierkasse = useMemo(() => {
-    const outstanding = players.reduce((sum, p) => p.balance < 0 ? sum + Math.abs(p.balance) : sum, 0);
-    return bierkasseLiquidity + outstanding;
+    const totalPlayerBalanceSum = players.reduce((sum, p) => sum + (p.balance || 0), 0);
+    // Gesamtstand = Liquides Geld - Guthaben der Spieler + Schulden der Spieler
+    // Da Guthaben positiv und Schulden negativ im balance-Feld sind, gilt:
+    // Stand = Liquidity - totalPlayerBalanceSum
+    return bierkasseLiquidity - totalPlayerBalanceSum;
   }, [bierkasseLiquidity, players]);
 
   useEffect(() => {

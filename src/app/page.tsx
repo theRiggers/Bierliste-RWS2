@@ -34,7 +34,8 @@ import {
   Info,
   Calculator,
   Medal,
-  Copy
+  Copy,
+  RotateCcw
 } from "lucide-react"
 import { format, isAfter } from "date-fns"
 import { de } from "date-fns/locale"
@@ -47,6 +48,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -56,7 +58,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity, currentUserProfile, settings, addPlayer, recordPayment, recordClubhousePayment, addBezahlkiste, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity, currentUserProfile, settings, addPlayer, recordPayment, recordClubhousePayment, addBezahlkiste, resetClubhouseSeason, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
@@ -83,11 +85,19 @@ export default function Dashboard() {
   }, [teamEvents]);
 
   const clubhouseStats = useMemo(() => {
-    const allCrates = expenses.filter(e => e.itemType === 'crate');
+    const resetDate = settings.lastClubhouseResetDate ? new Date(settings.lastClubhouseResetDate) : new Date(0);
+    
+    const allCrates = expenses.filter(e => 
+      e.itemType === 'crate' && 
+      new Date(e.date) >= resetDate
+    );
     const totalCrateCost = allCrates.length * settings.cratePrice;
     
     const paidToClubhouse = treasuryExpenses
-      .filter(t => t.description.includes("Vereinsheim"))
+      .filter(t => 
+        t.description.includes("Vereinsheim") && 
+        new Date(t.date) >= resetDate
+      )
       .reduce((sum, t) => sum + t.amount, 0);
     
     const openDebt = Math.max(0, totalCrateCost - paidToClubhouse);
@@ -288,6 +298,15 @@ export default function Dashboard() {
     if (clubhouseStats.openDebt <= 0) return;
     recordClubhousePayment(clubhouseStats.openDebt);
     toast({ title: "Abrechnung verbucht", description: "Die Bierkasse wurde belastet." });
+  }
+
+  const handleResetClubhouse = async () => {
+    try {
+      await resetClubhouseSeason();
+      toast({ title: "Saison zurückgesetzt", description: "Die Berechnungen starten ab jetzt neu." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Fehler beim Zurücksetzen" });
+    }
   }
 
   const handleRecordPaymentAction = async () => {
@@ -523,9 +542,34 @@ export default function Dashboard() {
                   <CardTitle className="text-lg flex items-center gap-2 text-amber-800 dark:text-amber-400">
                     <ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung
                   </CardTitle>
-                  <Badge variant="outline" className="bg-card text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900">
-                    Gesamtwert: {clubhouseStats.totalCost.toFixed(2)}€
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-card text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900">
+                      Diese Saison versoffen: {clubhouseStats.totalCost.toFixed(2)}€
+                    </Badge>
+                    {isAdmin && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive">
+                            <RotateCcw className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-card">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Saison zurücksetzen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Dies setzt den Zähler "Diese Saison versoffen" und die offenen Schulden gegenüber dem Vereinsheim auf Null zurück. Bestehende Buchungen bleiben im Verlauf erhalten, werden aber für diese Statistik ab jetzt ignoriert.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleResetClubhouse} className="bg-destructive hover:bg-destructive/90 text-white">
+                              Zurücksetzen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
                 </div>
                 <CardDescription>Berechnung nur basierend auf Kisten (Spieler + Bezahlkisten).</CardDescription>
               </CardHeader>

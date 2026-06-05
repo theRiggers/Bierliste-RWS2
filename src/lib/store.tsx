@@ -98,6 +98,7 @@ export interface AppSettings {
   treasuryPaypalEmail: string;
   footballDeLink?: string;
   fupaLink?: string;
+  lastClubhouseResetDate?: string;
 }
 
 export const BEER_PRICE = 1.50;
@@ -159,6 +160,7 @@ interface StoreContextType {
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   deletePlayer: (id: string) => Promise<void>;
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
+  resetClubhouseSeason: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -222,6 +224,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     treasuryPaypalEmail: settingsData?.treasuryPaypalEmail ?? TREASURY_PAYPAL_EMAIL,
     footballDeLink: settingsData?.footballDeLink || "",
     fupaLink: settingsData?.fupaLink || "",
+    lastClubhouseResetDate: settingsData?.lastClubhouseResetDate || "",
   }), [settingsData]);
 
   const currentUserProfile = useMemo(() => {
@@ -246,9 +249,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const totalBierkasse = useMemo(() => {
     const totalPlayerBalanceSum = players.reduce((sum, p) => sum + (p.balance || 0), 0);
-    // Gesamtstand = Liquides Geld - Guthaben der Spieler + Schulden der Spieler
-    // Da Guthaben positiv und Schulden negativ im balance-Feld sind, gilt:
-    // Stand = Liquidity - totalPlayerBalanceSum
     return bierkasseLiquidity - totalPlayerBalanceSum;
   }, [bierkasseLiquidity, players]);
 
@@ -481,6 +481,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError('settings/global', 'update', updates));
   };
 
+  const resetClubhouseSeason = async () => {
+    if (!db) return;
+    const updates = { lastClubhouseResetDate: new Date().toISOString() };
+    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true })
+      .catch(handleMutationError('settings/global', 'update', updates));
+  };
+
   return (
     <StoreContext.Provider value={{ 
       players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, currentUserProfile, settings,
@@ -492,7 +499,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent,
-      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings
+      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason
     }}>
       {children}
     </StoreContext.Provider>

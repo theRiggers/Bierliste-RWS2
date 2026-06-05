@@ -1,23 +1,20 @@
 {
   "entities": {
     "Player": {
-      "title": "Player",
-      "description": "Ein Mitglied der Mannschaft mit Rollen und Kontostand.",
+      "title": "Player Profile",
+      "description": "Represents a team member and their financial status.",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "roles": { 
-          "type": "array", 
-          "items": { "type": "string", "enum": ["player", "admin", "kassenwart", "strafenwart", "coach", "assistant_coach"] } 
-        },
-        "balance": { "type": "number", "description": "Aktueller Kontostand der Getränkekasse." }
+        "roles": { "type": "array", "items": { "type": "string", "enum": ["player", "admin", "kassenwart", "strafenwart", "coach", "assistant_coach"] } },
+        "balance": { "type": "number", "description": "Drink treasury balance (negative = debt)." }
       },
       "required": ["name", "email", "roles", "balance"]
     },
     "Expense": {
-      "title": "Expense",
-      "description": "Eine Getränkebuchung (Bier oder Kiste).",
+      "title": "Drink Expense",
+      "description": "A purchase of a beer or a crate.",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
@@ -30,7 +27,7 @@
     },
     "Payment": {
       "title": "Payment",
-      "description": "Eine Einzahlung in die Getränkekasse.",
+      "description": "A payment made by a player to settle drink debt.",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
@@ -40,39 +37,75 @@
         "recordedBy": { "type": "string" }
       },
       "required": ["playerId", "playerName", "amount", "date", "recordedBy"]
+    },
+    "MembershipFee": {
+      "title": "Membership Fee",
+      "description": "A recorded membership fee payment (monthly or annual).",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "type": { "type": "string", "enum": ["monthly", "annual"] },
+        "month": { "type": "number", "description": "0-11 if monthly" },
+        "year": { "type": "number" },
+        "amount": { "type": "number" },
+        "datePaid": { "type": "string", "format": "date-time" }
+      },
+      "required": ["playerId", "type", "year", "amount", "datePaid"]
+    },
+    "MembershipTransaction": {
+      "title": "Treasury Transaction",
+      "description": "General income or expense for the team treasury (not drinks).",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["sponsor", "donation", "other", "expense"] },
+        "date": { "type": "string", "format": "date-time" },
+        "recordedBy": { "type": "string" }
+      },
+      "required": ["description", "amount", "type", "date", "recordedBy"]
+    },
+    "Fine": {
+      "title": "Player Fine",
+      "description": "A fine issued to a player from the catalog.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "playerName": { "type": "string" },
+        "reason": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "isPaid": { "type": "boolean" },
+        "recordedBy": { "type": "string" }
+      },
+      "required": ["playerId", "playerName", "reason", "amount", "date", "recordedBy"]
+    },
+    "TeamEvent": {
+      "title": "Calendar Event",
+      "description": "A training, match or social event.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["training", "match", "social"] },
+        "date": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" }
+      },
+      "required": ["title", "type", "date"]
     }
   },
   "auth": {
     "providers": ["google.com", "password"]
   },
   "firestore": {
-    "/players/{playerId}": {
-      "schema": "#/backend/entities/Player",
-      "description": "Profile der Teammitglieder."
-    },
-    "/expenses/{expenseId}": {
-      "schema": "#/backend/entities/Expense",
-      "description": "Historie der Getränkeentnahmen."
-    },
-    "/payments/{paymentId}": {
-      "schema": "#/backend/entities/Payment",
-      "description": "Historie der Einzahlungen."
-    },
-    "/membershipFees/{feeId}": {
-      "schema": "object",
-      "description": "Gezahlte Mitgliedsbeiträge."
-    },
-    "/fines/{fineId}": {
-      "schema": "object",
-      "description": "Vergebene Strafen."
-    },
-    "/teamEvents/{eventId}": {
-      "schema": "object",
-      "description": "Kalendereinträge für Training und Spiele."
-    },
-    "/settings/global": {
-      "schema": "object",
-      "description": "Globale App-Einstellungen (Preise, Links)."
-    }
+    "/players/{playerId}": { "schema": "Player", "description": "User profiles and balances." },
+    "/expenses/{expenseId}": { "schema": "Expense", "description": "Individual drink purchases." },
+    "/payments/{paymentId}": { "schema": "Payment", "description": "Cash-in payments for drinks." },
+    "/membershipFees/{feeId}": { "schema": "MembershipFee", "description": "Tracked membership fees." },
+    "/membershipTransactions/{txId}": { "schema": "MembershipTransaction", "description": "General team treasury movements." },
+    "/treasuryExpenses/{expId}": { "schema": "MembershipTransaction", "description": "Specific beer treasury payouts (e.g. to clubhouse)." },
+    "/fines/{fineId}": { "schema": "Fine", "description": "Issued fines." },
+    "/fineCatalog/{fineTypeId}": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "amount": { "type": "number" } } }, "description": "Configurable list of fine reasons." },
+    "/teamEvents/{eventId}": { "schema": "TeamEvent", "description": "The team calendar." },
+    "/settings/global": { "schema": { "type": "object" }, "description": "App settings like prices and links." }
   }
 }

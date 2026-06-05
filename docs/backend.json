@@ -1,21 +1,23 @@
-
 {
   "entities": {
     "Player": {
       "title": "Player",
-      "description": "Ein Teammitglied oder Kassenprüfer.",
+      "description": "Profil eines Spielers mit Kontostand und Rollen.",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["player", "auditor"] },
-        "balance": { "type": "number", "description": "Aktueller Kontostand der Getränkekasse." }
+        "email": { "type": "string" },
+        "roles": { 
+          "type": "array", 
+          "items": { "type": "string", "enum": ["player", "admin", "kassenwart", "strafenwart", "coach", "assistant_coach"] } 
+        },
+        "balance": { "type": "number" }
       },
-      "required": ["name", "email", "role", "balance"]
+      "required": ["name", "email", "roles", "balance"]
     },
     "Expense": {
       "title": "Expense",
-      "description": "Eine getätigte Getränkebuchung.",
+      "description": "Datensatz über einen Getränkekauf.",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
@@ -24,46 +26,7 @@
         "cost": { "type": "number" },
         "date": { "type": "string", "format": "date-time" }
       },
-      "required": ["playerId", "playerName", "itemType", "cost", "date"]
-    },
-    "Payment": {
-      "title": "Payment",
-      "description": "Eine Einzahlung eines Spielers in die Getränkekasse.",
-      "type": "object",
-      "properties": {
-        "playerId": { "type": "string" },
-        "playerName": { "type": "string" },
-        "amount": { "type": "number" },
-        "date": { "type": "string", "format": "date-time" },
-        "recordedBy": { "type": "string" }
-      },
-      "required": ["playerId", "playerName", "amount", "date", "recordedBy"]
-    },
-    "MembershipFee": {
-      "title": "MembershipFee",
-      "description": "Ein gezahlter Mitgliedsbeitrag (Monat oder Jahr).",
-      "type": "object",
-      "properties": {
-        "playerId": { "type": "string" },
-        "type": { "type": "string", "enum": ["monthly", "annual"] },
-        "month": { "type": "number", "description": "0-11, relevant für monthly." },
-        "year": { "type": "number", "description": "Startjahr der Saison (z.B. 2024 für 24/25)." },
-        "amount": { "type": "number" },
-        "datePaid": { "type": "string", "format": "date-time" }
-      },
-      "required": ["playerId", "type", "year", "amount", "datePaid"]
-    },
-    "TreasuryExpense": {
-      "title": "TreasuryExpense",
-      "description": "Eine Ausgabe der Mannschaftskasse (z.B. Einkauf von Getränken).",
-      "type": "object",
-      "properties": {
-        "description": { "type": "string" },
-        "amount": { "type": "number" },
-        "date": { "type": "string", "format": "date-time" },
-        "recordedBy": { "type": "string" }
-      },
-      "required": ["description", "amount", "date", "recordedBy"]
+      "required": ["playerId", "itemType", "cost", "date"]
     }
   },
   "auth": {
@@ -71,24 +34,16 @@
   },
   "firestore": {
     "/players/{playerId}": {
-      "schema": "Player",
-      "description": "Spielerprofile."
+      "schema": { "$ref": "#/entities/Player" },
+      "description": "Sammlung der Spielerprofile."
     },
     "/expenses/{expenseId}": {
-      "schema": "Expense",
-      "description": "Getränkebuchungen."
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Sammlung der Getränkebuchungen."
     },
-    "/payments/{paymentId}": {
-      "schema": "Payment",
-      "description": "Einzahlungen Getränkekasse."
-    },
-    "/membershipFees/{feeId}": {
-      "schema": "MembershipFee",
-      "description": "Mitgliedsbeiträge."
-    },
-    "/treasuryExpenses/{expenseId}": {
-      "schema": "TreasuryExpense",
-      "description": "Ausgaben der Teamkasse."
+    "/settings/global": {
+      "schema": "object",
+      "description": "Globale App-Einstellungen."
     }
   }
 }

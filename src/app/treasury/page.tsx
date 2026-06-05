@@ -173,14 +173,14 @@ export default function TreasuryPage() {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full pb-20">
           <div className="md:hidden flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-primary font-headline">Mannschaftskasse</h1>
-            <Badge variant="outline" className={cn("font-black", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
+            <h1 className="text-2xl font-bold text-primary font-headline">M-Kasse</h1>
+            <Badge variant="outline" className={cn("font-black text-sm", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
               {totalMannschaftskasse.toFixed(2)} €
             </Badge>
           </div>
 
           <Tabs defaultValue="transactions" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8 rounded-2xl h-12">
+            <TabsList className="grid w-full grid-cols-2 mb-6 rounded-2xl h-12">
               <TabsTrigger value="transactions" className="rounded-xl flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" /> Buchungen
               </TabsTrigger>
@@ -191,14 +191,14 @@ export default function TreasuryPage() {
 
             <TabsContent value="transactions" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold flex items-center gap-2">
+                <h3 className="text-base md:text-lg font-bold flex items-center gap-2">
                   <ArrowUpCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  Einnahmen & Ausgaben
+                  Umsätze
                 </h3>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="rounded-xl red-glow text-white">
-                      <Plus className="h-4 w-4 mr-2" /> Neue Buchung
+                    <Button size="sm" className="rounded-xl red-glow text-white h-9 md:h-10">
+                      <Plus className="h-4 w-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">Neue Buchung</span><span className="sm:hidden">Buchung</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
@@ -254,7 +254,46 @@ export default function TreasuryPage() {
 
               <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-card">
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  {/* Mobile View: Card List */}
+                  <div className="md:hidden divide-y divide-border">
+                    {membershipTransactions.map((transaction) => (
+                      <div key={transaction.id} className="p-4 flex items-center justify-between group">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="shrink-0">{getIcon(transaction.type)}</div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm truncate">{transaction.description}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {format(new Date(transaction.date), 'dd.MM.yyyy', { locale: de })} • {getLabel(transaction.type)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={cn(
+                            "font-black text-sm",
+                            transaction.type === 'expense' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'
+                          )}>
+                            {transaction.type === 'expense' ? '-' : '+'}{transaction.amount.toFixed(2)} €
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteMembershipTransaction(transaction.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {membershipTransactions.length === 0 && (
+                      <div className="p-12 text-center text-muted-foreground italic text-sm">
+                        Keine Buchungen vorhanden.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop View: Table */}
+                  <div className="hidden md:block">
                     <Table>
                       <TableHeader className="bg-muted/30">
                         <TableRow>
@@ -298,13 +337,6 @@ export default function TreasuryPage() {
                             </TableCell>
                           </TableRow>
                         ))}
-                        {membershipTransactions.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-12 text-muted-foreground italic">
-                              Keine Buchungen vorhanden.
-                            </TableCell>
-                          </TableRow>
-                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -315,12 +347,12 @@ export default function TreasuryPage() {
             <TabsContent value="fees" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
+                  <h3 className="text-base md:text-lg font-bold flex items-center gap-2">
                     <BadgeEuro className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     Beitrags-Matrix
                   </h3>
                   <Badge variant="outline" className="text-[10px]">
-                    {settings.monthlyFee}€ / Mon. • {settings.annualFee}€ / Jahr
+                    {settings.monthlyFee}€ / Mon.
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">

@@ -157,14 +157,14 @@ export default function TreasuryPage() {
       <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <TrendingUp className="h-6 w-6" /> Mannschaftskasse
           </h1>
           <div className="flex items-center gap-4">
              <div className="bg-primary/5 px-4 py-2 rounded-xl border border-primary/20">
                <span className="text-xs font-bold uppercase text-muted-foreground mr-2">Gesamtstand:</span>
-               <span className={cn("text-lg font-black", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600')}>
+               <span className={cn("text-lg font-black", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
                  {totalMannschaftskasse.toFixed(2)} €
                </span>
              </div>
@@ -174,7 +174,7 @@ export default function TreasuryPage() {
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full pb-20">
           <div className="md:hidden flex justify-between items-center mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Mannschaftskasse</h1>
-            <Badge variant="outline" className={cn("font-black", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600')}>
+            <Badge variant="outline" className={cn("font-black", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
               {totalMannschaftskasse.toFixed(2)} €
             </Badge>
           </div>
@@ -192,16 +192,16 @@ export default function TreasuryPage() {
             <TabsContent value="transactions" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-bold flex items-center gap-2">
-                  <ArrowUpCircle className="h-5 w-5 text-emerald-600" />
+                  <ArrowUpCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   Einnahmen & Ausgaben
                 </h3>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="rounded-xl cyan-glow">
+                    <Button className="rounded-xl red-glow text-white">
                       <Plus className="h-4 w-4 mr-2" /> Neue Buchung
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+                  <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
                     <DialogHeader>
                       <DialogTitle>Einnahme / Ausgabe buchen</DialogTitle>
                       <DialogDescription>Erfasse Sponsorenbeiträge oder sonstige Teamausgaben.</DialogDescription>
@@ -213,7 +213,7 @@ export default function TreasuryPage() {
                           placeholder="Z.B. Sponsor Trikotsatz oder Platzmiete" 
                           value={description} 
                           onChange={e => setDescription(e.target.value)} 
-                          className="h-12 rounded-xl"
+                          className="h-12 rounded-xl bg-background"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -224,13 +224,13 @@ export default function TreasuryPage() {
                             step="0.01" 
                             value={amount} 
                             onChange={e => setAmount(e.target.value)} 
-                            className="h-12 rounded-xl"
+                            className="h-12 rounded-xl bg-background"
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Typ</Label>
                           <Select value={type} onValueChange={(v: any) => setType(v)}>
-                            <SelectTrigger className="h-12 rounded-xl">
+                            <SelectTrigger className="h-12 rounded-xl bg-background">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -252,7 +252,7 @@ export default function TreasuryPage() {
                 </Dialog>
               </div>
 
-              <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-white">
+              <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-card">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
@@ -282,7 +282,7 @@ export default function TreasuryPage() {
                             </TableCell>
                             <TableCell className={cn(
                               "text-right font-black",
-                              transaction.type === 'expense' ? 'text-destructive' : 'text-emerald-600'
+                              transaction.type === 'expense' ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'
                             )}>
                               {transaction.type === 'expense' ? '-' : '+'}{transaction.amount.toFixed(2)} €
                             </TableCell>
@@ -316,7 +316,7 @@ export default function TreasuryPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
                   <h3 className="text-lg font-bold flex items-center gap-2">
-                    <BadgeEuro className="h-5 w-5 text-blue-600" />
+                    <BadgeEuro className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     Beitrags-Matrix
                   </h3>
                   <Badge variant="outline" className="text-[10px]">
@@ -326,7 +326,7 @@ export default function TreasuryPage() {
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-                    <SelectTrigger className="w-full sm:w-40 rounded-xl">
+                    <SelectTrigger className="w-full sm:w-40 rounded-xl bg-card">
                       <SelectValue placeholder="Saison" />
                     </SelectTrigger>
                     <SelectContent>
@@ -340,7 +340,7 @@ export default function TreasuryPage() {
                 </div>
               </div>
 
-              <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-white">
+              <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-card">
                 <CardContent className="p-0 overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-muted/30">
@@ -365,7 +365,7 @@ export default function TreasuryPage() {
                               <Button 
                                 variant={isAnnual ? "default" : "outline"} 
                                 size="sm"
-                                className={cn("rounded-lg h-8 w-8 p-0", isAnnual ? "bg-emerald-600 hover:bg-emerald-700" : "")}
+                                className={cn("rounded-lg h-8 w-8 p-0", isAnnual ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "")}
                                 onClick={() => handleToggleAnnual(player.id)}
                               >
                                 <CreditCard className="h-4 w-4" />
@@ -382,7 +382,7 @@ export default function TreasuryPage() {
                                     className={cn(
                                       "rounded-lg h-7 w-7 p-0 transition-all",
                                       isPaid && !isAnnual ? "bg-emerald-500 hover:bg-emerald-600 text-white" : "",
-                                      isAnnual ? "bg-emerald-200 text-emerald-700 opacity-100" : "hover:bg-muted"
+                                      isAnnual ? "bg-emerald-200 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 opacity-100" : "hover:bg-muted"
                                     )}
                                     onClick={() => handleToggleFee(player.id, m)}
                                   >

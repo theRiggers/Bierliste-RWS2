@@ -124,7 +124,7 @@ export default function AdminPage() {
       <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <Settings className="h-6 w-6" />
             Administration
@@ -140,7 +140,7 @@ export default function AdminPage() {
 
             {isAdmin && (
               <TabsContent value="general" className="space-y-6">
-                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
+                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-card">
                   <CardHeader className="bg-primary/5">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Beer className="h-5 w-5 text-primary" />
@@ -167,9 +167,9 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-blue-50">
+                <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-blue-50/50 dark:bg-blue-900/10">
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                    <CardTitle className="text-lg flex items-center gap-2 text-blue-700 dark:text-blue-400">
                       <LinkIcon className="h-5 w-5" /> Integrationen
                     </CardTitle>
                   </CardHeader>
@@ -235,7 +235,7 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
 
-                <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full rounded-xl h-12 font-bold cyan-glow">
+                <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full rounded-xl h-12 font-bold red-glow">
                   {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
                   Haupteinstellungen speichern
                 </Button>
@@ -243,16 +243,16 @@ export default function AdminPage() {
             )}
 
             <TabsContent value="fines" className="space-y-6">
-              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
-                <CardHeader className="bg-amber-50">
-                  <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
+              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-card">
+                <CardHeader className="bg-amber-500/10 dark:bg-amber-900/20">
+                  <CardTitle className="text-lg flex items-center gap-2 text-amber-700 dark:text-amber-400">
                     <Scale className="h-5 w-5" /> Strafenkatalog verwalten
                   </CardTitle>
                   <CardDescription>Hier kannst du die Vergehen und deren Standardbeträge festlegen.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
-                  <div className="grid gap-4 p-4 border-2 border-dashed border-amber-200 rounded-2xl bg-amber-50/30">
-                    <h4 className="text-sm font-bold text-amber-800">Neues Vergehen hinzufügen</h4>
+                  <div className="grid gap-4 p-4 border-2 border-dashed border-amber-200 dark:border-amber-900 rounded-2xl bg-amber-50/30 dark:bg-amber-950/10">
+                    <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400">Neues Vergehen hinzufügen</h4>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Bezeichnung</Label>
@@ -260,7 +260,7 @@ export default function AdminPage() {
                           placeholder="Z.B. Zu spät zum Spiel" 
                           value={newFineName} 
                           onChange={(e) => setNewFineName(e.target.value)} 
-                          className="bg-white"
+                          className="bg-card"
                         />
                       </div>
                       <div className="space-y-2">
@@ -271,11 +271,11 @@ export default function AdminPage() {
                           placeholder="5.00" 
                           value={newFineAmount} 
                           onChange={(e) => setNewFineAmount(e.target.value)} 
-                          className="bg-white"
+                          className="bg-card"
                         />
                       </div>
                     </div>
-                    <Button onClick={handleAddFineType} disabled={isSaving || !newFineName || !newFineAmount} className="w-full rounded-xl bg-amber-600 hover:bg-amber-700">
+                    <Button onClick={handleAddFineType} disabled={isSaving || !newFineName || !newFineAmount} className="w-full rounded-xl bg-amber-600 hover:bg-amber-700 text-white">
                       <Plus className="h-4 w-4 mr-2" /> Zum Katalog hinzufügen
                     </Button>
                   </div>

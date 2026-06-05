@@ -85,15 +85,15 @@ export default function FinesPage() {
       <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <Scale className="h-6 w-6" /> Strafenverwaltung
           </h1>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-4xl mx-auto w-full pb-20">
-          <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
-            <CardHeader className="bg-amber-50">
+          <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-card">
+            <CardHeader className="bg-amber-500/10 dark:bg-amber-900/20">
               <CardTitle className="text-lg">Neue Strafe erfassen</CardTitle>
               <CardDescription>Wähle einen Spieler und das Vergehen aus dem Katalog.</CardDescription>
             </CardHeader>
@@ -144,7 +144,7 @@ export default function FinesPage() {
                 </p>
               </div>
 
-              <Button onClick={handleAddFine} disabled={isSubmitting || !selectedPlayer || !selectedFineTypeId} className="w-full rounded-xl h-12 font-bold text-base mt-2 shadow-lg shadow-amber-200 bg-amber-600 hover:bg-amber-700">
+              <Button onClick={handleAddFine} disabled={isSubmitting || !selectedPlayer || !selectedFineTypeId} className="w-full rounded-xl h-12 font-bold text-base mt-2 shadow-lg shadow-amber-200 dark:shadow-none bg-amber-600 hover:bg-amber-700 text-white">
                 {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="h-5 w-5 mr-2" />}
                 Strafe buchen
               </Button>
@@ -152,23 +152,23 @@ export default function FinesPage() {
           </Card>
 
           <Tabs defaultValue="unpaid" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="unpaid" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-2 mb-6 h-12 rounded-xl">
+              <TabsTrigger value="unpaid" className="flex items-center gap-2 rounded-lg">
                 <Scale className="h-4 w-4" /> Offen ({unpaidFines.length})
               </TabsTrigger>
-              <TabsTrigger value="paid" className="flex items-center gap-2">
+              <TabsTrigger value="paid" className="flex items-center gap-2 rounded-lg">
                 <History className="h-4 w-4" /> Bezahlt ({paidFines.length})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="unpaid">
-              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
+              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-card">
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
                     {unpaidFines.map((f) => (
                       <div key={f.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                          <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
                             <UserCircle className="h-6 w-6" />
                           </div>
                           <div>
@@ -181,7 +181,7 @@ export default function FinesPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                             onClick={() => markFineAsPaid(f.id)}
                             title="Als bezahlt markieren"
                           >
@@ -200,13 +200,13 @@ export default function FinesPage() {
             </TabsContent>
 
             <TabsContent value="paid">
-              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white opacity-80">
+              <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-card opacity-80">
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
                     {paidFines.map((f) => (
                       <div key={f.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                          <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="h-6 w-6" />
                           </div>
                           <div>
@@ -215,7 +215,7 @@ export default function FinesPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="font-bold text-emerald-600">{f.amount.toFixed(2)} €</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{f.amount.toFixed(2)} €</span>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteFine(f.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>

@@ -159,16 +159,16 @@ export default function PlayersPage() {
       <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline">Spieler & Konten</h1>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={exportDebtList} className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+            <Button variant="outline" onClick={exportDebtList} className="rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20">
               <Share2 className="h-4 w-4 mr-2" /> Schuldenliste exportieren
             </Button>
             {isAdmin && (
               <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogTrigger asChild><Button className="red-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
+                <DialogContent className="max-w-md bg-card">
                   <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
                   <div className="grid gap-6 py-4">
                     <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
@@ -203,19 +203,19 @@ export default function PlayersPage() {
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>
               {isAdmin && (
-                <Button size="sm" className="cyan-glow rounded-xl" onClick={() => setIsAddOpen(true)}>
+                <Button size="sm" className="red-glow rounded-xl" onClick={() => setIsAddOpen(true)}>
                   <UserPlus className="h-4 w-4 mr-1" /> Neu
                 </Button>
               )}
             </div>
-            <Button variant="outline" onClick={exportDebtList} className="w-full rounded-xl border-emerald-600 text-emerald-700 h-10 text-xs">
+            <Button variant="outline" onClick={exportDebtList} className="w-full rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 h-10 text-xs">
               <Share2 className="h-3 w-3 mr-2" /> Schuldenliste exportieren
             </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {displayPlayers.map((player) => (
-              <Card key={player.id} className="border-none shadow-md rounded-2xl bg-white">
+              <Card key={player.id} className="border-none shadow-md rounded-2xl bg-card">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary"><UserCircle className="h-8 w-8" /></div>
@@ -231,7 +231,7 @@ export default function PlayersPage() {
                   <div className="flex items-center justify-between py-3 border-t">
                     <div>
                       <p className="text-[10px] text-muted-foreground uppercase font-bold">Konto</p>
-                      <p className={cn("text-lg font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600')}>
+                      <p className={cn("text-lg font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
                         {player.balance.toFixed(2)} €
                       </p>
                     </div>
@@ -240,7 +240,7 @@ export default function PlayersPage() {
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                           title="Zahlung verbuchen"
                           onClick={() => { setPaymentPlayer(player); setPaymentAmount(Math.abs(player.balance).toString()); setIsPaymentOpen(true); }}
                         >
@@ -275,7 +275,7 @@ export default function PlayersPage() {
         </div>
 
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="max-w-[95vw] md:max-w-md rounded-2xl">
+          <DialogContent className="max-w-[95vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader><DialogTitle>Spieler bearbeiten</DialogTitle></DialogHeader>
             <div className="grid gap-6 py-4">
               <div className="space-y-2"><Label>Name</Label><Input value={editName} onChange={e => setEditName(e.target.value)} /></div>
@@ -303,7 +303,7 @@ export default function PlayersPage() {
         </Dialog>
 
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
               <DialogTitle>Schulden begleichen</DialogTitle>
               <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
@@ -315,7 +315,7 @@ export default function PlayersPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleRecordPayment} disabled={isSubmitting} className="w-full rounded-xl h-11 bg-emerald-600">
+              <Button onClick={handleRecordPayment} disabled={isSubmitting} className="w-full rounded-xl h-11 bg-emerald-600 text-white">
                 {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Verbuchen"}
               </Button>
             </DialogFooter>
@@ -323,7 +323,7 @@ export default function PlayersPage() {
         </Dialog>
 
         <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-          <AlertDialogContent className="max-w-[90vw] rounded-2xl">
+          <AlertDialogContent className="max-w-[90vw] rounded-2xl bg-card">
             <AlertDialogHeader>
               <AlertDialogTitle>Spieler wirklich löschen?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -332,7 +332,7 @@ export default function PlayersPage() {
             </AlertDialogHeader>
             <AlertDialogFooter className="gap-2">
               <AlertDialogCancel className="rounded-xl">Abbrechen</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeletePlayer} className="bg-destructive hover:bg-destructive/90 rounded-xl">
+              <AlertDialogAction onClick={handleDeletePlayer} className="bg-destructive hover:bg-destructive/90 rounded-xl text-white">
                 Löschen
               </AlertDialogAction>
             </AlertDialogFooter>

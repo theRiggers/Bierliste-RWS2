@@ -235,7 +235,7 @@ export default function HistoryPage() {
       <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border sticky top-0 z-20">
           <h1 className="text-2xl font-bold text-primary font-headline">Transaktionsverlauf</h1>
         </header>
 
@@ -249,14 +249,14 @@ export default function HistoryPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Suche..." 
-                className="pl-10 h-12 md:h-10 rounded-xl bg-white text-base md:text-sm" 
+                className="pl-10 h-12 md:h-10 rounded-xl bg-card text-base md:text-sm" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-full md:w-48 h-12 md:h-10 rounded-xl bg-white text-base md:text-sm">
+                <SelectTrigger className="w-full md:w-48 h-12 md:h-10 rounded-xl bg-card text-base md:text-sm">
                   <SelectValue placeholder="Typ filtern" />
                 </SelectTrigger>
                 <SelectContent>
@@ -272,7 +272,7 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-white">
+          <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-card">
             <CardContent className="p-0">
               <div className="divide-y divide-border md:hidden">
                 {filteredHistory.map((item) => (
@@ -280,9 +280,9 @@ export default function HistoryPage() {
                     <div className="min-w-0 flex items-center gap-3">
                       <div className={cn(
                         "p-2 rounded-full",
-                        item.amount > 0 ? "bg-emerald-100 text-emerald-600" : 
-                        item.category === 'treasury' ? "bg-amber-100 text-amber-600" : 
-                        item.category === 'fine' ? "bg-amber-100 text-amber-600" :
+                        item.amount > 0 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : 
+                        item.category === 'treasury' ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" : 
+                        item.category === 'fine' ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" :
                         "bg-primary/10 text-primary"
                       )}>
                         {getIcon(item.type)}
@@ -297,7 +297,7 @@ export default function HistoryPage() {
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "font-bold whitespace-nowrap ml-2",
-                        item.amount > 0 ? "text-emerald-600" : "text-destructive"
+                        item.amount > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
                       )}>
                         {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
                       </span>
@@ -348,8 +348,8 @@ export default function HistoryPage() {
                           <div className="flex items-center gap-2">
                             <span className={cn(
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium gap-1",
-                              item.amount > 0 ? "bg-emerald-100 text-emerald-800" : 
-                              item.category === 'treasury' || item.category === 'fine' ? "bg-amber-100 text-amber-800" : "bg-primary/10 text-primary"
+                              item.amount > 0 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400" : 
+                              item.category === 'treasury' || item.category === 'fine' ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400" : "bg-primary/10 text-primary"
                             )}>
                               {getIcon(item.type)}
                               {getTypeLabel(item)}
@@ -358,7 +358,7 @@ export default function HistoryPage() {
                         </TableCell>
                         <TableCell className={cn(
                           "text-right font-bold",
-                          item.amount > 0 ? "text-emerald-600" : "text-destructive"
+                          item.amount > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
                         )}>
                           {item.amount > 0 ? '+' : ''}{item.amount.toFixed(2)} €
                         </TableCell>
@@ -384,7 +384,7 @@ export default function HistoryPage() {
         </div>
 
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="bg-card">
             <AlertDialogHeader>
               <AlertDialogTitle>Eintrag wirklich löschen?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -393,7 +393,7 @@ export default function HistoryPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-white">
                 Löschen
               </AlertDialogAction>
             </AlertDialogFooter>

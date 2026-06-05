@@ -34,7 +34,7 @@ export default function HowToPage() {
       <MobileNavTrigger userRoles={currentUserProfile?.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <div className="flex items-center gap-4">
             {!user && (
               <Link href="/login">
@@ -63,7 +63,7 @@ export default function HowToPage() {
             </h1>
           </div>
 
-          <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden">
+          <Card className="border-none shadow-md bg-card rounded-2xl overflow-hidden">
             <CardHeader className="bg-primary/5">
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-5 w-5 text-primary" />
@@ -98,7 +98,7 @@ export default function HowToPage() {
                 </svg>
                 Apple iPhone (Safari)
               </h2>
-              <Card className="border-none shadow-lg rounded-2xl">
+              <Card className="border-none shadow-lg rounded-2xl bg-card">
                 <CardContent className="pt-6 space-y-6">
                   <div className="flex gap-4">
                     <div className="bg-muted h-10 w-10 rounded-full flex items-center justify-center font-bold text-primary shrink-0">1</div>
@@ -139,7 +139,7 @@ export default function HowToPage() {
                 </svg>
                 Android (Chrome)
               </h2>
-              <Card className="border-none shadow-lg rounded-2xl">
+              <Card className="border-none shadow-lg rounded-2xl bg-card">
                 <CardContent className="pt-6 space-y-6">
                   <div className="flex gap-4">
                     <div className="bg-muted h-10 w-10 rounded-full flex items-center justify-center font-bold text-primary shrink-0">1</div>

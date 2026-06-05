@@ -206,9 +206,9 @@ export default function CalendarPage() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'training': return "bg-blue-100 text-blue-700 border-blue-200";
+      case 'training': return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900";
       case 'match': return "bg-primary/10 text-primary border-primary/20";
-      case 'social': return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case 'social': return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900";
       default: return "bg-muted text-muted-foreground";
     }
   }
@@ -219,23 +219,23 @@ export default function CalendarPage() {
       <MobileNavTrigger userRoles={currentUserProfile?.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <CalendarIcon className="h-6 w-6" /> Teamkalender
           </h1>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={handleExportAll} className="rounded-xl border-blue-600 text-blue-700 hover:bg-blue-50">
+            <Button variant="outline" onClick={handleExportAll} className="rounded-xl border-blue-600 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20">
               <Download className="h-4 w-4 mr-2" /> Kalender exportieren
             </Button>
             {isEditor && (
               <>
                 <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="rounded-xl border-blue-600 text-blue-700 hover:bg-blue-50">
+                    <Button variant="outline" className="rounded-xl border-blue-600 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20">
                       <CalendarDays className="h-4 w-4 mr-2" /> Serientermine
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-3xl h-[85vh] md:h-auto flex flex-col p-0 overflow-hidden shadow-2xl">
+                  <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-3xl h-[85vh] md:h-auto flex flex-col p-0 overflow-hidden shadow-2xl bg-card">
                     <DialogHeader className="p-6 pb-2 shrink-0 border-b">
                       <DialogTitle className="text-xl md:text-2xl">Serientermine erstellen</DialogTitle>
                       <DialogDescription>Erstelle Trainings automatisch für einen Zeitraum.</DialogDescription>
@@ -246,11 +246,11 @@ export default function CalendarPage() {
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Titel</Label>
-                            <Input value={bulkTitle} onChange={e => setBulkTitle(e.target.value)} placeholder="Z.B. Training" className="h-11 rounded-xl" />
+                            <Input value={bulkTitle} onChange={e => setBulkTitle(e.target.value)} placeholder="Z.B. Training" className="h-11 rounded-xl bg-background" />
                           </div>
                           <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Ort (Optional)</Label>
-                            <Input value={bulkLocation} onChange={e => setBulkLocation(e.target.value)} placeholder="Z.B. Kunstrasen" className="h-11 rounded-xl" />
+                            <Input value={bulkLocation} onChange={e => setBulkLocation(e.target.value)} placeholder="Z.B. Kunstrasen" className="h-11 rounded-xl bg-background" />
                           </div>
                         </div>
 
@@ -266,7 +266,7 @@ export default function CalendarPage() {
                                 variant={selectedWeekdays.includes(day.id) ? "default" : "outline"}
                                 className={cn(
                                   "h-12 w-12 rounded-xl text-xs font-bold p-0 transition-all",
-                                  selectedWeekdays.includes(day.id) ? "bg-blue-600 hover:bg-blue-700 shadow-md" : "hover:bg-blue-50"
+                                  selectedWeekdays.includes(day.id) ? "bg-blue-600 hover:bg-blue-700 shadow-md text-white" : "hover:bg-blue-50 dark:hover:bg-blue-950/20"
                                 )}
                                 onClick={() => toggleWeekday(day.id)}
                               >
@@ -288,7 +288,7 @@ export default function CalendarPage() {
                                   <span className="text-sm font-bold">{day.name}</span>
                                   <Input 
                                     type="time" 
-                                    className="w-28 h-9 rounded-lg bg-white" 
+                                    className="w-28 h-9 rounded-lg bg-card" 
                                     value={weekdayTimes[day.id] || "19:00"}
                                     onChange={(e) => setWeekdayTimes(prev => ({ ...prev, [day.id]: e.target.value }))}
                                   />
@@ -306,11 +306,11 @@ export default function CalendarPage() {
                           <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
                               <Label className="text-[10px] text-muted-foreground ml-1">Startdatum</Label>
-                              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-11 rounded-xl" />
+                              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-11 rounded-xl bg-background" />
                             </div>
                             <div className="space-y-2">
                               <Label className="text-[10px] text-muted-foreground ml-1">Enddatum</Label>
-                              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-11 rounded-xl" />
+                              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-11 rounded-xl bg-background" />
                             </div>
                           </div>
                         </div>
@@ -321,7 +321,7 @@ export default function CalendarPage() {
                       <Button 
                         onClick={handleBulkAdd} 
                         disabled={isSubmitting || selectedWeekdays.length === 0 || !endDate} 
-                        className="w-full h-12 rounded-2xl font-bold cyan-glow"
+                        className="w-full h-12 rounded-2xl font-bold red-glow"
                       >
                         {isSubmitting ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Plus className="mr-2 h-5 w-5" />}
                         Termine jetzt generieren
@@ -331,8 +331,8 @@ export default function CalendarPage() {
                 </Dialog>
 
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                  <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><Plus className="h-4 w-4 mr-2" /> Einzeltermin</Button></DialogTrigger>
-                  <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+                  <DialogTrigger asChild><Button className="red-glow rounded-xl"><Plus className="h-4 w-4 mr-2" /> Einzeltermin</Button></DialogTrigger>
+                  <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
                     <DialogHeader><DialogTitle>Neuer Einzeltermin</DialogTitle></DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="space-y-2"><Label>Titel</Label><Input placeholder="Z.B. Training" value={newTitle} onChange={e => setNewTitle(e.target.value)} /></div>
@@ -365,12 +365,12 @@ export default function CalendarPage() {
           <div className="md:hidden flex flex-col gap-4 mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Teamkalender</h1>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={handleExportAll} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 h-10">
+              <Button size="sm" variant="outline" onClick={handleExportAll} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 dark:text-blue-400 h-10">
                 <Download className="h-3 w-3 mr-1" /> Exportieren
               </Button>
               {isEditor && (
                 <>
-                  <Button size="sm" variant="outline" onClick={() => setIsBulkOpen(true)} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 h-10">
+                  <Button size="sm" variant="outline" onClick={() => setIsBulkOpen(true)} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 dark:text-blue-400 h-10">
                     <CalendarDays className="h-3 w-3 mr-1" /> Serientermine
                   </Button>
                   <Button size="sm" className="flex-1 min-w-[120px] rounded-xl text-xs h-10" onClick={() => setIsAddOpen(true)}>
@@ -390,7 +390,7 @@ export default function CalendarPage() {
               </Card>
             ) : (
               upcomingEvents.map((event) => (
-                <Card key={event.id} className="border-none shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-white">
+                <Card key={event.id} className="border-none shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-card">
                   <div className="flex h-full">
                     <div className={cn("w-2", event.type === 'training' ? 'bg-blue-500' : event.type === 'match' ? 'bg-primary' : 'bg-emerald-500')}></div>
                     <CardContent className="p-4 md:p-6 flex-1 flex items-center justify-between">
@@ -445,7 +445,7 @@ export default function CalendarPage() {
 
         {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
               <DialogTitle>Termin bearbeiten</DialogTitle>
               <DialogDescription>Passe die Details dieses Termins an.</DialogDescription>

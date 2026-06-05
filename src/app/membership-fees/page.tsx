@@ -100,7 +100,7 @@ export default function MembershipFeesPage() {
       />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Beitragskasse</h1>
             <Badge variant="outline" className="text-xs">{settings.monthlyFee.toFixed(0)}€ / Monat • {settings.annualFee.toFixed(0)}€ / Jahr</Badge>
@@ -114,7 +114,7 @@ export default function MembershipFeesPage() {
             <Badge variant="outline" className="text-[10px] w-fit mt-1">{settings.monthlyFee.toFixed(0)}€ / Monat • {settings.annualFee.toFixed(0)}€ / Jahr</Badge>
           </div>
 
-          <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-white">
+          <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-card">
             <CardHeader className="bg-primary/5 pb-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -150,7 +150,7 @@ export default function MembershipFeesPage() {
                           <Button 
                             variant={isAnnual ? "default" : "outline"} 
                             size="sm"
-                            className={cn("rounded-lg h-8 w-8 p-0", isAnnual ? "bg-emerald-600 hover:bg-emerald-700" : "")}
+                            className={cn("rounded-lg h-8 w-8 p-0", isAnnual ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "")}
                             onClick={() => handleToggleAnnual(player.id)}
                           >
                             <CreditCard className="h-4 w-4" />
@@ -167,7 +167,7 @@ export default function MembershipFeesPage() {
                                 className={cn(
                                   "rounded-lg h-7 w-7 p-0 transition-all",
                                   isPaid && !isAnnual ? "bg-emerald-500 hover:bg-emerald-600 text-white" : "",
-                                  isAnnual ? "bg-emerald-200 text-emerald-700 opacity-100" : "hover:bg-muted"
+                                  isAnnual ? "bg-emerald-200 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 opacity-100" : "hover:bg-muted"
                                 )}
                                 onClick={() => handleToggleFee(player.id, m)}
                               >

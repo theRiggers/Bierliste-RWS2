@@ -93,8 +93,8 @@ export default function HowToPage() {
             {/* Apple iOS Section */}
             <div className="space-y-4">
               <h2 className="text-xl font-bold flex items-center gap-2 px-1">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.1 2.48-1.34.03-1.77-.79-3.29-.79-1.53 0-1.99.76-3.27.82-1.31.05-2.32-1.32-3.15-2.53C4.21 17.02 2.91 11.83 4.6 8.9c.84-1.47 2.36-2.4 4.01-2.42 1.26-.02 2.45.86 3.23.86.77 0 2.21-1.07 3.73-.91 1.05.04 2.24.42 3.01 1.34-2.61 1.55-2.2 5.39.42 6.45-.58 1.46-1.32 2.9-2.3 4.28zM15.17 6.13c.69-.83 1.15-1.98.88-3.13-1.02.04-2.26.68-2.99 1.54-.65.76-1.22 1.95-.94 3.08 1.14.09 2.35-.65 3.05-1.49z"/>
+                <svg className="h-6 w-6" viewBox="0 0 1024 1024" fill="currentColor">
+                   <path d="M730.3 442.4c-.9-122.1 101.4-180.8 106.1-183.7-56.7-82.7-144.9-94.1-175.9-95.2-74.9-7.6-146.1 44.1-184.2 44.1-38.1 0-96.1-43.2-158.4-42.1-81.8 1.2-156.9 47.7-199.1 121-85 147.6-21.7 366 60.3 484.8 40.3 58.1 88.2 123.1 151.1 120.7 60.6-2.4 83.5-39.2 156.7-39.2 73.1 0 93.8 39.2 157.4 37.9 64.9-1.2 107.1-59.2 147-117.2 46.1-67.4 65-132.6 66.1-136.1-1.4-.6-126.9-48.7-128.1-193.1M632.7 215.1c33.6-40.7 56-97.1 49.8-153.1-48.1 1.9-106.3 32-140.8 72.3-31 35.8-58.1 93.9-50.8 148.3 53.7 4.1 108.1-26.8 141.8-67.5" />
                 </svg>
                 Apple iPhone (Safari)
               </h2>
@@ -155,7 +155,7 @@ export default function HowToPage() {
                     <div className="bg-muted h-10 w-10 rounded-full flex items-center justify-center font-bold text-primary shrink-0">2</div>
                     <div className="space-y-1">
                       <p className="font-bold">"App installieren"</p>
-                      <p className="text-xs text-muted-foreground">Wähle den Punkt "App installieren" oder "Zum Startbildschirm hinzufügen".</p>
+                      <p className="text-xs text-muted-foreground">Wähle den punkt "App installieren" oder "Zum Startbildschirm hinzufügen".</p>
                       <div className="mt-2 p-2 bg-muted/50 rounded-lg inline-block">
                         <Download className="h-5 w-5" />
                       </div>

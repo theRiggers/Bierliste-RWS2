@@ -2,22 +2,19 @@
   "entities": {
     "Player": {
       "title": "Player",
-      "description": "Profil eines Spielers mit Kontostand und Rollen.",
+      "description": "Ein Mitglied der Mannschaft mit Rollen und Kontostand.",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "email": { "type": "string" },
-        "roles": { 
-          "type": "array", 
-          "items": { "type": "string", "enum": ["player", "admin", "kassenwart", "strafenwart", "coach", "assistant_coach"] } 
-        },
+        "roles": { "type": "array", "items": { "type": "string" } },
         "balance": { "type": "number" }
       },
       "required": ["name", "email", "roles", "balance"]
     },
     "Expense": {
       "title": "Expense",
-      "description": "Datensatz über einen Getränkekauf.",
+      "description": "Eine Getränke-Buchung (Bier oder Kiste).",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
@@ -25,25 +22,37 @@
         "itemType": { "type": "string", "enum": ["beer", "crate"] },
         "cost": { "type": "number" },
         "date": { "type": "string", "format": "date-time" }
-      },
-      "required": ["playerId", "itemType", "cost", "date"]
+      }
+    },
+    "Fine": {
+      "title": "Fine",
+      "description": "Eine verhängte Strafe aus dem Katalog.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "playerName": { "type": "string" },
+        "reason": { "type": "string" },
+        "amount": { "type": "number" },
+        "isPaid": { "type": "boolean" },
+        "date": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
     "providers": ["google.com", "password"]
   },
   "firestore": {
-    "/players/{playerId}": {
-      "schema": { "$ref": "#/entities/Player" },
-      "description": "Sammlung der Spielerprofile."
+    "/players/{userId}": {
+      "schema": "#/entities/Player",
+      "description": "Nutzerprofile und Kontostände."
     },
     "/expenses/{expenseId}": {
-      "schema": { "$ref": "#/entities/Expense" },
-      "description": "Sammlung der Getränkebuchungen."
+      "schema": "#/entities/Expense",
+      "description": "Getränke-Transaktionen."
     },
-    "/settings/global": {
-      "schema": "object",
-      "description": "Globale App-Einstellungen."
+    "/fines/{fineId}": {
+      "schema": "#/entities/Fine",
+      "description": "Mannschaftsstrafen."
     }
   }
 }

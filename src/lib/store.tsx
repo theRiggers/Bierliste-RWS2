@@ -3,7 +3,9 @@
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp, Firestore } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export type Role = 'player' | 'admin' | 'kassenwart' | 'strafenwart' | 'coach' | 'assistant_coach';
 
@@ -258,13 +260,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fineCatalogLoading, fineCatalog.length, db, currentUserProfile]);
 
+  const handleMutationError = (path: string, operation: SecurityRuleContext['operation'], data?: any) => (error: any) => {
+    const permissionError = new FirestorePermissionError({
+      path,
+      operation,
+      requestResourceData: data,
+    });
+    errorEmitter.emit('permission-error', permissionError);
+  };
+
   const addExpense = (playerId: string, itemType: 'beer' | 'crate') => {
     if (!db) return;
     const cost = itemType === 'beer' ? settings.beerPrice : settings.cratePrice;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-    addDoc(collection(db, 'expenses'), { playerId, playerName: player.name, itemType, cost, date: new Date().toISOString() });
-    setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) - cost }, { merge: true });
+    
+    const expenseData = { playerId, playerName: player.name, itemType, cost, date: new Date().toISOString() };
+    addDoc(collection(db, 'expenses'), expenseData)
+      .catch(handleMutationError('expenses', 'create', expenseData));
+      
+    const newBalance = (player.balance || 0) - cost;
+    setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
+      .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
   };
 
   const deleteExpense = (expenseId: string) => {
@@ -272,16 +289,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const expense = expenses.find(e => e.id === expenseId);
     if (!expense) return;
     const player = players.find(p => p.id === expense.playerId);
-    deleteDoc(doc(db, 'expenses', expenseId));
-    if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true });
+    
+    deleteDoc(doc(db, 'expenses', expenseId))
+      .catch(handleMutationError(`expenses/${expenseId}`, 'delete'));
+      
+    if (player) {
+      const newBalance = (player.balance || 0) + expense.cost;
+      setDoc(doc(db, 'players', player.id), { balance: newBalance }, { merge: true })
+        .catch(handleMutationError(`players/${player.id}`, 'update', { balance: newBalance }));
+    }
   };
 
   const recordPayment = (playerId: string, amount: number) => {
     if (!db || !currentUserProfile) return;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-    addDoc(collection(db, 'payments'), { playerId, playerName: player.name, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
-    setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) + amount }, { merge: true });
+    
+    const paymentData = { playerId, playerName: player.name, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+    addDoc(collection(db, 'payments'), paymentData)
+      .catch(handleMutationError('payments', 'create', paymentData));
+      
+    const newBalance = (player.balance || 0) + amount;
+    setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
+      .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
   };
 
   const deletePayment = (paymentId: string) => {
@@ -289,128 +319,163 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) return;
     const player = players.find(p => p.id === payment.playerId);
-    deleteDoc(doc(db, 'payments', paymentId));
-    if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) - payment.amount }, { merge: true });
+    
+    deleteDoc(doc(db, 'payments', paymentId))
+      .catch(handleMutationError(`payments/${paymentId}`, 'delete'));
+      
+    if (player) {
+      const newBalance = (player.balance || 0) - payment.amount;
+      setDoc(doc(db, 'players', player.id), { balance: newBalance }, { merge: true })
+        .catch(handleMutationError(`players/${player.id}`, 'update', { balance: newBalance }));
+    }
   };
 
   const addMembershipFee = (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => {
     if (!db) return;
     const amount = type === 'monthly' ? settings.monthlyFee : settings.annualFee;
-    addDoc(collection(db, 'membershipFees'), { playerId, type, year, month: type === 'monthly' ? month : null, amount, datePaid: new Date().toISOString() });
+    const feeData = { playerId, type, year, month: type === 'monthly' ? month : null, amount, datePaid: new Date().toISOString() };
+    addDoc(collection(db, 'membershipFees'), feeData)
+      .catch(handleMutationError('membershipFees', 'create', feeData));
   };
 
   const deleteMembershipFee = (feeId: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'membershipFees', feeId));
+    deleteDoc(doc(db, 'membershipFees', feeId))
+      .catch(handleMutationError(`membershipFees/${feeId}`, 'delete'));
   };
 
   const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense') => {
     if (!db || !currentUserProfile) return;
-    addDoc(collection(db, 'membershipTransactions'), { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
+    const txData = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+    addDoc(collection(db, 'membershipTransactions'), txData)
+      .catch(handleMutationError('membershipTransactions', 'create', txData));
   };
 
   const deleteMembershipTransaction = (transactionId: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'membershipTransactions', transactionId));
+    deleteDoc(doc(db, 'membershipTransactions', transactionId))
+      .catch(handleMutationError(`membershipTransactions/${transactionId}`, 'delete'));
   };
 
   const addTreasuryExpense = (description: string, amount: number) => {
     if (!db || !currentUserProfile) return;
-    addDoc(collection(db, 'treasuryExpenses'), { description, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id });
+    const expData = { description, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+    addDoc(collection(db, 'treasuryExpenses'), expData)
+      .catch(handleMutationError('treasuryExpenses', 'create', expData));
   };
 
   const recordClubhousePayment = (amount: number) => {
     if (!db || !currentUserProfile) return;
-    addDoc(collection(db, 'treasuryExpenses'), { 
+    const expData = { 
       description: "Abrechnung Vereinsheim", 
       amount, 
       date: new Date().toISOString(), 
       recordedBy: currentUserProfile.id 
-    });
+    };
+    addDoc(collection(db, 'treasuryExpenses'), expData)
+      .catch(handleMutationError('treasuryExpenses', 'create', expData));
   };
 
   const deleteTreasuryExpense = (expenseId: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'treasuryExpenses', expenseId));
+    deleteDoc(doc(db, 'treasuryExpenses', expenseId))
+      .catch(handleMutationError(`treasuryExpenses/${expenseId}`, 'delete'));
   };
 
   const addFine = (playerId: string, reason: string, amount: number) => {
     if (!db || !currentUserProfile) return;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-    addDoc(collection(db, 'fines'), { playerId, playerName: player.name, reason, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id, isPaid: false });
+    const fineData = { playerId, playerName: player.name, reason, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id, isPaid: false };
+    addDoc(collection(db, 'fines'), fineData)
+      .catch(handleMutationError('fines', 'create', fineData));
   };
 
   const markFineAsPaid = (fineId: string) => {
     if (!db) return;
-    setDoc(doc(db, 'fines', fineId), { isPaid: true }, { merge: true });
+    setDoc(doc(db, 'fines', fineId), { isPaid: true }, { merge: true })
+      .catch(handleMutationError(`fines/${fineId}`, 'update', { isPaid: true }));
   };
 
   const deleteFine = (fineId: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'fines', fineId));
+    deleteDoc(doc(db, 'fines', fineId))
+      .catch(handleMutationError(`fines/${fineId}`, 'delete'));
   };
 
   const updateFineType = async (id: string, name: string, amount: number) => {
     if (!db) return;
-    await setDoc(doc(db, 'fineCatalog', id), { name, amount }, { merge: true });
+    setDoc(doc(db, 'fineCatalog', id), { name, amount }, { merge: true })
+      .catch(handleMutationError(`fineCatalog/${id}`, 'update', { name, amount }));
   };
 
   const addFineType = async (name: string, amount: number) => {
     if (!db) return;
-    await addDoc(collection(db, 'fineCatalog'), { name, amount });
+    addDoc(collection(db, 'fineCatalog'), { name, amount })
+      .catch(handleMutationError('fineCatalog', 'create', { name, amount }));
   };
 
   const deleteFineType = async (id: string) => {
     if (!db) return;
-    await deleteDoc(doc(db, 'fineCatalog', id));
+    deleteDoc(doc(db, 'fineCatalog', id))
+      .catch(handleMutationError(`fineCatalog/${id}`, 'delete'));
   };
 
   const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
     if (!db) return;
-    await addDoc(collection(db, 'teamEvents'), event);
+    addDoc(collection(db, 'teamEvents'), event)
+      .catch(handleMutationError('teamEvents', 'create', event));
   };
 
   const updateTeamEvent = async (id: string, updates: Partial<TeamEvent>) => {
     if (!db) return;
-    await setDoc(doc(db, 'teamEvents', id), updates, { merge: true });
+    setDoc(doc(db, 'teamEvents', id), updates, { merge: true })
+      .catch(handleMutationError(`teamEvents/${id}`, 'update', updates));
   };
 
   const deleteTeamEvent = async (id: string) => {
     if (!db) return;
-    await deleteDoc(doc(db, 'teamEvents', id));
+    deleteDoc(doc(db, 'teamEvents', id))
+      .catch(handleMutationError(`teamEvents/${id}`, 'delete'));
   };
 
   const addBezahlkiste = () => {
     if (!db) return;
-    addDoc(collection(db, 'expenses'), { 
+    const crateData = { 
       playerId: 'clubhouse', 
       playerName: 'Bezahlkiste (Mannschaft)', 
       itemType: 'crate', 
       cost: settings.cratePrice, 
       date: new Date().toISOString() 
-    });
+    };
+    addDoc(collection(db, 'expenses'), crateData)
+      .catch(handleMutationError('expenses', 'create', crateData));
   };
 
   const addPlayer = async (name: string, email: string, roles: Role[], uid?: string) => {
     if (!db) return;
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
-    await setDoc(playerRef, { name, email, roles, balance: 0.00 }, { merge: true });
+    const playerData = { name, email, roles, balance: 0.00 };
+    await setDoc(playerRef, playerData, { merge: true })
+      .catch(handleMutationError(`players/${playerRef.id}`, uid ? 'update' : 'create', playerData));
   };
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
     if (!db) return;
-    setDoc(doc(db, 'players', id), updates, { merge: true });
+    setDoc(doc(db, 'players', id), updates, { merge: true })
+      .catch(handleMutationError(`players/${id}`, 'update', updates));
   };
 
   const deletePlayer = async (id: string) => {
     if (!db) return;
-    await deleteDoc(doc(db, 'players', id));
+    await deleteDoc(doc(db, 'players', id))
+      .catch(handleMutationError(`players/${id}`, 'delete'));
   };
 
   const updateSettings = async (updates: Partial<AppSettings>) => {
     if (!db) return;
-    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true });
+    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true })
+      .catch(handleMutationError('settings/global', 'update', updates));
   };
 
   return (

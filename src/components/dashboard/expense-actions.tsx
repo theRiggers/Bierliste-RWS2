@@ -46,7 +46,7 @@ export function ExpenseActions({ currentUserId, userRoles = ['player'] }: Expens
   return (
     <div className="space-y-4">
       {isPrivileged && (
-        <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden mb-2">
+        <Card className="border-none shadow-md bg-card rounded-2xl overflow-hidden mb-2">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="bg-primary/10 p-2 rounded-xl text-primary">
               <UserCircle className="h-5 w-5" />
@@ -54,7 +54,7 @@ export function ExpenseActions({ currentUserId, userRoles = ['player'] }: Expens
             <div className="flex-1 space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Buchen für:</Label>
               <Select value={targetPlayerId} onValueChange={setTargetPlayerId}>
-                <SelectTrigger className="h-10 rounded-xl border-none bg-muted/30 font-bold focus:ring-0">
+                <SelectTrigger className="h-10 rounded-xl border-none bg-muted/30 dark:bg-muted/10 font-bold focus:ring-0">
                   <SelectValue placeholder="Spieler wählen" />
                 </SelectTrigger>
                 <SelectContent>

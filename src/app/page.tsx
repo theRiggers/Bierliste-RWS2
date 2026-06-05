@@ -185,9 +185,9 @@ export default function Dashboard() {
     const hasAdmin = players.some(p => p.roles.includes('admin'))
     return (
       <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">
-        <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
+        <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-card">
           <CardHeader className="text-center pb-2 pt-8">
-            <div className={cn("mx-auto p-4 rounded-3xl w-fit mb-4", !hasAdmin ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary")}>
+            <div className={cn("mx-auto p-4 rounded-3xl w-fit mb-4", !hasAdmin ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-500" : "bg-primary/10 text-primary")}>
               {!hasAdmin ? <ShieldCheck className="h-12 w-12" /> : <UserCircle className="h-12 w-12" />}
             </div>
             <CardTitle className="text-2xl font-bold font-headline">{!hasAdmin ? "Master-Account erstellen" : "Willkommen!"}</CardTitle>
@@ -198,7 +198,7 @@ export default function Dashboard() {
               <Label htmlFor="onboarding-name" className="text-xs uppercase font-bold text-muted-foreground ml-1">Dein Name</Label>
               <Input id="onboarding-name" placeholder="Z.B. Max Mustermann" value={onboardingName} onChange={(e) => setOnboardingName(e.target.value)} className="rounded-xl h-12 bg-muted/30 border-none text-base" disabled={isSubmitting} />
             </div>
-            <Button className={cn("w-full h-12 rounded-xl font-bold text-lg", !hasAdmin ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 shadow-lg" : "cyan-glow")} onClick={async () => {
+            <Button className={cn("w-full h-12 rounded-xl font-bold text-lg", !hasAdmin ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 dark:shadow-none shadow-lg" : "cyan-glow")} onClick={async () => {
               if (!onboardingName.trim()) return;
               setIsSubmitting(true);
               try {
@@ -329,13 +329,13 @@ export default function Dashboard() {
       />
       
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border sticky top-0 z-20">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border sticky top-0 z-20">
           <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           <div className="flex items-center gap-4">
             {isKassenwart && (
               <Button 
                 variant="outline" 
-                className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                 onClick={() => setIsPaymentOpen(true)}
               >
                 <PlusCircle className="h-4 w-4 mr-2" /> Zahlung verbuchen
@@ -351,7 +351,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-none shadow-md bg-white rounded-2xl">
+            <Card className="border-none shadow-md bg-card rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-medium text-muted-foreground">Mein Getränkekonto</p>
@@ -371,18 +371,18 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-md bg-white rounded-2xl">
+            <Card className="border-none shadow-md bg-card rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-medium text-muted-foreground">Mein Beitragskonto</p>
-                  <div className="p-2 bg-blue-100 rounded-full text-blue-600"><Banknote className="h-4 w-4" /></div>
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400"><Banknote className="h-4 w-4" /></div>
                 </div>
                 <div className="flex items-center justify-between">
                   <h2 className={cn("text-2xl font-bold", feeStatus.open > 0 ? 'text-destructive' : 'text-emerald-600')}>
                     {feeStatus.open > 0 ? `-${feeStatus.open.toFixed(2)}` : feeStatus.open.toFixed(2)} €
                   </h2>
                   {feeStatus.open > 0 && (
-                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 flex items-center gap-1">
+                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
                       Bezahlen <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}
@@ -400,18 +400,18 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-md bg-white rounded-2xl">
+            <Card className="border-none shadow-md bg-card rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-medium text-muted-foreground">Meine Strafen</p>
-                  <div className="p-2 bg-amber-100 rounded-full text-amber-600"><Scale className="h-4 w-4" /></div>
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full text-amber-600 dark:text-amber-400"><Scale className="h-4 w-4" /></div>
                 </div>
                 <div className="flex items-center justify-between">
                   <h2 className={cn("text-2xl font-bold", fineStatus > 0 ? 'text-destructive' : 'text-emerald-600')}>
                     {fineStatus > 0 ? `-${fineStatus.toFixed(2)}` : '0.00'} €
                   </h2>
                   {fineStatus > 0 && (
-                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 flex items-center gap-1">
+                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                       Bezahlen <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}
@@ -424,11 +424,11 @@ export default function Dashboard() {
 
             {isKassenwart && (
               <>
-                <Card className="border-none shadow-md bg-white rounded-2xl">
+                <Card className="border-none shadow-md bg-card rounded-2xl">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-muted-foreground">Bierkasse (Stand)</p>
-                      <div className="p-2 bg-amber-100 rounded-full text-amber-600"><Beer className="h-4 w-4" /></div>
+                      <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full text-amber-600 dark:text-amber-400"><Beer className="h-4 w-4" /></div>
                     </div>
                     <h2 className={cn("text-2xl font-bold", totalBierkasse < 0 ? 'text-destructive' : 'text-emerald-600')}>
                       {totalBierkasse.toFixed(2)} €
@@ -437,13 +437,13 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-md bg-white rounded-2xl">
+                <Card className="border-none shadow-md bg-card rounded-2xl">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-muted-foreground">Mannschaftskasse (Gesamt)</p>
-                      <div className="p-2 bg-emerald-100 rounded-full text-emerald-600"><TrendingUp className="h-4 w-4" /></div>
+                      <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-full text-emerald-600 dark:text-emerald-400"><TrendingUp className="h-4 w-4" /></div>
                     </div>
-                    <h2 className="text-2xl font-bold text-emerald-600">{totalMannschaftskasse.toFixed(2)} €</h2>
+                    <h2 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalMannschaftskasse.toFixed(2)} €</h2>
                     <p className="text-[10px] text-muted-foreground mt-1">Beiträge & Strafen</p>
                   </CardContent>
                 </Card>
@@ -452,18 +452,18 @@ export default function Dashboard() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <Card className="border-none shadow-lg rounded-2xl bg-white border-l-4 border-l-blue-500 h-full">
+            <Card className="border-none shadow-lg rounded-2xl bg-card border-l-4 border-l-blue-500 h-full">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                <CardTitle className="text-lg flex items-center gap-2 text-blue-700 dark:text-blue-400">
                   <CalendarDays className="h-5 w-5" /> Nächster Termin
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {nextEvent ? (
                   <div className="flex items-center gap-4">
-                    <div className="text-center min-w-[55px] bg-blue-50 p-2 rounded-xl border border-blue-100">
-                      <p className="text-[10px] uppercase font-black text-blue-600">{format(new Date(nextEvent.date), 'EEE', { locale: de })}</p>
-                      <p className="text-xl font-black text-blue-900">{format(new Date(nextEvent.date), 'dd')}</p>
+                    <div className="text-center min-w-[55px] bg-blue-50 dark:bg-blue-900/20 p-2 rounded-xl border border-blue-100 dark:border-blue-900/50">
+                      <p className="text-[10px] uppercase font-black text-blue-600 dark:text-blue-400">{format(new Date(nextEvent.date), 'EEE', { locale: de })}</p>
+                      <p className="text-xl font-black text-blue-900 dark:text-blue-100">{format(new Date(nextEvent.date), 'dd')}</p>
                     </div>
                     <div className="flex-1">
                       <h4 className="font-bold text-base">{nextEvent.title}</h4>
@@ -482,9 +482,9 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-lg rounded-2xl bg-white border-l-4 border-l-amber-500 h-full">
+            <Card className="border-none shadow-lg rounded-2xl bg-card border-l-4 border-l-amber-500 h-full">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
+                <CardTitle className="text-lg flex items-center gap-2 text-amber-700 dark:text-amber-400">
                   <Trophy className="h-5 w-5" /> Ehrentabelle
                 </CardTitle>
                 <CardDescription>Gesamte Ausgaben für Getränke und Strafen.</CardDescription>
@@ -517,13 +517,13 @@ export default function Dashboard() {
           </div>
 
           {isKassenwart && (
-            <Card className="border-none shadow-lg rounded-2xl bg-white border-t-4 border-t-amber-500">
-              <CardHeader className="bg-amber-50/50 pb-2">
+            <Card className="border-none shadow-lg rounded-2xl bg-card border-t-4 border-t-amber-500">
+              <CardHeader className="bg-amber-50/50 dark:bg-amber-900/10 pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
+                  <CardTitle className="text-lg flex items-center gap-2 text-amber-800 dark:text-amber-400">
                     <ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung
                   </CardTitle>
-                  <Badge variant="outline" className="bg-white text-amber-700 border-amber-200">
+                  <Badge variant="outline" className="bg-card text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900">
                     Soll: {clubhouseStats.totalCost.toFixed(2)}€
                   </Badge>
                 </div>
@@ -533,17 +533,17 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 gap-6 w-full md:w-auto">
                   <div className="space-y-1">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase">Kisten Total</p>
-                    <p className="text-2xl font-black text-amber-700">{clubhouseStats.count}</p>
+                    <p className="text-2xl font-black text-amber-700 dark:text-amber-500">{clubhouseStats.count}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] text-amber-800/60 font-bold uppercase flex items-center gap-1">
+                    <p className="text-[10px] text-amber-800/60 dark:text-amber-400/60 font-bold uppercase flex items-center gap-1">
                       <Calculator className="h-3 w-3" /> Noch Offen
                     </p>
-                    <p className="text-3xl font-black text-amber-600">{clubhouseStats.openDebt.toFixed(2)} €</p>
+                    <p className="text-3xl font-black text-amber-600 dark:text-amber-500">{clubhouseStats.openDebt.toFixed(2)} €</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                   <Button variant="outline" onClick={() => addBezahlkiste()} className="rounded-xl border-amber-600 text-amber-700">
+                   <Button variant="outline" onClick={() => addBezahlkiste()} className="rounded-xl border-amber-600 text-amber-700 dark:text-amber-400 dark:hover:bg-amber-950/20">
                      <PlusCircle className="h-4 w-4 mr-2" /> Bezahlkiste
                    </Button>
                    <Button onClick={handlePayClubhouse} className="rounded-xl bg-amber-600 text-white font-bold">
@@ -564,7 +564,7 @@ export default function Dashboard() {
 
           <div>
             <h3 className="text-lg font-semibold mb-4 px-1">Letzte Buchungen</h3>
-            <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-white">
+            <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-card">
               <CardContent className="p-0">
                 <div className="divide-y divide-border">
                   {expenses.slice(0, 5).map((e) => (
@@ -643,7 +643,7 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="p-3 bg-muted/50 rounded-xl border space-y-2">
+              <div className="p-3 bg-muted/50 rounded-xl border border-border space-y-2">
                 <div className="flex items-center justify-between">
                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Vorgeschlagener Betreff:</Label>
                    <Copy className="h-3 w-3 text-muted-foreground" />

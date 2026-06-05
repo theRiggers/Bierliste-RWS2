@@ -11,6 +11,7 @@ import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { useStore, Role } from "@/lib/store"
 import Image from "next/image"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { 
   History as HistoryIcon, 
   Users as UsersIcon, 
@@ -53,8 +54,8 @@ export function Sidebar({ userRoles = ['player'] }: SidebarProps) {
   }
 
   const NavContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="flex h-16 items-center px-6 border-b border-border">
+    <div className="flex flex-col h-full bg-sidebar">
+      <div className="flex h-16 items-center px-6 border-b border-sidebar-border">
         <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="relative h-10 w-10 flex-shrink-0">
             <Image src="/logo.png" alt="RW Sutthausen" fill className="object-contain" priority />
@@ -71,11 +72,11 @@ export function Sidebar({ userRoles = ['player'] }: SidebarProps) {
             <Link key={item.name} href={item.href}>
               <div className={cn(
                 "group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200",
-                isActive ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}>
                 <item.icon className={cn(
                   "mr-3 h-5 w-5 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                  isActive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-accent-foreground"
                 )} />
                 {item.name}
               </div>
@@ -84,34 +85,36 @@ export function Sidebar({ userRoles = ['player'] }: SidebarProps) {
         })}
       </div>
 
-      <div className="p-4 border-t border-border bg-white">
+      <div className="p-4 border-t border-sidebar-border bg-sidebar">
         {user && (
-          <div className="bg-muted/50 rounded-2xl p-4 mb-4">
+          <div className="bg-muted/50 dark:bg-muted/20 rounded-2xl p-4 mb-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm">
                 {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
+                <p className="text-sm font-semibold text-sidebar-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
                 <div className="flex flex-wrap gap-0.5 mt-0.5">
                   {currentUserProfile?.roles.slice(0, 2).map(r => (
                     <span key={r} className="text-[9px] bg-primary/10 text-primary px-1 rounded capitalize">{r}</span>
                   ))}
-                  {currentUserProfile && currentUserProfile.roles.length > 2 && <span className="text-[9px] text-muted-foreground">...</span>}
                 </div>
               </div>
             </div>
           </div>
         )}
-        <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6">
-          <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
-        </Button>
+        <div className="flex items-center gap-2 mb-2">
+          <ThemeToggle />
+          <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6">
+            <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
+          </Button>
+        </div>
       </div>
     </div>
   )
 
   return (
-    <aside className="hidden md:flex h-full w-64 flex-col bg-white border-r border-border shadow-sm">
+    <aside className="hidden md:flex h-full w-64 flex-col bg-sidebar border-r border-sidebar-border shadow-sm">
       <NavContent />
     </aside>
   )
@@ -131,7 +134,7 @@ export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { use
   }
   
   return (
-    <div className="md:hidden flex h-auto min-16 flex-col bg-white border-b border-border sticky top-0 z-30 pt-safe-top">
+    <div className="md:hidden flex h-auto min-16 flex-col bg-background border-b border-border sticky top-0 z-30 pt-safe-top">
       <div className="flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -140,13 +143,13 @@ export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { use
                 <MenuIcon className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
+            <SheetContent side="left" className="p-0 w-72 bg-sidebar">
               <SheetHeader className="sr-only">
                 <SheetTitle>Navigation</SheetTitle>
                 <SheetDescription>Hauptmenü Headquarter RWS2</SheetDescription>
               </SheetHeader>
               <div className="flex flex-col h-full">
-                <div className="flex h-auto min-16 items-center px-6 border-b border-border pt-safe-top">
+                <div className="flex h-auto min-16 items-center px-6 border-b border-sidebar-border pt-safe-top">
                   <Link href="/" className="flex items-center gap-3 h-16 hover:opacity-80 transition-opacity" onClick={() => setIsOpen(false)}>
                     <div className="relative h-8 w-8">
                       <Image src="/logo.png" alt="Logo" fill className="object-contain" />
@@ -160,23 +163,23 @@ export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { use
                     const isActive = pathname === item.href
                     return (
                       <Link key={item.name} href={item.href} onClick={() => setIsOpen(false)}>
-                        <div className={cn("group flex items-center px-3 py-3.5 text-base font-medium rounded-xl transition-all duration-200", isActive ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                          <item.icon className={cn("mr-4 h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                        <div className={cn("group flex items-center px-3 py-3.5 text-base font-medium rounded-xl transition-all duration-200", isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground")}>
+                          <item.icon className={cn("mr-4 h-6 w-6 transition-colors", isActive ? "text-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-accent-foreground")} />
                           {item.name}
                         </div>
                       </Link>
                     )
                   })}
                 </div>
-                <div className="p-4 border-t border-border bg-white">
+                <div className="p-4 border-t border-sidebar-border bg-sidebar">
                   {user && (
-                    <div className="bg-muted/50 rounded-2xl p-4 mb-4">
+                    <div className="bg-muted/50 dark:bg-muted/20 rounded-2xl p-4 mb-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm text-sm">
                           {currentUserProfile?.name.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
+                          <p className="text-sm font-semibold text-sidebar-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {currentUserProfile?.roles.map(r => (
                               <span key={r} className="text-[8px] bg-primary/10 text-primary px-1 rounded uppercase font-bold">{r}</span>
@@ -186,9 +189,12 @@ export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { use
                       </div>
                     </div>
                   )}
-                  <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
-                    <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <ThemeToggle />
+                    <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
+                      <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
+                    </Button>
+                  </div>
                 </div>
               </div>
             </SheetContent>

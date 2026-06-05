@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { Search, Loader2, Beer, Package, Banknote, Trash2, ShoppingCart, TrendingUp } from "lucide-react"
+import { Search, Loader2, Beer, Package, Banknote, Trash2, ShoppingCart, TrendingUp, Scale, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
 import { 
@@ -26,16 +26,34 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 
+const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
 export default function HistoryPage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const { user, loading: authLoading } = useUser()
-  const { expenses, payments, treasuryExpenses, membershipTransactions, currentUserProfile, deleteExpense, deletePayment, deleteTreasuryExpense, deleteMembershipTransaction, loading: storeLoading } = useStore()
+  const { 
+    players,
+    expenses, 
+    payments, 
+    treasuryExpenses, 
+    membershipTransactions, 
+    membershipFees,
+    fines,
+    currentUserProfile, 
+    deleteExpense, 
+    deletePayment, 
+    deleteTreasuryExpense, 
+    deleteMembershipTransaction,
+    deleteMembershipFee,
+    deleteFine,
+    loading: storeLoading 
+  } = useStore()
   
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' | 'treasury' | 'membershipTransaction' } | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' | 'treasury' | 'membershipTransaction' | 'membershipFee' | 'fine' } | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -90,10 +108,43 @@ export default function HistoryPage() {
       category: 'membershipTransaction' as const
     }));
 
-    return [...formattedExpenses, ...formattedPayments, ...formattedTreasury, ...formattedMembership].sort((a, b) => 
+    const formattedFines = fines.map(f => ({
+      id: f.id,
+      playerId: f.playerId,
+      playerName: f.playerName,
+      type: 'fine',
+      description: f.reason,
+      amount: -f.amount,
+      date: f.date,
+      category: 'fine' as const
+    }));
+
+    const formattedFees = membershipFees.map(f => {
+      const player = players.find(p => p.id === f.playerId);
+      const monthName = f.type === 'monthly' && f.month !== undefined ? MONTH_NAMES_SHORT[f.month] : '';
+      return {
+        id: f.id,
+        playerId: f.playerId,
+        playerName: player?.name || 'Unbekannter Spieler',
+        type: 'membershipFee',
+        description: f.type === 'annual' ? `Jahresbeitrag ${f.year}` : `Monatsbeitrag ${monthName} ${f.year}`,
+        amount: f.amount,
+        date: f.datePaid,
+        category: 'membershipFee' as const
+      }
+    });
+
+    return [
+      ...formattedExpenses, 
+      ...formattedPayments, 
+      ...formattedTreasury, 
+      ...formattedMembership,
+      ...formattedFines,
+      ...formattedFees
+    ].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [expenses, payments, treasuryExpenses, membershipTransactions]);
+  }, [expenses, payments, treasuryExpenses, membershipTransactions, fines, membershipFees, players]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -115,7 +166,7 @@ export default function HistoryPage() {
   }
 
   const filteredHistory = combinedHistory.filter(item => {
-    const searchString = (item.playerName + (item.category === 'treasury' || item.category === 'membershipTransaction' ? (item as any).description : '')).toLowerCase()
+    const searchString = (item.playerName + (item as any).description || '').toLowerCase()
     const matchesSearch = searchString.includes(searchTerm.toLowerCase())
     const matchesFilter = filterType === "all" || item.category === filterType
     return matchesSearch && matchesFilter
@@ -127,6 +178,8 @@ export default function HistoryPage() {
       case 'crate': return <Package className="h-4 w-4" />;
       case 'payment': return <Banknote className="h-4 w-4" />;
       case 'treasury': return <ShoppingCart className="h-4 w-4" />;
+      case 'fine': return <Scale className="h-4 w-4" />;
+      case 'membershipFee': return <CreditCard className="h-4 w-4" />;
       case 'membershipTransaction':
       case 'sponsor':
       case 'donation':
@@ -141,6 +194,8 @@ export default function HistoryPage() {
       case 'beer': return 'Bier';
       case 'crate': return 'Kiste';
       case 'payment': return 'Zahlung';
+      case 'fine': return item.description || 'Strafe';
+      case 'membershipFee': return item.description || 'Beitrag';
       case 'treasury': return item.description || 'Bierkasse-Ausgabe';
       case 'sponsor': return 'Sponsor';
       case 'donation': return 'Spende';
@@ -150,7 +205,7 @@ export default function HistoryPage() {
     }
   }
 
-  const handleDeleteRequest = (id: string, category: 'expense' | 'payment' | 'treasury' | 'membershipTransaction') => {
+  const handleDeleteRequest = (id: string, category: any) => {
     setItemToDelete({ id, category })
     setDeleteConfirmOpen(true)
   }
@@ -163,8 +218,12 @@ export default function HistoryPage() {
       deletePayment(itemToDelete.id)
     } else if (itemToDelete.category === 'treasury') {
       deleteTreasuryExpense(itemToDelete.id)
-    } else {
+    } else if (itemToDelete.category === 'membershipTransaction') {
       deleteMembershipTransaction(itemToDelete.id)
+    } else if (itemToDelete.category === 'membershipFee') {
+      deleteMembershipFee(itemToDelete.id)
+    } else if (itemToDelete.category === 'fine') {
+      deleteFine(itemToDelete.id)
     }
     setDeleteConfirmOpen(false)
     setItemToDelete(null)
@@ -197,15 +256,17 @@ export default function HistoryPage() {
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-full md:w-40 h-12 md:h-10 rounded-xl bg-white text-base md:text-sm">
+                <SelectTrigger className="w-full md:w-48 h-12 md:h-10 rounded-xl bg-white text-base md:text-sm">
                   <SelectValue placeholder="Typ filtern" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Alle</SelectItem>
                   <SelectItem value="expense">Getränke</SelectItem>
                   <SelectItem value="payment">Zahlungen</SelectItem>
+                  <SelectItem value="membershipFee">Beiträge</SelectItem>
+                  <SelectItem value="fine">Strafen</SelectItem>
                   <SelectItem value="treasury">Bierliste (Abrechnung)</SelectItem>
-                  <SelectItem value="membershipTransaction">Mannschaftskasse (Transaktionen)</SelectItem>
+                  <SelectItem value="membershipTransaction">Mannschaftskasse (Sonstiges)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -220,7 +281,9 @@ export default function HistoryPage() {
                       <div className={cn(
                         "p-2 rounded-full",
                         item.amount > 0 ? "bg-emerald-100 text-emerald-600" : 
-                        item.category === 'treasury' ? "bg-amber-100 text-amber-600" : "bg-primary/10 text-primary"
+                        item.category === 'treasury' ? "bg-amber-100 text-amber-600" : 
+                        item.category === 'fine' ? "bg-amber-100 text-amber-600" :
+                        "bg-primary/10 text-primary"
                       )}>
                         {getIcon(item.type)}
                       </div>
@@ -277,14 +340,16 @@ export default function HistoryPage() {
                         </TableCell>
                         <TableCell className="font-medium">
                           {item.playerName}
-                          {(item.category === 'treasury' || item.category === 'membershipTransaction') && <span className="block text-xs text-muted-foreground font-normal">{getTypeLabel(item)}</span>}
+                          {(item.category === 'treasury' || item.category === 'membershipTransaction' || item.category === 'fine' || item.category === 'membershipFee') && (
+                             <span className="block text-xs text-muted-foreground font-normal">{getTypeLabel(item)}</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className={cn(
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium gap-1",
                               item.amount > 0 ? "bg-emerald-100 text-emerald-800" : 
-                              item.category === 'treasury' ? "bg-amber-100 text-amber-800" : "bg-primary/10 text-primary"
+                              item.category === 'treasury' || item.category === 'fine' ? "bg-amber-100 text-amber-800" : "bg-primary/10 text-primary"
                             )}>
                               {getIcon(item.type)}
                               {getTypeLabel(item)}
@@ -323,7 +388,7 @@ export default function HistoryPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Eintrag wirklich löschen?</AlertDialogTitle>
               <AlertDialogDescription>
-                Diese Aktion kann nicht rückgängig gemacht werden. Der Kontostand wird automatisch korrigiert.
+                Diese Aktion kann nicht rückgängig gemacht werden. Bei Getränken oder Zahlungen wird der Kontostand automatisch korrigiert.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

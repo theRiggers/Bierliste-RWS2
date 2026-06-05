@@ -6,7 +6,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { format } from "date-fns"
+import { de } from "date-fns/locale"
 
 const AVAILABLE_ROLES: { id: Role, label: string }[] = [
   { id: 'player', label: 'Spieler' },
@@ -119,6 +121,28 @@ export default function PlayersPage() {
     }
   }
 
+  const exportDebtList = () => {
+    const debtors = players.filter(p => p.balance < 0 && p.email !== 'kasse@kickoff.de');
+    if (debtors.length === 0) {
+      toast({ title: "Keine Schulden", description: "Alle Konten sind ausgeglichen oder im Plus." });
+      return;
+    }
+
+    const dateStr = format(new Date(), 'dd.MM.yyyy', { locale: de });
+    let text = `🍻 *Getränkekasse - Offene Schulden*\n(Stand: ${dateStr})\n\n`;
+
+    debtors.sort((a, b) => a.balance - b.balance).forEach(p => {
+      text += `• ${p.name}: ${p.balance.toFixed(2).replace('.', ',')} €\n`;
+    });
+
+    const totalDebt = debtors.reduce((sum, p) => sum + p.balance, 0);
+    text += `\n*Gesamtsumme offen: ${Math.abs(totalDebt).toFixed(2).replace('.', ',')} €*`;
+    text += `\n\nBitte zeitnah begleichen! 🤝`;
+
+    navigator.clipboard.writeText(text);
+    toast({ title: "Liste kopiert", description: "Der WhatsApp-Text ist in der Zwischenablage." });
+  };
+
   const toggleRole = (role: Role, list: Role[], setter: (roles: Role[]) => void) => {
     if (list.includes(role)) {
       if (list.length > 1) {
@@ -137,46 +161,56 @@ export default function PlayersPage() {
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline">Spieler & Konten</h1>
-          {isAdmin && (
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
-                <div className="grid gap-6 py-4">
-                  <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
-                  <div className="space-y-2"><Label>E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
-                  <div className="space-y-3">
-                    <Label>Rollen (Mehrfachauswahl möglich)</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {AVAILABLE_ROLES.map(role => (
-                        <div key={role.id} className="flex items-center space-x-2 p-2 rounded-lg border hover:bg-muted/50 transition-colors">
-                          <Checkbox 
-                            id={`role-${role.id}`} 
-                            checked={newRoles.includes(role.id)}
-                            onCheckedChange={() => toggleRole(role.id, newRoles, setNewRoles)}
-                          />
-                          <label htmlFor={`role-${role.id}`} className="text-xs font-medium leading-none cursor-pointer flex-1">
-                            {role.label}
-                          </label>
-                        </div>
-                      ))}
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={exportDebtList} className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+              <Share2 className="h-4 w-4 mr-2" /> Schuldenliste exportieren
+            </Button>
+            {isAdmin && (
+              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DialogTrigger asChild><Button className="cyan-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
+                  <div className="grid gap-6 py-4">
+                    <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
+                    <div className="space-y-2"><Label>E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
+                    <div className="space-y-3">
+                      <Label>Rollen (Mehrfachauswahl möglich)</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {AVAILABLE_ROLES.map(role => (
+                          <div key={role.id} className="flex items-center space-x-2 p-2 rounded-lg border hover:bg-muted/50 transition-colors">
+                            <Checkbox 
+                              id={`role-${role.id}`} 
+                              checked={newRoles.includes(role.id)}
+                              onCheckedChange={() => toggleRole(role.id, newRoles, setNewRoles)}
+                            />
+                            <label htmlFor={`role-${role.id}`} className="text-xs font-medium leading-none cursor-pointer flex-1">
+                              {role.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <DialogFooter><Button onClick={handleAddPlayer} className="w-full h-11 rounded-xl">Anlegen</Button></DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+                  <DialogFooter><Button onClick={handleAddPlayer} className="w-full h-11 rounded-xl">Anlegen</Button></DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
-          <div className="md:hidden flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>
-            {isAdmin && (
-              <Button size="sm" className="cyan-glow rounded-xl" onClick={() => setIsAddOpen(true)}>
-                <UserPlus className="h-4 w-4 mr-1" /> Neu
-              </Button>
-            )}
+          <div className="md:hidden flex flex-col gap-4 mb-4">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>
+              {isAdmin && (
+                <Button size="sm" className="cyan-glow rounded-xl" onClick={() => setIsAddOpen(true)}>
+                  <UserPlus className="h-4 w-4 mr-1" /> Neu
+                </Button>
+              )}
+            </div>
+            <Button variant="outline" onClick={exportDebtList} className="w-full rounded-xl border-emerald-600 text-emerald-700 h-10 text-xs">
+              <Share2 className="h-3 w-3 mr-2" /> Schuldenliste exportieren
+            </Button>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

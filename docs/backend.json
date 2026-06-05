@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Player": {
@@ -6,15 +7,18 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "email": { "type": "string" },
-        "roles": { "type": "array", "items": { "type": "string" } },
-        "balance": { "type": "number" }
+        "email": { "type": "string", "format": "email" },
+        "roles": { 
+          "type": "array", 
+          "items": { "type": "string", "enum": ["player", "admin", "kassenwart", "strafenwart", "coach", "assistant_coach"] } 
+        },
+        "balance": { "type": "number", "description": "Kontostand der Bierkasse." }
       },
       "required": ["name", "email", "roles", "balance"]
     },
     "Expense": {
       "title": "Expense",
-      "description": "Eine Getränke-Buchung (Bier oder Kiste).",
+      "description": "Eine Getränkebuchung (Bier oder Kiste).",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
@@ -22,12 +26,11 @@
         "itemType": { "type": "string", "enum": ["beer", "crate"] },
         "cost": { "type": "number" },
         "date": { "type": "string", "format": "date-time" }
-      },
-      "required": ["playerId", "playerName", "itemType", "cost", "date"]
+      }
     },
     "Payment": {
       "title": "Payment",
-      "description": "Eine Einzahlung auf das Getränkekonto.",
+      "description": "Eine Einzahlung in die Bierkasse.",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
@@ -35,12 +38,11 @@
         "amount": { "type": "number" },
         "date": { "type": "string", "format": "date-time" },
         "recordedBy": { "type": "string" }
-      },
-      "required": ["playerId", "playerName", "amount", "date"]
+      }
     },
     "MembershipFee": {
       "title": "MembershipFee",
-      "description": "Ein bezahlter Monats- oder Jahresbeitrag.",
+      "description": "Beitrag zur Mannschaftskasse.",
       "type": "object",
       "properties": {
         "playerId": { "type": "string" },
@@ -49,45 +51,76 @@
         "year": { "type": "number" },
         "amount": { "type": "number" },
         "datePaid": { "type": "string", "format": "date-time" }
-      },
-      "required": ["playerId", "type", "year", "amount", "datePaid"]
+      }
+    },
+    "Fine": {
+      "title": "Fine",
+      "description": "Eine verhängte Strafe.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "playerName": { "type": "string" },
+        "reason": { "type": "string" },
+        "amount": { "type": "number" },
+        "isPaid": { "type": "boolean" },
+        "date": { "type": "string", "format": "date-time" }
+      }
     },
     "TeamEvent": {
       "title": "TeamEvent",
-      "description": "Ein Termin im Mannschaftskalender.",
+      "description": "Ein Termin im Kalender.",
       "type": "object",
       "properties": {
         "title": { "type": "string" },
         "type": { "type": "string", "enum": ["training", "match", "social"] },
         "date": { "type": "string", "format": "date-time" },
         "location": { "type": "string" }
-      },
-      "required": ["title", "type", "date"]
+      }
     }
   },
   "auth": {
     "providers": ["google.com", "password"]
   },
   "firestore": {
-    "/players/{playerId}": {
-      "schema": "#/backend/entities/Player",
-      "description": "Profile der Spieler und Administratoren."
+    "/players/{userId}": {
+      "schema": "Player",
+      "description": "Nutzerprofile und Kontostände."
     },
     "/expenses/{expenseId}": {
-      "schema": "#/backend/entities/Expense",
-      "description": "Log aller Getränkeentnahmen."
+      "schema": "Expense",
+      "description": "Getränkebuchungen."
     },
     "/payments/{paymentId}": {
-      "schema": "#/backend/entities/Payment",
-      "description": "Zahlungseingänge für Getränke."
+      "schema": "Payment",
+      "description": "Einzahlungen Bierkasse."
     },
     "/membershipFees/{feeId}": {
-      "schema": "#/backend/entities/MembershipFee",
-      "description": "Beiträge zur Mannschaftskasse."
+      "schema": "MembershipFee",
+      "description": "Zahlungen Mannschaftskasse."
+    },
+    "/membershipTransactions/{txId}": {
+      "schema": "object",
+      "description": "Einnahmen/Ausgaben Mannschaftskasse."
+    },
+    "/treasuryExpenses/{expId}": {
+      "schema": "object",
+      "description": "Ausgaben der Bierkasse (z.B. Vereinsheim)."
+    },
+    "/fines/{fineId}": {
+      "schema": "Fine",
+      "description": "Verhängte Strafen."
+    },
+    "/fineCatalog/{fineTypeId}": {
+      "schema": "object",
+      "description": "Verfügbare Strafen-Typen."
     },
     "/teamEvents/{eventId}": {
-      "schema": "#/backend/entities/TeamEvent",
-      "description": "Termine für Training, Spiele und Events."
+      "schema": "TeamEvent",
+      "description": "Kalendertermine."
+    },
+    "/settings/global": {
+      "schema": "object",
+      "description": "Globale App-Einstellungen."
     }
   }
 }

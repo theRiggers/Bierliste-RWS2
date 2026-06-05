@@ -524,7 +524,7 @@ export default function Dashboard() {
                     <ShoppingCart className="h-5 w-5" /> Vereinsheim Abrechnung
                   </CardTitle>
                   <Badge variant="outline" className="bg-card text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900">
-                    Soll: {clubhouseStats.totalCost.toFixed(2)}€
+                    Gesamtwert: {clubhouseStats.totalCost.toFixed(2)}€
                   </Badge>
                 </div>
                 <CardDescription>Berechnung nur basierend auf Kisten (Spieler + Bezahlkisten).</CardDescription>

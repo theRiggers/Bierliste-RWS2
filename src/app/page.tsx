@@ -112,6 +112,8 @@ export default function Dashboard() {
 
   const feeStatus = useMemo(() => {
     if (!currentUserProfile) return { open: 0, paidMonths: 0, monthsStatus: [] };
+    if (currentUserProfile.isFeeExempt) return { open: 0, paidMonths: 0, isExempt: true, monthsStatus: [] };
+
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
@@ -396,6 +398,13 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground">Mein Beitragskonto</p>
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400"><Banknote className="h-4 w-4" /></div>
                 </div>
+                {feeStatus.isExempt ? (
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-2xl font-bold text-blue-600">BEFREIT</h2>
+                    <p className="text-[10px] text-muted-foreground">Du bist vom Mitgliedsbeitrag befreit.</p>
+                  </div>
+                ) : (
+                  <>
                 <div className="flex items-center justify-between">
                   <h2 className={cn("text-2xl font-bold", feeStatus.open > 0 ? 'text-destructive' : 'text-emerald-600')}>
                     {feeStatus.open > 0 ? `-${feeStatus.open.toFixed(2)}` : feeStatus.open.toFixed(2)} €
@@ -416,6 +425,8 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
+              </>
+            )}
               </CardContent>
             </Card>
 

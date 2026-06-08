@@ -6,7 +6,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2 } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2, Info } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
@@ -36,12 +37,14 @@ export default function PlayersPage() {
   const [newName, setNewName] = useState("")
   const [newEmail, setNewEmail] = useState("")
   const [newRoles, setNewRoles] = useState<Role[]>(["player"])
+  const [newIsExempt, setNewIsExempt] = useState(false)
 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [editName, setEditName] = useState("")
   const [editEmail, setEditEmail] = useState("")
   const [editRoles, setEditRoles] = useState<Role[]>([])
+  const [editIsExempt, setEditIsExempt] = useState(false)
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null)
@@ -80,15 +83,15 @@ export default function PlayersPage() {
 
   const handleAddPlayer = async () => {
     if (!newName || !newEmail || newRoles.length === 0) return
-    await addPlayer(newName, newEmail, newRoles)
+    await addPlayer(newName, newEmail, newRoles, undefined, newIsExempt)
     setIsAddOpen(false)
-    setNewName(""); setNewEmail(""); setNewRoles(["player"])
+    setNewName(""); setNewEmail(""); setNewRoles(["player"]); setNewIsExempt(false)
     toast({ title: "Erfolgreich" })
   }
 
   const savePlayerChanges = () => {
     if (!editingPlayer || !editName || !editEmail || editRoles.length === 0) return
-    updatePlayer(editingPlayer.id, { name: editName, email: editEmail, roles: editRoles })
+    updatePlayer(editingPlayer.id, { name: editName, email: editEmail, roles: editRoles, isFeeExempt: editIsExempt })
     setIsEditOpen(false)
     toast({ title: "Aktualisiert" })
   }
@@ -173,6 +176,15 @@ export default function PlayersPage() {
                   <div className="grid gap-6 py-4">
                     <div className="space-y-2"><Label>Name</Label><Input value={newName} onChange={e => setNewName(e.target.value)} /></div>
                     <div className="space-y-2"><Label>E-Mail</Label><Input value={newEmail} onChange={e => setNewEmail(e.target.value)} /></div>
+                    
+                    <div className="p-3 bg-muted/30 rounded-xl flex items-center justify-between border">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-bold">Beitragsbefreiung</Label>
+                        <p className="text-[10px] text-muted-foreground">Spieler zahlt keine Mitgliedsbeiträge.</p>
+                      </div>
+                      <Switch checked={newIsExempt} onCheckedChange={setNewIsExempt} />
+                    </div>
+
                     <div className="space-y-3">
                       <Label>Rollen (Mehrfachauswahl möglich)</Label>
                       <div className="grid grid-cols-2 gap-3">
@@ -219,12 +231,19 @@ export default function PlayersPage() {
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary"><UserCircle className="h-8 w-8" /></div>
-                    <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">
-                      {player.roles.map(r => (
-                        <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">
-                          {AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">
+                        {player.roles.map(r => (
+                          <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">
+                            {AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}
+                          </Badge>
+                        ))}
+                      </div>
+                      {player.isFeeExempt && (
+                        <Badge variant="outline" className="text-[8px] bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 border-blue-200">
+                          BEITRAGSFREI
                         </Badge>
-                      ))}
+                      )}
                     </div>
                   </div>
                   <h3 className="text-xl font-bold mb-4">{player.name}</h3>
@@ -260,7 +279,14 @@ export default function PlayersPage() {
                           <Button 
                             size="icon" 
                             variant="ghost" 
-                            onClick={() => { setEditingPlayer(player); setEditName(player.name); setEditEmail(player.email); setEditRoles(player.roles); setIsEditOpen(true); }}
+                            onClick={() => { 
+                              setEditingPlayer(player); 
+                              setEditName(player.name); 
+                              setEditEmail(player.email); 
+                              setEditRoles(player.roles); 
+                              setEditIsExempt(player.isFeeExempt || false);
+                              setIsEditOpen(true); 
+                            }}
                           >
                             <ChevronRight className="h-4 w-4" />
                           </Button>
@@ -280,6 +306,15 @@ export default function PlayersPage() {
             <div className="grid gap-6 py-4">
               <div className="space-y-2"><Label>Name</Label><Input value={editName} onChange={e => setEditName(e.target.value)} /></div>
               <div className="space-y-2"><Label>E-Mail</Label><Input value={editEmail} onChange={e => setEditEmail(e.target.value)} /></div>
+              
+              <div className="p-3 bg-muted/30 rounded-xl flex items-center justify-between border">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-bold">Beitragsbefreiung</Label>
+                  <p className="text-[10px] text-muted-foreground">Spieler zahlt keine Mitgliedsbeiträge.</p>
+                </div>
+                <Switch checked={editIsExempt} onCheckedChange={setEditIsExempt} />
+              </div>
+
               <div className="space-y-3">
                 <Label>Rollen</Label>
                 <div className="grid grid-cols-2 gap-3">

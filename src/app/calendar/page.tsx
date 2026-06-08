@@ -4,12 +4,12 @@
 import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, TeamEvent } from "@/lib/store"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { downloadIcsFile } from "@/lib/calendar-export"
+import { Textarea } from "@/components/ui/textarea"
 
 const WEEKDAYS = [
   { id: 1, name: "Montag", short: "Mo" },
@@ -32,7 +33,7 @@ const WEEKDAYS = [
 export default function CalendarPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { teamEvents, addTeamEvent, updateTeamEvent, deleteTeamEvent, currentUserProfile, settings, loading: storeLoading } = useStore()
+  const { teamEvents, attendance, addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, currentUserProfile, settings, loading: storeLoading } = useStore()
   
   // Single Add State
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -60,6 +61,11 @@ export default function CalendarPage() {
   const [editType, setEditType] = useState<'training' | 'match' | 'social'>('training')
   const [editLocation, setEditLocation] = useState("")
   
+  // Decline State
+  const [isDeclineOpen, setIsDeclineOpen] = useState(false)
+  const [declineEventId, setDeclineEventId] = useState<string | null>(null)
+  const [declineReason, setDeclineReason] = useState("")
+
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -193,6 +199,19 @@ export default function CalendarPage() {
     if (!weekdayTimes[id]) {
       setWeekdayTimes(prev => ({ ...prev, [id]: "19:00" }))
     }
+  }
+
+  const handleDeclineClick = (eventId: string) => {
+    setDeclineEventId(eventId)
+    setDeclineReason("")
+    setIsDeclineOpen(true)
+  }
+
+  const confirmDecline = async () => {
+    if (!declineEventId || !declineReason.trim()) return
+    await upsertAttendance(declineEventId, 'declined', declineReason)
+    setIsDeclineOpen(false)
+    toast({ title: "Absage gespeichert" })
   }
 
   const getTypeIcon = (type: string) => {
@@ -389,59 +408,133 @@ export default function CalendarPage() {
                 </CardContent>
               </Card>
             ) : (
-              upcomingEvents.map((event) => (
-                <Card key={event.id} className="border-none shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-card">
-                  <div className="flex h-full">
-                    <div className={cn("w-2", event.type === 'training' ? 'bg-blue-500' : event.type === 'match' ? 'bg-primary' : 'bg-emerald-500')}></div>
-                    <CardContent className="p-4 md:p-6 flex-1 flex items-center justify-between">
-                      <div className="flex items-center gap-4 md:gap-6">
-                        <div className="text-center min-w-[60px]">
-                          <p className="text-[10px] uppercase font-bold text-muted-foreground">{format(new Date(event.date), 'EEE', { locale: de })}</p>
-                          <p className="text-xl font-bold">{format(new Date(event.date), 'dd')}</p>
-                          <p className="text-[10px] font-medium">{format(new Date(event.date), 'MMM', { locale: de })}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                             <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", getTypeColor(event.type))}>
-                               {getTypeIcon(event.type)}
-                               <span className="ml-1 uppercase">{event.type === 'training' ? 'Training' : event.type === 'match' ? 'Spiel' : 'Event'}</span>
-                             </span>
+              upcomingEvents.map((event) => {
+                const userAttendance = attendance.find(a => a.eventId === event.id && a.playerId === currentUserProfile?.id)
+                const eventAttendance = attendance.filter(a => a.eventId === event.id)
+                const goingCount = eventAttendance.filter(a => a.status === 'going').length
+                const declinedCount = eventAttendance.filter(a => a.status === 'declined').length
+
+                return (
+                  <Card key={event.id} className="border-none shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-card">
+                    <div className="flex flex-col md:flex-row h-full">
+                      <div className={cn("w-full md:w-2 h-2 md:h-auto", event.type === 'training' ? 'bg-blue-500' : event.type === 'match' ? 'bg-primary' : 'bg-emerald-500')}></div>
+                      <div className="flex-1 flex flex-col">
+                        <CardContent className="p-4 md:p-6 flex items-center justify-between">
+                          <div className="flex items-center gap-4 md:gap-6">
+                            <div className="text-center min-w-[60px]">
+                              <p className="text-[10px] uppercase font-bold text-muted-foreground">{format(new Date(event.date), 'EEE', { locale: de })}</p>
+                              <p className="text-xl font-bold">{format(new Date(event.date), 'dd')}</p>
+                              <p className="text-[10px] font-medium">{format(new Date(event.date), 'MMM', { locale: de })}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                 <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border", getTypeColor(event.type))}>
+                                   {getTypeIcon(event.type)}
+                                   <span className="ml-1 uppercase">{event.type === 'training' ? 'Training' : event.type === 'match' ? 'Spiel' : 'Event'}</span>
+                                 </span>
+                                 {(isEditor || true) && (
+                                   <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground ml-2">
+                                     <span className="flex items-center gap-0.5 text-emerald-600"><Check className="h-3 w-3" /> {goingCount}</span>
+                                     <span className="flex items-center gap-0.5 text-destructive"><X className="h-3 w-3" /> {declinedCount}</span>
+                                   </div>
+                                 )}
+                              </div>
+                              <h3 className="font-bold text-base md:text-lg">{event.title}</h3>
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(event.date), 'HH:mm')} Uhr</span>
+                                {event.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {event.location}</span>}
+                              </div>
+                            </div>
                           </div>
-                          <h3 className="font-bold text-base md:text-lg">{event.title}</h3>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(event.date), 'HH:mm')} Uhr</span>
-                            {event.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {event.location}</span>}
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleExportSingle(event)} 
+                              className="text-muted-foreground hover:text-blue-600 shrink-0 hidden sm:flex"
+                              title="Termin exportieren"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            {isEditor && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(event)} className="text-muted-foreground hover:text-primary shrink-0">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive shrink-0">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleExportSingle(event)} 
-                          className="text-muted-foreground hover:text-blue-600 shrink-0"
-                          title="Termin exportieren"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        {isEditor && (
-                          <>
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(event)} className="text-muted-foreground hover:text-primary shrink-0">
-                              <Pencil className="h-4 w-4" />
+                        </CardContent>
+                        
+                        <CardFooter className="px-4 md:px-6 pb-4 pt-0 flex items-center justify-between gap-4 border-t border-muted/30 mt-2 pt-4">
+                          <div className="flex items-center gap-2 flex-1">
+                            <Button 
+                              size="sm"
+                              className={cn(
+                                "rounded-xl font-bold flex-1 md:flex-none",
+                                userAttendance?.status === 'going' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-muted text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700"
+                              )}
+                              onClick={() => upsertAttendance(event.id, 'going')}
+                            >
+                              <Check className="h-4 w-4 mr-1" /> Zusage
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive shrink-0">
-                              <Trash2 className="h-4 w-4" />
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className={cn(
+                                "rounded-xl font-bold flex-1 md:flex-none",
+                                userAttendance?.status === 'declined' ? "bg-destructive hover:bg-destructive/90 text-white border-none" : "border-destructive text-destructive hover:bg-destructive/10"
+                              )}
+                              onClick={() => handleDeclineClick(event.id)}
+                            >
+                              <X className="h-4 w-4 mr-1" /> Absage
                             </Button>
-                          </>
-                        )}
+                          </div>
+                          {userAttendance?.status === 'declined' && userAttendance.reason && (
+                            <div className="hidden md:flex items-center gap-2 text-[10px] text-muted-foreground italic bg-muted/30 px-3 py-1.5 rounded-lg border">
+                              <MessageSquare className="h-3 w-3" /> {userAttendance.reason}
+                            </div>
+                          )}
+                        </CardFooter>
                       </div>
-                    </CardContent>
-                  </div>
-                </Card>
-              ))
+                    </div>
+                  </Card>
+                )
+              })
             )}
           </div>
         </div>
+
+        {/* Decline Reason Dialog */}
+        <Dialog open={isDeclineOpen} onOpenChange={setIsDeclineOpen}>
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
+            <DialogHeader>
+              <DialogTitle>Termin absagen</DialogTitle>
+              <DialogDescription>Bitte gib einen Grund für deine Absage an.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Grund (Pflichtfeld)</Label>
+              <Textarea 
+                placeholder="Z.B. Arbeit, Krankheit, Familie..." 
+                value={declineReason} 
+                onChange={(e) => setDeclineReason(e.target.value)}
+                className="mt-2 rounded-xl h-24"
+              />
+            </div>
+            <DialogFooter>
+              <Button 
+                onClick={confirmDecline} 
+                disabled={!declineReason.trim()} 
+                className="w-full rounded-xl bg-destructive hover:bg-destructive/90 text-white font-bold h-12"
+              >
+                Absage bestätigen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

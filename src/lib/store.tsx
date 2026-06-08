@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp, Firestore } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp, Firestore, Query, DocumentReference } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
@@ -89,6 +89,16 @@ export interface TeamEvent {
   location?: string;
 }
 
+export interface Attendance {
+  id: string;
+  eventId: string;
+  playerId: string;
+  playerName: string;
+  status: 'going' | 'declined';
+  reason?: string;
+  updatedAt: string;
+}
+
 export interface AppSettings {
   beerPrice: number;
   cratePrice: number;
@@ -130,6 +140,7 @@ interface StoreContextType {
   fines: Fine[];
   fineCatalog: FineType[];
   teamEvents: TeamEvent[];
+  attendance: Attendance[];
   currentUserProfile: Player | null;
   settings: AppSettings;
   loading: boolean;
@@ -156,6 +167,7 @@ interface StoreContextType {
   addTeamEvent: (event: Omit<TeamEvent, 'id'>) => Promise<void>;
   updateTeamEvent: (id: string, updates: Partial<TeamEvent>) => Promise<void>;
   deleteTeamEvent: (id: string) => Promise<void>;
+  upsertAttendance: (eventId: string, status: 'going' | 'declined', reason?: string) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -170,38 +182,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const { user, loading: authLoading } = useUser();
 
-  const playersQuery = useMemo(() => db ? collection(db, 'players') : null, [db]);
-  const { data: playersData, loading: playersLoading } = useCollection<any>(playersQuery);
+  const playersQuery = useMemo(() => db ? collection(db, 'players') as Query<Omit<Player, 'id'>> : null, [db]);
+  const { data: playersData, loading: playersLoading } = useCollection<Omit<Player, 'id'>>(playersQuery);
 
-  const expensesQuery = useMemo(() => db ? query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(150)) : null, [db]);
+  const expensesQuery = useMemo(() => db ? query(collection(db, 'expenses'), orderBy('date', 'desc'), limit(150)) as Query<Omit<Expense, 'id'>> : null, [db]);
   const { data: expensesData, loading: expensesLoading } = useCollection<Omit<Expense, 'id'>>(expensesQuery);
 
-  const paymentsQuery = useMemo(() => db ? query(collection(db, 'payments'), orderBy('date', 'desc'), limit(150)) : null, [db]);
+  const paymentsQuery = useMemo(() => db ? query(collection(db, 'payments'), orderBy('date', 'desc'), limit(150)) as Query<Omit<Payment, 'id'>> : null, [db]);
   const { data: paymentsData, loading: paymentsLoading } = useCollection<Omit<Payment, 'id'>>(paymentsQuery);
 
-  const feesQuery = useMemo(() => db ? collection(db, 'membershipFees') : null, [db]);
+  const feesQuery = useMemo(() => db ? collection(db, 'membershipFees') as Query<Omit<MembershipFee, 'id'>> : null, [db]);
   const { data: feesData, loading: feesLoading } = useCollection<Omit<MembershipFee, 'id'>>(feesQuery);
 
-  const mTransactionsQuery = useMemo(() => db ? query(collection(db, 'membershipTransactions'), orderBy('date', 'desc')) : null, [db]);
+  const mTransactionsQuery = useMemo(() => db ? query(collection(db, 'membershipTransactions'), orderBy('date', 'desc')) as Query<Omit<MembershipTransaction, 'id'>> : null, [db]);
   const { data: mTransactionsData, loading: mTransactionsLoading } = useCollection<Omit<MembershipTransaction, 'id'>>(mTransactionsQuery);
 
-  const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(150)) : null, [db]);
+  const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(150)) as Query<Omit<TreasuryExpense, 'id'>> : null, [db]);
   const { data: tExpensesData, loading: tExpensesLoading } = useCollection<Omit<TreasuryExpense, 'id'>>(tExpensesQuery);
 
-  const finesQuery = useMemo(() => db ? query(collection(db, 'fines'), orderBy('date', 'desc')) : null, [db]);
+  const finesQuery = useMemo(() => db ? query(collection(db, 'fines'), orderBy('date', 'desc')) as Query<Omit<Fine, 'id'>> : null, [db]);
   const { data: finesData, loading: finesLoading } = useCollection<Omit<Fine, 'id'>>(finesQuery);
 
-  const fineCatalogQuery = useMemo(() => db ? query(collection(db, 'fineCatalog'), orderBy('name', 'asc')) : null, [db]);
+  const fineCatalogQuery = useMemo(() => db ? query(collection(db, 'fineCatalog'), orderBy('name', 'asc')) as Query<Omit<FineType, 'id'>> : null, [db]);
   const { data: fineCatalogData, loading: fineCatalogLoading } = useCollection<Omit<FineType, 'id'>>(fineCatalogQuery);
 
-  const eventsQuery = useMemo(() => db ? query(collection(db, 'teamEvents'), orderBy('date', 'asc')) : null, [db]);
-  const { data: eventsData, loading: eventsLoading } = useCollection<Omit<TeamEvent, 'id'>>(eventsQuery);
+  const teamEventsQuery = useMemo(() => db ? query(collection(db, 'teamEvents'), orderBy('date', 'asc')) as Query<Omit<TeamEvent, 'id'>> : null, [db]);
+  const { data: teamEventsData, loading: teamEventsLoading } = useCollection<Omit<TeamEvent, 'id'>>(teamEventsQuery);
 
-  const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') : null, [db]);
+  const attendanceQuery = useMemo(() => db ? collection(db, 'eventAttendance') as Query<Omit<Attendance, 'id'>> : null, [db]);
+  const { data: attendanceData, loading: attendanceLoading } = useCollection<Omit<Attendance, 'id'>>(attendanceQuery);
+
+  const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') as DocumentReference<AppSettings> : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
   const players = useMemo(() => playersData?.map(d => {
-    const rawData = d.data;
+    const rawData = d.data as any;
     const roles = rawData.roles || (rawData.role ? [rawData.role] : ['player']);
     return { ...rawData, id: d.id, roles } as Player;
   }) || [], [playersData]);
@@ -213,7 +228,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const treasuryExpenses = useMemo(() => tExpensesData?.map(d => ({ ...d.data, id: d.id })) || [], [tExpensesData]);
   const fines = useMemo(() => finesData?.map(d => ({ ...d.data, id: d.id })) || [], [finesData]);
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
-  const teamEvents = useMemo(() => eventsData?.map(d => ({ ...d.data, id: d.id })) || [], [eventsData]);
+  const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
+  const attendance = useMemo(() => attendanceData?.map(d => ({ ...d.data, id: d.id })) || [], [attendanceData]);
 
   const settings = useMemo<AppSettings>(() => ({
     beerPrice: settingsData?.beerPrice ?? BEER_PRICE,
@@ -443,6 +459,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError(`teamEvents/${id}`, 'delete'));
   };
 
+  const upsertAttendance = async (eventId: string, status: 'going' | 'declined', reason?: string) => {
+    if (!db || !currentUserProfile) return;
+    const docId = `${eventId}_${currentUserProfile.id}`;
+    const attendanceData = {
+      eventId,
+      playerId: currentUserProfile.id,
+      playerName: currentUserProfile.name,
+      status,
+      reason: status === 'declined' ? reason : null,
+      updatedAt: new Date().toISOString(),
+    };
+    setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
+      .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
+  };
+
   const addBezahlkiste = () => {
     if (!db) return;
     const crateData = { 
@@ -491,15 +522,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, currentUserProfile, settings,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || eventsLoading,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, currentUserProfile, settings,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || teamEventsLoading || attendanceLoading,
       totalMannschaftskasse,
       totalBierkasse,
       bierkasseLiquidity,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
-      addTeamEvent, updateTeamEvent, deleteTeamEvent,
+      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason
     }}>
       {children}

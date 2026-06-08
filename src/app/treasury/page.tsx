@@ -23,7 +23,8 @@ import {
   Check,
   X,
   CreditCard,
-  BadgeEuro
+  BadgeEuro,
+  Info
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -34,6 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const MONTH_NAMES = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -254,7 +256,6 @@ export default function TreasuryPage() {
 
               <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-card">
                 <CardContent className="p-0">
-                  {/* Mobile View: Card List */}
                   <div className="md:hidden divide-y divide-border">
                     {membershipTransactions.map((transaction) => (
                       <div key={transaction.id} className="p-4 flex items-center justify-between group">
@@ -292,7 +293,6 @@ export default function TreasuryPage() {
                     )}
                   </div>
 
-                  {/* Desktop View: Table */}
                   <div className="hidden md:block">
                     <Table>
                       <TableHeader className="bg-muted/30">
@@ -389,14 +389,28 @@ export default function TreasuryPage() {
                         const season = parseInt(selectedSeason);
                         const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === season);
                         const isAnnual = playerFees.some(f => f.type === 'annual');
+                        const isExempt = player.isFeeExempt;
                         
                         return (
-                          <TableRow key={player.id} className="hover:bg-muted/10">
-                            <TableCell className="font-semibold py-4 whitespace-nowrap text-sm">{player.name}</TableCell>
+                          <TableRow key={player.id} className={cn("hover:bg-muted/10", isExempt && "opacity-50 grayscale")}>
+                            <TableCell className="font-semibold py-4 whitespace-nowrap text-sm flex items-center gap-2">
+                              {player.name}
+                              {isExempt && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Info className="h-3 w-3 text-blue-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Befreit vom Mitgliedsbeitrag</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </TableCell>
                             <TableCell className="text-center">
                               <Button 
                                 variant={isAnnual ? "default" : "outline"} 
                                 size="sm"
+                                disabled={isExempt}
                                 className={cn("rounded-lg h-8 w-8 p-0", isAnnual ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "")}
                                 onClick={() => handleToggleAnnual(player.id)}
                               >
@@ -410,7 +424,7 @@ export default function TreasuryPage() {
                                   <Button 
                                     variant={isPaid ? "default" : "ghost"} 
                                     size="sm" 
-                                    disabled={isAnnual}
+                                    disabled={isAnnual || isExempt}
                                     className={cn(
                                       "rounded-lg h-7 w-7 p-0 transition-all",
                                       isPaid && !isAnnual ? "bg-emerald-500 hover:bg-emerald-600 text-white" : "",

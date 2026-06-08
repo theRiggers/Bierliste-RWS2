@@ -3,13 +3,13 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { useStore, TeamEvent, Attendance } from "@/lib/store"
+import { useStore, TeamEvent, Attendance, Player } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye, UserCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
@@ -34,7 +34,7 @@ const WEEKDAYS = [
 export default function CalendarPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { teamEvents, attendance, addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, currentUserProfile, settings, loading: storeLoading } = useStore()
+  const { players, teamEvents, attendance, addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, currentUserProfile, settings, loading: storeLoading } = useStore()
   
   // Single Add State
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -69,7 +69,7 @@ export default function CalendarPage() {
 
   // Details State
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [detailsEvent, setDetailsEvent] = useState<{title: string, attendees: Attendance[]} | null>(null)
+  const [detailsEvent, setDetailsEvent] = useState<TeamEvent | null>(null)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -152,9 +152,9 @@ export default function CalendarPage() {
     setIsEditOpen(true);
   }
 
-  const openDetailsDialog = (event: TeamEvent, eventAttendance: Attendance[]) => {
+  const openDetailsDialog = (event: TeamEvent) => {
     if (!isEditor) return;
-    setDetailsEvent({ title: event.title, attendees: eventAttendance });
+    setDetailsEvent(event);
     setIsDetailsOpen(true);
   }
 
@@ -224,6 +224,12 @@ export default function CalendarPage() {
     setIsDeclineOpen(false)
     toast({ title: "Absage gespeichert" })
   }
+
+  const handleAdminStatusToggle = async (eventId: string, player: Player, currentStatus: string | undefined) => {
+    if (!isEditor) return;
+    const nextStatus = currentStatus === 'going' ? 'declined' : 'going';
+    await updatePlayerAttendance(eventId, player.id, player.name, nextStatus);
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -449,7 +455,7 @@ export default function CalendarPage() {
                                      "h-auto p-1 px-2 flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 rounded-lg",
                                      isEditor && "cursor-pointer"
                                    )}
-                                   onClick={() => openDetailsDialog(event, eventAttendance)}
+                                   onClick={() => openDetailsDialog(event)}
                                    disabled={!isEditor}
                                  >
                                    <span className="flex items-center gap-0.5 text-emerald-600"><Check className="h-3 w-3" /> {goingCount}</span>
@@ -600,17 +606,26 @@ export default function CalendarPage() {
               <div className="space-y-6">
                 <div>
                   <h4 className="text-sm font-bold text-emerald-600 flex items-center gap-2 mb-3">
-                    <Check className="h-4 w-4" /> Zusagen ({detailsEvent?.attendees.filter(a => a.status === 'going').length})
+                    <Check className="h-4 w-4" /> Zusagen ({attendance.filter(a => a.eventId === detailsEvent?.id && a.status === 'going').length})
                   </h4>
                   <div className="grid gap-2">
-                    {detailsEvent?.attendees.filter(a => a.status === 'going').map(a => (
-                      <div key={a.id} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900 text-sm font-medium">
-                        {a.playerName}
-                      </div>
-                    ))}
-                    {detailsEvent?.attendees.filter(a => a.status === 'going').length === 0 && (
-                      <p className="text-xs text-muted-foreground italic">Keine Zusagen vorhanden.</p>
-                    )}
+                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
+                      const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
+                      if (att?.status !== 'going') return null;
+                      return (
+                        <div key={player.id} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900 text-sm font-medium flex items-center justify-between group">
+                          <span>{player.name}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, 'going')}
+                          >
+                            <X className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -618,23 +633,71 @@ export default function CalendarPage() {
 
                 <div>
                   <h4 className="text-sm font-bold text-destructive flex items-center gap-2 mb-3">
-                    <X className="h-4 w-4" /> Absagen ({detailsEvent?.attendees.filter(a => a.status === 'declined').length})
+                    <X className="h-4 w-4" /> Absagen ({attendance.filter(a => a.eventId === detailsEvent?.id && a.status === 'declined').length})
                   </h4>
                   <div className="grid gap-2">
-                    {detailsEvent?.attendees.filter(a => a.status === 'declined').map(a => (
-                      <div key={a.id} className="p-3 rounded-xl bg-destructive/5 border border-destructive/10 space-y-1">
-                        <p className="text-sm font-bold">{a.playerName}</p>
-                        {a.reason && (
-                          <p className="text-xs text-muted-foreground flex items-start gap-1.5 italic">
-                            <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-                            {a.reason}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                    {detailsEvent?.attendees.filter(a => a.status === 'declined').length === 0 && (
-                      <p className="text-xs text-muted-foreground italic">Keine Absagen vorhanden.</p>
-                    )}
+                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
+                      const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
+                      if (att?.status !== 'declined') return null;
+                      return (
+                        <div key={player.id} className="p-3 rounded-xl bg-destructive/5 border border-destructive/10 space-y-1 group relative">
+                          <div className="flex items-center justify-between">
+                             <p className="text-sm font-bold">{player.name}</p>
+                             <Button 
+                               variant="ghost" 
+                               size="icon" 
+                               className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                               onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, 'declined')}
+                             >
+                               <Check className="h-3 w-3 text-emerald-600" />
+                             </Button>
+                          </div>
+                          {att.reason && (
+                            <p className="text-xs text-muted-foreground flex items-start gap-1.5 italic">
+                              <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+                              {att.reason}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h4 className="text-sm font-bold text-muted-foreground flex items-center gap-2 mb-3">
+                    <UserCircle className="h-4 w-4" /> Keine Rückmeldung ({players.filter(p => p.email !== 'kasse@kickoff.de' && !attendance.some(a => a.eventId === detailsEvent?.id && a.playerId === p.id)).length})
+                  </h4>
+                  <div className="grid gap-2">
+                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
+                      const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
+                      if (att) return null;
+                      return (
+                        <div key={player.id} className="p-2 rounded-xl bg-muted/20 border border-border/50 text-sm flex items-center justify-between group">
+                          <span className="text-muted-foreground">{player.name}</span>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 text-emerald-600"
+                              onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, undefined)}
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, undefined)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

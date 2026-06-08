@@ -168,6 +168,7 @@ interface StoreContextType {
   updateTeamEvent: (id: string, updates: Partial<TeamEvent>) => Promise<void>;
   deleteTeamEvent: (id: string) => Promise<void>;
   upsertAttendance: (eventId: string, status: 'going' | 'declined', reason?: string) => Promise<void>;
+  updatePlayerAttendance: (eventId: string, playerId: string, playerName: string, status: 'going' | 'declined' | null, reason?: string) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -474,6 +475,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
   };
 
+  const updatePlayerAttendance = async (eventId: string, playerId: string, playerName: string, status: 'going' | 'declined' | null, reason?: string) => {
+    if (!db) return;
+    const docId = `${eventId}_${playerId}`;
+    
+    if (status === null) {
+      deleteDoc(doc(db, 'eventAttendance', docId))
+        .catch(handleMutationError(`eventAttendance/${docId}`, 'delete'));
+      return;
+    }
+
+    const attendanceData = {
+      eventId,
+      playerId,
+      playerName,
+      status,
+      reason: status === 'declined' ? (reason || null) : null,
+      updatedAt: new Date().toISOString(),
+    };
+    setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
+      .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
+  };
+
   const addBezahlkiste = () => {
     if (!db) return;
     const crateData = { 
@@ -530,7 +553,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
-      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance,
+      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason
     }}>
       {children}

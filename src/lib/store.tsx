@@ -15,6 +15,7 @@ export interface Player {
   email: string;
   roles: Role[];
   balance: number;
+  isFeeExempt?: boolean;
 }
 
 export interface Expense {
@@ -156,7 +157,7 @@ interface StoreContextType {
   updateTeamEvent: (id: string, updates: Partial<TeamEvent>) => Promise<void>;
   deleteTeamEvent: (id: string) => Promise<void>;
   addBezahlkiste: () => void;
-  addPlayer: (name: string, email: string, roles: Role[], uid?: string) => Promise<void>;
+  addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   deletePlayer: (id: string) => Promise<void>;
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
@@ -455,10 +456,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError('expenses', 'create', crateData));
   };
 
-  const addPlayer = async (name: string, email: string, roles: Role[], uid?: string) => {
+    const addPlayer = async (name: string, email: string, roles: Role[], uid?: string, isFeeExempt: boolean = false) => {
     if (!db) return;
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
-    const playerData = { name, email, roles, balance: 0.00 };
+    const playerData = { name, email, roles, balance: 0.00, isFeeExempt };
     await setDoc(playerRef, playerData, { merge: true })
       .catch(handleMutationError(`players/${playerRef.id}`, uid ? 'update' : 'create', playerData));
   };

@@ -87,7 +87,7 @@ export default function FinesPage() {
 
     const totalAll = unpaidFines.reduce((sum, f) => sum + f.amount, 0);
     text += `*Gesamtsumme offen: ${totalAll.toFixed(2).replace('.', ',')} €*`;
-    text += `\n\nBitte zeitnah beim Strafenwart oder Kassenwart begleichen! 🤝`;
+    text += `\n\nBitte zeitnah begleichen! 🤝`;
 
     navigator.clipboard.writeText(text);
     toast({ title: "Liste kopiert", description: "Der WhatsApp-Text ist in der Zwischenablage." });

@@ -3,13 +3,13 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { useStore, TeamEvent } from "@/lib/store"
+import { useStore, TeamEvent, Attendance } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { downloadIcsFile } from "@/lib/calendar-export"
 import { Textarea } from "@/components/ui/textarea"
+import { Separator } from "@/components/ui/separator"
 
 const WEEKDAYS = [
   { id: 1, name: "Montag", short: "Mo" },
@@ -65,6 +66,10 @@ export default function CalendarPage() {
   const [isDeclineOpen, setIsDeclineOpen] = useState(false)
   const [declineEventId, setDeclineEventId] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState("")
+
+  // Details State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [detailsEvent, setDetailsEvent] = useState<{title: string, attendees: Attendance[]} | null>(null)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -145,6 +150,12 @@ export default function CalendarPage() {
     setEditType(event.type);
     setEditLocation(event.location || "");
     setIsEditOpen(true);
+  }
+
+  const openDetailsDialog = (event: TeamEvent, eventAttendance: Attendance[]) => {
+    if (!isEditor) return;
+    setDetailsEvent({ title: event.title, attendees: eventAttendance });
+    setIsDetailsOpen(true);
   }
 
   const handleBulkAdd = async () => {
@@ -432,12 +443,19 @@ export default function CalendarPage() {
                                    {getTypeIcon(event.type)}
                                    <span className="ml-1 uppercase">{event.type === 'training' ? 'Training' : event.type === 'match' ? 'Spiel' : 'Event'}</span>
                                  </span>
-                                 {(isEditor || true) && (
-                                   <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground ml-2">
-                                     <span className="flex items-center gap-0.5 text-emerald-600"><Check className="h-3 w-3" /> {goingCount}</span>
-                                     <span className="flex items-center gap-0.5 text-destructive"><X className="h-3 w-3" /> {declinedCount}</span>
-                                   </div>
-                                 )}
+                                 <Button 
+                                   variant="ghost" 
+                                   className={cn(
+                                     "h-auto p-1 px-2 flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 rounded-lg",
+                                     isEditor && "cursor-pointer"
+                                   )}
+                                   onClick={() => openDetailsDialog(event, eventAttendance)}
+                                   disabled={!isEditor}
+                                 >
+                                   <span className="flex items-center gap-0.5 text-emerald-600"><Check className="h-3 w-3" /> {goingCount}</span>
+                                   <span className="flex items-center gap-0.5 text-destructive"><X className="h-3 w-3" /> {declinedCount}</span>
+                                   {isEditor && <Eye className="h-3 w-3 ml-1 opacity-50" />}
+                                 </Button>
                               </div>
                               <h3 className="font-bold text-base md:text-lg">{event.title}</h3>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -567,6 +585,63 @@ export default function CalendarPage() {
                 {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Änderungen speichern"}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Attendees Details Dialog */}
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="max-w-[95vw] md:max-w-lg rounded-3xl p-0 overflow-hidden bg-card">
+            <DialogHeader className="p-6 pb-2">
+              <DialogTitle className="text-xl">{detailsEvent?.title}</DialogTitle>
+              <DialogDescription>Übersicht der Zu- und Absagen</DialogDescription>
+            </DialogHeader>
+            
+            <ScrollArea className="max-h-[60vh] px-6 pb-6">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-600 flex items-center gap-2 mb-3">
+                    <Check className="h-4 w-4" /> Zusagen ({detailsEvent?.attendees.filter(a => a.status === 'going').length})
+                  </h4>
+                  <div className="grid gap-2">
+                    {detailsEvent?.attendees.filter(a => a.status === 'going').map(a => (
+                      <div key={a.id} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900 text-sm font-medium">
+                        {a.playerName}
+                      </div>
+                    ))}
+                    {detailsEvent?.attendees.filter(a => a.status === 'going').length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Keine Zusagen vorhanden.</p>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h4 className="text-sm font-bold text-destructive flex items-center gap-2 mb-3">
+                    <X className="h-4 w-4" /> Absagen ({detailsEvent?.attendees.filter(a => a.status === 'declined').length})
+                  </h4>
+                  <div className="grid gap-2">
+                    {detailsEvent?.attendees.filter(a => a.status === 'declined').map(a => (
+                      <div key={a.id} className="p-3 rounded-xl bg-destructive/5 border border-destructive/10 space-y-1">
+                        <p className="text-sm font-bold">{a.playerName}</p>
+                        {a.reason && (
+                          <p className="text-xs text-muted-foreground flex items-start gap-1.5 italic">
+                            <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+                            {a.reason}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {detailsEvent?.attendees.filter(a => a.status === 'declined').length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Keine Absagen vorhanden.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+            <div className="p-4 bg-muted/30 border-t flex justify-end">
+              <Button onClick={() => setIsDetailsOpen(false)} className="rounded-xl">Schließen</Button>
+            </div>
           </DialogContent>
         </Dialog>
       </main>

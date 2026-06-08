@@ -31,7 +31,7 @@ const navigation = [
   { name: 'Kalender', href: '/calendar', icon: CalendarIcon },
   { name: 'Verlauf', href: '/history', icon: HistoryIcon },
   { name: 'Mannschaftskasse', href: '/treasury', icon: TreasuryIcon, roles: ['admin', 'kassenwart'] },
-  { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart'] },
+  { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart', 'kassenwart'] },
   { name: 'Spieler', href: '/players', icon: UsersIcon, roles: ['admin', 'kassenwart'] },
   { name: 'App installieren', href: '/how-to', icon: SmartphoneIcon },
   { name: 'Administration', href: '/admin', icon: SettingsIcon, roles: ['admin'] },

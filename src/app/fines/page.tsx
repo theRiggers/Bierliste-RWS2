@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Scale, Plus, Trash2, Loader2, UserCircle, AlertCircle, CheckCircle2, History } from "lucide-react"
+import { Scale, Plus, Trash2, Loader2, UserCircle, AlertCircle, CheckCircle2, History, Share2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
@@ -48,9 +48,10 @@ export default function FinesPage() {
   }
 
   const isAdmin = currentUserProfile?.roles?.includes('admin')
-  const isStrafenwart = currentUserProfile?.roles?.includes('strafenwart') || isAdmin
+  const isKassenwart = currentUserProfile?.roles?.includes('kassenwart')
+  const isStrafenwart = currentUserProfile?.roles?.includes('strafenwart') || isAdmin || isKassenwart
 
-  if (!currentUserProfile || (!isAdmin && !isStrafenwart)) {
+  if (!currentUserProfile || !isStrafenwart) {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2>
@@ -58,6 +59,39 @@ export default function FinesPage() {
       </div>
     )
   }
+
+  const exportFinesList = () => {
+    if (unpaidFines.length === 0) {
+      toast({ title: "Keine offenen Strafen", description: "Alle Strafen wurden bereits beglichen." });
+      return;
+    }
+
+    const dateStr = format(new Date(), 'dd.MM.yyyy', { locale: de });
+    let text = `⚖️ *Offene Strafen - RWS2*\n(Stand: ${dateStr})\n\n`;
+
+    // Group by player
+    const playerFines: Record<string, Fine[]> = {};
+    unpaidFines.forEach(f => {
+      if (!playerFines[f.playerName]) playerFines[f.playerName] = [];
+      playerFines[f.playerName].push(f);
+    });
+
+    Object.entries(playerFines).sort((a, b) => a[0].localeCompare(b[0])).forEach(([playerName, items]) => {
+      const total = items.reduce((sum, i) => sum + i.amount, 0);
+      text += `• *${playerName}: ${total.toFixed(2).replace('.', ',')} €*\n`;
+      items.forEach(i => {
+        text += `  - ${i.reason} (${i.amount.toFixed(2).replace('.', ',')} €)\n`;
+      });
+      text += `\n`;
+    });
+
+    const totalAll = unpaidFines.reduce((sum, f) => sum + f.amount, 0);
+    text += `*Gesamtsumme offen: ${totalAll.toFixed(2).replace('.', ',')} €*`;
+    text += `\n\nBitte zeitnah beim Strafenwart oder Kassenwart begleichen! 🤝`;
+
+    navigator.clipboard.writeText(text);
+    toast({ title: "Liste kopiert", description: "Der WhatsApp-Text ist in der Zwischenablage." });
+  };
 
   const handleAddFine = async () => {
     const val = parseFloat(customAmount)
@@ -89,9 +123,19 @@ export default function FinesPage() {
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <Scale className="h-6 w-6" /> Strafenverwaltung
           </h1>
+          <Button variant="outline" onClick={exportFinesList} className="rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20">
+            <Share2 className="h-4 w-4 mr-2" /> Strafenliste exportieren
+          </Button>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 max-w-4xl mx-auto w-full pb-20">
+          <div className="md:hidden flex flex-col gap-4 mb-4">
+            <h1 className="text-2xl font-bold text-primary font-headline">Strafen</h1>
+            <Button variant="outline" onClick={exportFinesList} className="w-full rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 h-10 text-xs">
+              <Share2 className="h-3 w-3 mr-2" /> Strafenliste exportieren
+            </Button>
+          </div>
+
           <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-card">
             <CardHeader className="bg-amber-500/10 dark:bg-amber-900/20">
               <CardTitle className="text-lg">Neue Strafe erfassen</CardTitle>

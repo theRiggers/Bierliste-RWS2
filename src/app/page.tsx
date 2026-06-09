@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -49,6 +48,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { IntroDialog } from "@/components/layout/intro-dialog"
 
 const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -197,7 +197,7 @@ export default function Dashboard() {
     const hasAdmin = players.some(p => p.roles.includes('admin'))
     return (
       <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">
-        <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl overflow-hidden bg-card">
+        <Card className="w-full max-md border-none shadow-2xl rounded-3xl overflow-hidden bg-card">
           <CardHeader className="text-center pb-2 pt-8">
             <div className={cn("mx-auto p-4 rounded-3xl w-fit mb-4", !hasAdmin ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-500" : "bg-primary/10 text-primary")}>
               {!hasAdmin ? <ShieldCheck className="h-12 w-12" /> : <UserCircle className="h-12 w-12" />}
@@ -716,6 +716,8 @@ export default function Dashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <IntroDialog />
       </main>
     </div>
   )

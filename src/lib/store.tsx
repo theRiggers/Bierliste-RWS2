@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -16,6 +15,7 @@ export interface Player {
   roles: Role[];
   balance: number;
   isFeeExempt?: boolean;
+  lastIntroSeenRoles?: Role[];
 }
 
 export interface Expense {
@@ -175,6 +175,7 @@ interface StoreContextType {
   deletePlayer: (id: string) => Promise<void>;
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
   resetClubhouseSeason: () => Promise<void>;
+  markIntroSeen: (roles: Role[]) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -543,6 +544,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError('settings/global', 'update', updates));
   };
 
+  const markIntroSeen = async (roles: Role[]) => {
+    if (!db || !currentUserProfile) return;
+    const updates = { lastIntroSeenRoles: roles };
+    await setDoc(doc(db, 'players', currentUserProfile.id), updates, { merge: true })
+      .catch(handleMutationError(`players/${currentUserProfile.id}`, 'update', updates));
+  };
+
   return (
     <StoreContext.Provider value={{ 
       players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, currentUserProfile, settings,
@@ -554,7 +562,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance,
-      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason
+      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen
     }}>
       {children}
     </StoreContext.Provider>

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye, UserCircle } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye, UserCircle, LayoutGrid } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
@@ -20,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { downloadIcsFile } from "@/lib/calendar-export"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
+import Link from "next/link"
 
 const WEEKDAYS = [
   { id: 1, name: "Montag", short: "Mo" },
@@ -34,7 +34,7 @@ const WEEKDAYS = [
 export default function CalendarPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, teamEvents, attendance, addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, currentUserProfile, settings, loading: storeLoading } = useStore()
+  const { players, teamEvents, attendance, lineups, addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, currentUserProfile, settings, loading: storeLoading } = useStore()
   
   // Single Add State
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -430,6 +430,7 @@ export default function CalendarPage() {
                 const eventAttendance = attendance.filter(a => a.eventId === event.id)
                 const goingCount = eventAttendance.filter(a => a.status === 'going').length
                 const declinedCount = eventAttendance.filter(a => a.status === 'declined').length
+                const lineup = lineups.find(l => l.eventId === event.id)
 
                 return (
                   <Card key={event.id} className="border-none shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-card">
@@ -462,6 +463,9 @@ export default function CalendarPage() {
                                    <span className="flex items-center gap-0.5 text-destructive"><X className="h-3 w-3" /> {declinedCount}</span>
                                    {isEditor && <Eye className="h-3 w-3 ml-1 opacity-50" />}
                                  </Button>
+                                 {event.type === 'match' && lineup && (
+                                   <Badge variant="outline" className="text-[8px] bg-emerald-50 text-emerald-700 border-emerald-200">Aufstellung vorhanden</Badge>
+                                 )}
                               </div>
                               <h3 className="font-bold text-base md:text-lg">{event.title}</h3>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -471,6 +475,13 @@ export default function CalendarPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
+                            {isEditor && event.type === 'match' && (
+                              <Link href={`/lineups/${event.id}`}>
+                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-emerald-600 shrink-0" title="Aufstellung planen">
+                                  <LayoutGrid className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
                             <Button 
                               variant="ghost" 
                               size="icon" 

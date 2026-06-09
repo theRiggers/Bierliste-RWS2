@@ -99,6 +99,20 @@ export interface Attendance {
   updatedAt: string;
 }
 
+export interface LineupPosition {
+  playerId: string;
+  positionId: string;
+}
+
+export interface Lineup {
+  id: string; // usually eventId
+  eventId: string;
+  formation: string;
+  startingEleven: LineupPosition[];
+  substitutes: string[]; // playerIds
+  updatedAt: string;
+}
+
 export interface AppSettings {
   beerPrice: number;
   cratePrice: number;
@@ -141,6 +155,7 @@ interface StoreContextType {
   fineCatalog: FineType[];
   teamEvents: TeamEvent[];
   attendance: Attendance[];
+  lineups: Lineup[];
   currentUserProfile: Player | null;
   settings: AppSettings;
   loading: boolean;
@@ -169,6 +184,7 @@ interface StoreContextType {
   deleteTeamEvent: (id: string) => Promise<void>;
   upsertAttendance: (eventId: string, status: 'going' | 'declined', reason?: string) => Promise<void>;
   updatePlayerAttendance: (eventId: string, playerId: string, playerName: string, status: 'going' | 'declined' | null, reason?: string) => Promise<void>;
+  upsertLineup: (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -214,6 +230,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const attendanceQuery = useMemo(() => db ? collection(db, 'eventAttendance') as Query<Omit<Attendance, 'id'>> : null, [db]);
   const { data: attendanceData, loading: attendanceLoading } = useCollection<Omit<Attendance, 'id'>>(attendanceQuery);
 
+  const lineupsQuery = useMemo(() => db ? collection(db, 'lineups') as Query<Omit<Lineup, 'id'>> : null, [db]);
+  const { data: lineupsData, loading: lineupsLoading } = useCollection<Omit<Lineup, 'id'>>(lineupsQuery);
+
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') as DocumentReference<AppSettings> : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
@@ -232,6 +251,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
   const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
   const attendance = useMemo(() => attendanceData?.map(d => ({ ...d.data, id: d.id })) || [], [attendanceData]);
+  const lineups = useMemo(() => lineupsData?.map(d => ({ ...d.data, id: d.id })) || [], [lineupsData]);
 
   const settings = useMemo<AppSettings>(() => ({
     beerPrice: settingsData?.beerPrice ?? BEER_PRICE,
@@ -498,6 +518,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
   };
 
+  const upsertLineup = async (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => {
+    if (!db) return;
+    const lineupData = {
+      ...data,
+      eventId,
+      updatedAt: new Date().toISOString()
+    };
+    setDoc(doc(db, 'lineups', eventId), lineupData, { merge: true })
+      .catch(handleMutationError(`lineups/${eventId}`, 'write', lineupData));
+  };
+
   const addBezahlkiste = () => {
     if (!db) return;
     const crateData = { 
@@ -511,7 +542,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError('expenses', 'create', crateData));
   };
 
-    const addPlayer = async (name: string, email: string, roles: Role[], uid?: string, isFeeExempt: boolean = false) => {
+  const addPlayer = async (name: string, email: string, roles: Role[], uid?: string, isFeeExempt: boolean = false) => {
     if (!db) return;
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
     const playerData = { name, email, roles, balance: 0.00, isFeeExempt };
@@ -553,15 +584,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, currentUserProfile, settings,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || teamEventsLoading || attendanceLoading,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, lineups, currentUserProfile, settings,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || teamEventsLoading || attendanceLoading || lineupsLoading,
       totalMannschaftskasse,
       totalBierkasse,
       bierkasseLiquidity,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
-      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance,
+      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, upsertLineup,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen
     }}>
       {children}

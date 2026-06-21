@@ -15,6 +15,7 @@ export interface Player {
   email: string;
   roles: Role[];
   balance: number;
+  treasuryBalance: number; // Balance in the team treasury (membership debts etc)
   isFeeExempt?: boolean;
   lastIntroSeenRoles?: Role[];
 }
@@ -42,7 +43,7 @@ export interface MembershipFee {
   playerId: string;
   type: 'monthly' | 'annual';
   month?: number; // 0-11
-  year: number; // Startjahr der Saison
+  year: number; // Start year of the season
   amount: number;
   datePaid: string;
 }
@@ -54,6 +55,7 @@ export interface MembershipTransaction {
   type: 'sponsor' | 'donation' | 'other' | 'expense';
   date: string;
   recordedBy: string;
+  targetPlayerId?: string; // Optional: link an expense to a specific player
 }
 
 export interface TreasuryExpense {
@@ -180,7 +182,7 @@ interface StoreContextType {
   deletePayment: (paymentId: string) => void;
   addMembershipFee: (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => void;
   deleteMembershipFee: (feeId: string) => void;
-  addMembershipTransaction: (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense') => void;
+  addMembershipTransaction: (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => void;
   deleteMembershipTransaction: (transactionId: string) => void;
   addTreasuryExpense: (description: string, amount: number) => void;
   deleteTreasuryExpense: (expenseId: string) => void;
@@ -206,6 +208,7 @@ interface StoreContextType {
   updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
   resetClubhouseSeason: () => Promise<void>;
   markIntroSeen: (roles: Role[]) => Promise<void>;
+  closeSeason: (year: number) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -256,7 +259,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const players = useMemo(() => playersData?.map(d => {
     const rawData = d.data as any;
     const roles = rawData.roles || (rawData.role ? [rawData.role] : ['player']);
-    return { ...rawData, id: d.id, roles } as Player;
+    return { ...rawData, id: d.id, roles, treasuryBalance: rawData.treasuryBalance || 0 } as Player;
   }) || [], [playersData]);
 
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
@@ -404,17 +407,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError(`membershipFees/${feeId}`, 'delete'));
   };
 
-  const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense') => {
+  const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => {
     if (!db || !currentUserProfile) return;
-    const txData = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+    const txData = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id, targetPlayerId };
     addDoc(collection(db, 'membershipTransactions'), txData)
       .catch(handleMutationError('membershipTransactions', 'create', txData));
+
+    // If it's an individual expense, add to the player's treasury debt
+    if (targetPlayerId && type === 'expense') {
+      const player = players.find(p => p.id === targetPlayerId);
+      if (player) {
+        const newTreasuryBalance = (player.treasuryBalance || 0) - amount;
+        setDoc(doc(db, 'players', targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
+          .catch(handleMutationError(`players/${targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
+      }
+    }
   };
 
   const deleteMembershipTransaction = (transactionId: string) => {
     if (!db) return;
+    const tx = membershipTransactions.find(t => t.id === transactionId);
+    if (!tx) return;
+    
     deleteDoc(doc(db, 'membershipTransactions', transactionId))
       .catch(handleMutationError(`membershipTransactions/${transactionId}`, 'delete'));
+
+    // Revert individual debt if applicable
+    if (tx.targetPlayerId && tx.type === 'expense') {
+      const player = players.find(p => p.id === tx.targetPlayerId);
+      if (player) {
+        const newTreasuryBalance = (player.treasuryBalance || 0) + tx.amount;
+        setDoc(doc(db, 'players', tx.targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
+          .catch(handleMutationError(`players/${tx.targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
+      }
+    }
   };
 
   const addTreasuryExpense = (description: string, amount: number) => {
@@ -487,7 +513,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError('teamEvents', 'create', event));
 
     if (newDoc) {
-      // Auto-decline players who have an active absence for this event's date
       const eventDate = startOfDay(parseISO(event.date));
       absences.forEach(abs => {
         const start = startOfDay(parseISO(abs.startDate));
@@ -559,7 +584,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await addDoc(collection(db, 'absences'), absenceData)
       .catch(handleMutationError('absences', 'create', absenceData));
 
-    // Automatically decline events in that range
     const start = startOfDay(parseISO(data.startDate));
     const end = endOfDay(parseISO(data.endDate));
     
@@ -605,7 +629,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addPlayer = async (name: string, email: string, roles: Role[], uid?: string, isFeeExempt: boolean = false) => {
     if (!db) return;
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
-    const playerData = { name, email, roles, balance: 0.00, isFeeExempt };
+    const playerData = { name, email, roles, balance: 0.00, treasuryBalance: 0.00, isFeeExempt };
     await setDoc(playerRef, playerData, { merge: true })
       .catch(handleMutationError(`players/${playerRef.id}`, uid ? 'update' : 'create', playerData));
   };
@@ -642,6 +666,47 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError(`players/${currentUserProfile.id}`, 'update', updates));
   };
 
+  const closeSeason = async (year: number) => {
+    if (!db || !currentUserProfile) return;
+    const batch = writeBatch(db);
+
+    // 1. For each player, calculate unpaid monthly fees for this year
+    players.forEach(player => {
+      if (player.isFeeExempt || player.email === 'kasse@kickoff.de') return;
+      
+      const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === year);
+      const isAnnual = playerFees.some(f => f.type === 'annual');
+      
+      if (!isAnnual) {
+        const paidMonths = playerFees.filter(f => f.type === 'monthly').length;
+        const unpaidCount = 10 - paidMonths; // 10 months defined in FEE_MONTHS
+        
+        if (unpaidCount > 0) {
+          const debt = unpaidCount * settings.monthlyFee;
+          const newTreasuryBalance = (player.treasuryBalance || 0) - debt;
+          const playerRef = doc(db, 'players', player.id);
+          batch.update(playerRef, { treasuryBalance: newTreasuryBalance });
+
+          // Record as transaction? User wanted them to be "debts in the new season"
+          // We apply it to treasuryBalance which persists.
+        }
+      }
+    });
+
+    // 2. Add current total balance as carryover for the new season
+    const currentTotal = totalMannschaftskasse;
+    const carryoverRef = doc(collection(db, 'membershipTransactions'));
+    batch.set(carryoverRef, {
+      description: `Saisonübertrag aus ${year}/${(year+1)%100}`,
+      amount: currentTotal,
+      type: 'other',
+      date: new Date().toISOString(),
+      recordedBy: currentUserProfile.id
+    });
+
+    await batch.commit();
+  };
+
   return (
     <StoreContext.Provider value={{ 
       players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, currentUserProfile, settings,
@@ -654,7 +719,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, 
       addAbsence, deleteAbsence, upsertLineup,
-      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen
+      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
     }}>
       {children}
     </StoreContext.Provider>

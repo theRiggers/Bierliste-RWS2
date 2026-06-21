@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -6,7 +5,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2, Info } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2, Info, TrendingUp, Beer } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -125,22 +124,21 @@ export default function PlayersPage() {
   }
 
   const exportDebtList = () => {
-    const debtors = players.filter(p => p.balance < 0 && p.email !== 'kasse@kickoff.de');
+    const debtors = players.filter(p => (p.balance < 0 || p.treasuryBalance < 0) && p.email !== 'kasse@kickoff.de');
     if (debtors.length === 0) {
       toast({ title: "Keine Schulden", description: "Alle Konten sind ausgeglichen oder im Plus." });
       return;
     }
 
     const dateStr = format(new Date(), 'dd.MM.yyyy', { locale: de });
-    let text = `🍻 *Getränkekasse - Offene Schulden*\n(Stand: ${dateStr})\n\n`;
+    let text = `🍻 *Offene Schulden - RWS2*\n(Stand: ${dateStr})\n\n`;
 
-    debtors.sort((a, b) => a.balance - b.balance).forEach(p => {
-      text += `• ${p.name}: ${p.balance.toFixed(2).replace('.', ',')} €\n`;
+    debtors.sort((a, b) => (a.balance + a.treasuryBalance) - (b.balance + b.treasuryBalance)).forEach(p => {
+      text += `• ${p.name}:\n`;
+      if (p.balance < 0) text += `  - Getränke: ${p.balance.toFixed(2).replace('.', ',')} €\n`;
+      if (p.treasuryBalance < 0) text += `  - M-Kasse: ${p.treasuryBalance.toFixed(2).replace('.', ',')} €\n`;
+      text += `\n`;
     });
-
-    const totalDebt = debtors.reduce((sum, p) => sum + p.balance, 0);
-    text += `\n*Gesamtsumme offen: ${Math.abs(totalDebt).toFixed(2).replace('.', ',')} €*`;
-    text += `\n\nBitte zeitnah begleichen! 🤝`;
 
     navigator.clipboard.writeText(text);
     toast({ title: "Liste kopiert", description: "Der WhatsApp-Text ist in der Zwischenablage." });
@@ -247,52 +245,64 @@ export default function PlayersPage() {
                     </div>
                   </div>
                   <h3 className="text-xl font-bold mb-4">{player.name}</h3>
-                  <div className="flex items-center justify-between py-3 border-t">
+                  
+                  <div className="grid grid-cols-2 gap-4 py-3 border-t">
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Konto</p>
-                      <p className={cn("text-lg font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                        <Beer className="h-2.5 w-2.5" /> Bierkasse
+                      </p>
+                      <p className={cn("text-base font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
                         {player.balance.toFixed(2)} €
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {isKassenwart && player.balance < 0 && (
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                        <TrendingUp className="h-2.5 w-2.5" /> M-Kasse
+                      </p>
+                      <p className={cn("text-base font-bold", player.treasuryBalance < 0 ? 'text-destructive' : 'text-blue-600')}>
+                        {player.treasuryBalance.toFixed(2)} €
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-3 border-t gap-1">
+                    {isKassenwart && (player.balance < 0 || player.treasuryBalance < 0) && (
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                        title="Zahlung verbuchen"
+                        onClick={() => { setPaymentPlayer(player); setPaymentAmount(""); setIsPaymentOpen(true); }}
+                      >
+                        <Banknote className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <>
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-                          title="Zahlung verbuchen"
-                          onClick={() => { setPaymentPlayer(player); setPaymentAmount(Math.abs(player.balance).toString()); setIsPaymentOpen(true); }}
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}
                         >
-                          <Banknote className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
-                      {isAdmin && (
-                        <>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            onClick={() => { 
-                              setEditingPlayer(player); 
-                              setEditName(player.name); 
-                              setEditEmail(player.email); 
-                              setEditRoles(player.roles); 
-                              setEditIsExempt(player.isFeeExempt || false);
-                              setIsEditOpen(true); 
-                            }}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => { 
+                            setEditingPlayer(player); 
+                            setEditName(player.name); 
+                            setEditEmail(player.email); 
+                            setEditRoles(player.roles); 
+                            setEditIsExempt(player.isFeeExempt || false);
+                            setIsEditOpen(true); 
+                          }}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -340,17 +350,17 @@ export default function PlayersPage() {
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
-              <DialogTitle>Schulden begleichen</DialogTitle>
-              <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
+              <DialogTitle>Zahlung verbuchen</DialogTitle>
+              <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen. Der Betrag wird primär auf die Getränkekasse gebucht.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label>Betrag (€)</Label>
-                <Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} />
+                <Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" />
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleRecordPayment} disabled={isSubmitting} className="w-full rounded-xl h-11 bg-emerald-600 text-white">
+              <Button onClick={handleRecordPayment} disabled={isSubmitting || !paymentAmount} className="w-full rounded-xl h-11 bg-emerald-600 text-white">
                 {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Verbuchen"}
               </Button>
             </DialogFooter>

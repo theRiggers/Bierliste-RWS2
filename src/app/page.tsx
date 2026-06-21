@@ -44,6 +44,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { useStore as useStoreInstance } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -111,8 +112,11 @@ export default function Dashboard() {
   }, [expenses, treasuryExpenses, settings]);
 
   const feeStatus = useMemo(() => {
-    if (!currentUserProfile) return { open: 0, paidMonths: 0, monthsStatus: [] };
-    if (currentUserProfile.isFeeExempt) return { open: 0, paidMonths: 0, isExempt: true, monthsStatus: [] };
+    if (!currentUserProfile) return { open: 0, paidMonths: 0, monthsStatus: [], totalDebt: 0 };
+    
+    const personalTreasuryDebt = Math.abs(Math.min(0, currentUserProfile.treasuryBalance));
+
+    if (currentUserProfile.isFeeExempt) return { open: 0, paidMonths: 0, isExempt: true, monthsStatus: [], totalDebt: personalTreasuryDebt };
 
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -138,7 +142,7 @@ export default function Dashboard() {
       return { month: m, name: MONTH_NAMES_SHORT[m], isPaid, isPastOrCurrent };
     });
 
-    if (isAnnual) return { open: 0, paidMonths: 10, isAnnual: true, monthsStatus };
+    if (isAnnual) return { open: 0, paidMonths: 10, isAnnual: true, monthsStatus, totalDebt: personalTreasuryDebt };
     
     const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
     let monthsToPay = 0;
@@ -150,8 +154,15 @@ export default function Dashboard() {
     }
 
     const paidCount = userFees.filter(f => f.type === 'monthly').length;
+    const openFees = Math.max(0, monthsToPay - paidCount) * settings.monthlyFee;
     
-    return { open: Math.max(0, monthsToPay - paidCount) * settings.monthlyFee, paidMonths: paidCount, isAnnual: false, monthsStatus };
+    return { 
+      open: openFees, 
+      paidMonths: paidCount, 
+      isAnnual: false, 
+      monthsStatus,
+      totalDebt: openFees + personalTreasuryDebt
+    };
   }, [currentUserProfile, membershipFees, settings]);
 
   const fineStatus = useMemo(() => {
@@ -228,7 +239,7 @@ export default function Dashboard() {
   }
 
   const handlePayInitiate = (type: 'drinks' | 'treasury' | 'fines') => {
-    const amount = type === 'drinks' ? Math.abs(currentUserProfile.balance) : type === 'treasury' ? feeStatus.open : fineStatus;
+    const amount = type === 'drinks' ? Math.abs(currentUserProfile.balance) : type === 'treasury' ? feeStatus.totalDebt : fineStatus;
     if (amount <= 0) {
       toast({ title: "Alles erledigt!" });
       return;
@@ -398,7 +409,7 @@ export default function Dashboard() {
                   <p className="text-xs font-medium text-muted-foreground">Mein Beitragskonto</p>
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400"><Banknote className="h-4 w-4" /></div>
                 </div>
-                {feeStatus.isExempt ? (
+                {feeStatus.isExempt && feeStatus.totalDebt === 0 ? (
                   <div className="flex flex-col gap-1">
                     <h2 className="text-2xl font-bold text-blue-600">BEFREIT</h2>
                     <p className="text-[10px] text-muted-foreground">Du bist vom Mitgliedsbeitrag befreit.</p>
@@ -406,10 +417,10 @@ export default function Dashboard() {
                 ) : (
                   <>
                 <div className="flex items-center justify-between">
-                  <h2 className={cn("text-2xl font-bold", feeStatus.open > 0 ? 'text-destructive' : 'text-emerald-600')}>
-                    {feeStatus.open > 0 ? `-${feeStatus.open.toFixed(2)}` : feeStatus.open.toFixed(2)} €
+                  <h2 className={cn("text-2xl font-bold", feeStatus.totalDebt > 0 ? 'text-destructive' : 'text-emerald-600')}>
+                    {feeStatus.totalDebt > 0 ? `-${feeStatus.totalDebt.toFixed(2)}` : '0.00'} €
                   </h2>
-                  {feeStatus.open > 0 && (
+                  {feeStatus.totalDebt > 0 && (
                     <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
                       Bezahlen <ExternalLink className="h-3 w-3" />
                     </Button>
@@ -653,7 +664,7 @@ export default function Dashboard() {
 
         {/* Payment Dialog for Treasurer */}
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
               <DialogTitle>Zahlung erfassen</DialogTitle>
               <DialogDescription>Verbucht eine Zahlung eines Spielers in die Bierkasse.</DialogDescription>
@@ -685,7 +696,7 @@ export default function Dashboard() {
 
         {/* User Self-Payment Dialog */}
         <Dialog open={isSelfPaymentDialogOpen} onOpenChange={setIsSelfPaymentDialogOpen}>
-          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl">
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
               <DialogTitle>Zahlung vorbereiten</DialogTitle>
               <DialogDescription>

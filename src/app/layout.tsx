@@ -1,10 +1,17 @@
 
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { StoreProvider } from '@/lib/store';
 import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Headquarter RWS2',
@@ -38,13 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        <link rel="manifest" href="/manifest.json" />
-      </head>
+    <html lang="de" suppressHydrationWarning className={inter.variable}>
       <body className="font-body antialiased bg-background text-foreground overflow-x-hidden">
         <ThemeProvider
           attribute="class"

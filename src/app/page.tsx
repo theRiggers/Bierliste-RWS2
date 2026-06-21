@@ -441,7 +441,7 @@ export default function Dashboard() {
                     {fineStatus > 0 ? `-${fineStatus.toFixed(2)}` : '0.00'} €
                   </h2>
                   {fineStatus > 0 && (
-                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 dark:text-blue-400 flex items-center gap-1">
                       Bezahlen <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}
@@ -471,7 +471,7 @@ export default function Dashboard() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-muted-foreground">Mannschaftskasse (Gesamt)</p>
-                      <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-full text-emerald-600 dark:text-emerald-400"><TrendingUp className="h-4 w-4" /></div>
+                      <div className="p-2 bg-emerald-100 dark:bg-amber-900/30 rounded-full text-emerald-600 dark:text-emerald-400"><TrendingUp className="h-4 w-4" /></div>
                     </div>
                     <h2 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalMannschaftskasse.toFixed(2)} €</h2>
                     <p className="text-[10px] text-muted-foreground mt-1">Beiträge & Strafen</p>
@@ -497,9 +497,18 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1">
                       <h4 className="font-bold text-base">{nextEvent.title}</h4>
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(nextEvent.date), 'HH:mm')}</span>
-                         {nextEvent.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {nextEvent.location}</span>}
+                         {nextEvent.location && (
+                           <a 
+                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nextEvent.location)}`}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                           >
+                             <MapPin className="h-3 w-3" /> {nextEvent.location}
+                           </a>
+                         )}
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')}>

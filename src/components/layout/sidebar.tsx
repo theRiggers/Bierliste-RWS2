@@ -24,13 +24,15 @@ import {
   Calendar as CalendarIcon,
   TrendingUp as TreasuryIcon,
   Smartphone as SmartphoneIcon,
-  CheckCircle2 as AttendanceIcon
+  CheckCircle2 as AttendanceIcon,
+  PlaneTakeoff as AbsenceIcon
 } from "lucide-react"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: DashboardIcon },
   { name: 'Kalender', href: '/calendar', icon: CalendarIcon },
   { name: 'Anwesenheit', href: '/attendance', icon: AttendanceIcon, roles: ['admin', 'coach', 'assistant_coach'] },
+  { name: 'Abwesenheiten', href: '/absences', icon: AbsenceIcon },
   { name: 'Verlauf', href: '/history', icon: HistoryIcon },
   { name: 'Mannschaftskasse', href: '/treasury', icon: TreasuryIcon, roles: ['admin', 'kassenwart'] },
   { name: 'Strafen', href: '/fines', icon: ScaleIcon, roles: ['admin', 'strafenwart', 'kassenwart'] },

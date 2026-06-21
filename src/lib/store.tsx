@@ -5,6 +5,7 @@ import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp, Firestore, Query, DocumentReference } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { isWithinInterval, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
 
 export type Role = 'player' | 'admin' | 'kassenwart' | 'strafenwart' | 'coach' | 'assistant_coach';
 
@@ -99,6 +100,16 @@ export interface Attendance {
   updatedAt: string;
 }
 
+export interface Absence {
+  id: string;
+  playerId: string;
+  playerName: string;
+  type: 'vacation' | 'injury' | 'illness' | 'work' | 'other';
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
 export interface LineupPosition {
   playerId: string;
   positionId: string;
@@ -156,6 +167,7 @@ interface StoreContextType {
   teamEvents: TeamEvent[];
   attendance: Attendance[];
   lineups: Lineup[];
+  absences: Absence[];
   currentUserProfile: Player | null;
   settings: AppSettings;
   loading: boolean;
@@ -184,6 +196,8 @@ interface StoreContextType {
   deleteTeamEvent: (id: string) => Promise<void>;
   upsertAttendance: (eventId: string, status: 'going' | 'declined', reason?: string) => Promise<void>;
   updatePlayerAttendance: (eventId: string, playerId: string, playerName: string, status: 'going' | 'declined' | null, reason?: string) => Promise<void>;
+  addAbsence: (data: Omit<Absence, 'id' | 'playerId' | 'playerName'>) => Promise<void>;
+  deleteAbsence: (id: string) => Promise<void>;
   upsertLineup: (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
@@ -230,6 +244,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const attendanceQuery = useMemo(() => db ? collection(db, 'eventAttendance') as Query<Omit<Attendance, 'id'>> : null, [db]);
   const { data: attendanceData, loading: attendanceLoading } = useCollection<Omit<Attendance, 'id'>>(attendanceQuery);
 
+  const absencesQuery = useMemo(() => db ? collection(db, 'absences') as Query<Omit<Absence, 'id'>> : null, [db]);
+  const { data: absencesData, loading: absencesLoading } = useCollection<Omit<Absence, 'id'>>(absencesQuery);
+
   const lineupsQuery = useMemo(() => db ? collection(db, 'lineups') as Query<Omit<Lineup, 'id'>> : null, [db]);
   const { data: lineupsData, loading: lineupsLoading } = useCollection<Omit<Lineup, 'id'>>(lineupsQuery);
 
@@ -251,6 +268,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
   const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
   const attendance = useMemo(() => attendanceData?.map(d => ({ ...d.data, id: d.id })) || [], [attendanceData]);
+  const absences = useMemo(() => absencesData?.map(d => ({ ...d.data, id: d.id })) || [], [absencesData]);
   const lineups = useMemo(() => lineupsData?.map(d => ({ ...d.data, id: d.id })) || [], [lineupsData]);
 
   const settings = useMemo<AppSettings>(() => ({
@@ -465,8 +483,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
     if (!db) return;
-    addDoc(collection(db, 'teamEvents'), event)
+    const newDoc = await addDoc(collection(db, 'teamEvents'), event)
       .catch(handleMutationError('teamEvents', 'create', event));
+
+    if (newDoc) {
+      // Auto-decline players who have an active absence for this event's date
+      const eventDate = startOfDay(parseISO(event.date));
+      absences.forEach(abs => {
+        const start = startOfDay(parseISO(abs.startDate));
+        const end = endOfDay(parseISO(abs.endDate));
+        if (eventDate >= start && eventDate <= end) {
+          const typeLabels: any = { vacation: 'Urlaub', injury: 'Verletzung', illness: 'Krankheit', work: 'Arbeit', other: 'Abwesenheit' };
+          updatePlayerAttendance(newDoc.id, abs.playerId, abs.playerName, 'declined', `Abwesend: ${typeLabels[abs.type] || abs.type}`);
+        }
+      });
+    }
   };
 
   const updateTeamEvent = async (id: string, updates: Partial<TeamEvent>) => {
@@ -516,6 +547,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
     setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
+  };
+
+  const addAbsence = async (data: Omit<Absence, 'id' | 'playerId' | 'playerName'>) => {
+    if (!db || !currentUserProfile) return;
+    const absenceData = { 
+      ...data, 
+      playerId: currentUserProfile.id, 
+      playerName: currentUserProfile.name 
+    };
+    await addDoc(collection(db, 'absences'), absenceData)
+      .catch(handleMutationError('absences', 'create', absenceData));
+
+    // Automatically decline events in that range
+    const start = startOfDay(parseISO(data.startDate));
+    const end = endOfDay(parseISO(data.endDate));
+    
+    teamEvents.forEach(event => {
+      const eventDate = parseISO(event.date);
+      if (eventDate >= start && eventDate <= end) {
+        const typeLabels: any = { vacation: 'Urlaub', injury: 'Verletzung', illness: 'Krankheit', work: 'Arbeit', other: 'Abwesenheit' };
+        updatePlayerAttendance(event.id, currentUserProfile.id, currentUserProfile.name, 'declined', `Abwesend: ${typeLabels[data.type] || data.type}`);
+      }
+    });
+  };
+
+  const deleteAbsence = async (id: string) => {
+    if (!db) return;
+    await deleteDoc(doc(db, 'absences', id))
+      .catch(handleMutationError(`absences/${id}`, 'delete'));
   };
 
   const upsertLineup = async (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => {
@@ -584,15 +644,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, lineups, currentUserProfile, settings,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || teamEventsLoading || attendanceLoading || lineupsLoading,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, currentUserProfile, settings,
+      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || teamEventsLoading || attendanceLoading || absencesLoading || lineupsLoading,
       totalMannschaftskasse,
       totalBierkasse,
       bierkasseLiquidity,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
-      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, upsertLineup,
+      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, 
+      addAbsence, deleteAbsence, upsertLineup,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen
     }}>
       {children}

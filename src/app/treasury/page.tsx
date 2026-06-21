@@ -224,7 +224,7 @@ export default function TreasuryPage() {
                     <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
                       <DialogHeader>
                         <DialogTitle>Einnahme / Ausgabe buchen</DialogTitle>
-                        <DialogDescription>Erfasse Sponsorenbeiträge oder Auslagen für einzelne Spieler.</DialogDescription>
+                        <DialogDescription>Erfasse Sponsorenbeiträge, Auslagen oder deren Rückzahlung durch Spieler.</DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
                         <div className="space-y-2">
@@ -263,26 +263,26 @@ export default function TreasuryPage() {
                           </div>
                         </div>
 
-                        {type === 'expense' && (
-                          <div className="space-y-2 animate-in fade-in duration-200">
-                             <Label className="flex items-center gap-2">
-                               <UserCircle className="h-4 w-4 text-muted-foreground" />
-                               Auslage für Spieler (Optional)
-                             </Label>
-                             <Select value={targetPlayerId} onValueChange={setTargetPlayerId}>
-                               <SelectTrigger className="h-12 rounded-xl bg-background">
-                                 <SelectValue placeholder="Spieler wählen" />
-                               </SelectTrigger>
-                               <SelectContent>
-                                 <SelectItem value="none">Keine Person (Allgemein)</SelectItem>
-                                 {filteredPlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                               </SelectContent>
-                             </Select>
-                             <p className="text-[10px] text-muted-foreground italic px-1">
-                               Wird ein Spieler gewählt, bekommt dieser den Betrag als Schulden in der M-Kasse angerechnet.
-                             </p>
-                          </div>
-                        )}
+                        <div className="space-y-2 animate-in fade-in duration-200">
+                           <Label className="flex items-center gap-2">
+                             <UserCircle className="h-4 w-4 text-muted-foreground" />
+                             Zuordnung zu Spieler (Optional)
+                           </Label>
+                           <Select value={targetPlayerId} onValueChange={setTargetPlayerId}>
+                             <SelectTrigger className="h-12 rounded-xl bg-background">
+                               <SelectValue placeholder="Spieler wählen" />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="none">Keine Person (Allgemein)</SelectItem>
+                               {filteredPlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                             </SelectContent>
+                           </Select>
+                           <p className="text-[10px] text-muted-foreground italic px-1">
+                             {type === 'expense' 
+                               ? 'Wird ein Spieler gewählt, bekommt dieser den Betrag als Schulden angerechnet.' 
+                               : 'Wird ein Spieler gewählt, wird der Betrag seinem M-Kasse-Konto gutgeschrieben (z.B. bei Rückzahlung von Auslagen).'}
+                           </p>
+                        </div>
                       </div>
                       <DialogFooter>
                         <Button onClick={handleAddTransaction} disabled={isSubmitting || !description || !amount} className="w-full h-12 rounded-xl font-bold">
@@ -360,7 +360,7 @@ export default function TreasuryPage() {
                                 {transaction.description}
                                 {targetPlayer && (
                                   <div className="flex items-center gap-1 text-[10px] text-blue-600 font-bold uppercase mt-0.5">
-                                    <UserCircle className="h-3 w-3" /> Auslage: {targetPlayer.name}
+                                    <UserCircle className="h-3 w-3" /> Zugeordnet: {targetPlayer.name}
                                   </div>
                                 )}
                               </TableCell>
@@ -397,7 +397,6 @@ export default function TreasuryPage() {
             </TabsContent>
 
             <TabsContent value="fees" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              {/* Rest of the fees content remains the same */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
                   <h3 className="text-base md:text-lg font-bold flex items-center gap-2">

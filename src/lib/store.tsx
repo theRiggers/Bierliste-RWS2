@@ -55,7 +55,7 @@ export interface MembershipTransaction {
   type: 'sponsor' | 'donation' | 'other' | 'expense';
   date: string;
   recordedBy: string;
-  targetPlayerId?: string; // Optional: link an expense to a specific player
+  targetPlayerId?: string; // Optional: link an expense or income to a specific player
 }
 
 export interface TreasuryExpense {
@@ -178,7 +178,7 @@ interface StoreContextType {
   bierkasseLiquidity: number;
   addExpense: (playerId: string, itemType: 'beer' | 'crate') => void;
   deleteExpense: (expenseId: string) => void;
-  recordPayment: (playerId: string, amount: number) => void;
+  recordPayment: (playerId: string, amount: number, account?: 'drinks' | 'treasury') => void;
   deletePayment: (paymentId: string) => void;
   addMembershipFee: (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => void;
   deleteMembershipFee: (feeId: string) => void;
@@ -363,18 +363,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const recordPayment = (playerId: string, amount: number) => {
+  const recordPayment = (playerId: string, amount: number, account: 'drinks' | 'treasury' = 'drinks') => {
     if (!db || !currentUserProfile) return;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
     
-    const paymentData = { playerId, playerName: player.name, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
-    addDoc(collection(db, 'payments'), paymentData)
-      .catch(handleMutationError('payments', 'create', paymentData));
-      
-    const newBalance = (player.balance || 0) + amount;
-    setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
-      .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
+    if (account === 'drinks') {
+      const paymentData = { playerId, playerName: player.name, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+      addDoc(collection(db, 'payments'), paymentData)
+        .catch(handleMutationError('payments', 'create', paymentData));
+        
+      const newBalance = (player.balance || 0) + amount;
+      setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
+        .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
+    } else {
+      // Record as treasury payment (income)
+      addMembershipTransaction(
+        `Zahlung: ${player.name}`,
+        amount,
+        'other',
+        playerId
+      );
+    }
   };
 
   const deletePayment = (paymentId: string) => {
@@ -413,11 +423,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addDoc(collection(db, 'membershipTransactions'), txData)
       .catch(handleMutationError('membershipTransactions', 'create', txData));
 
-    // If it's an individual expense, add to the player's treasury debt
-    if (targetPlayerId && type === 'expense') {
+    // Update player debt if applicable
+    if (targetPlayerId) {
       const player = players.find(p => p.id === targetPlayerId);
       if (player) {
-        const newTreasuryBalance = (player.treasuryBalance || 0) - amount;
+        const adjustment = type === 'expense' ? -amount : amount;
+        const newTreasuryBalance = (player.treasuryBalance || 0) + adjustment;
         setDoc(doc(db, 'players', targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
           .catch(handleMutationError(`players/${targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
       }
@@ -433,10 +444,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .catch(handleMutationError(`membershipTransactions/${transactionId}`, 'delete'));
 
     // Revert individual debt if applicable
-    if (tx.targetPlayerId && tx.type === 'expense') {
+    if (tx.targetPlayerId) {
       const player = players.find(p => p.id === tx.targetPlayerId);
       if (player) {
-        const newTreasuryBalance = (player.treasuryBalance || 0) + tx.amount;
+        const adjustment = tx.type === 'expense' ? tx.amount : -tx.amount;
+        const newTreasuryBalance = (player.treasuryBalance || 0) + adjustment;
         setDoc(doc(db, 'players', tx.targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
           .catch(handleMutationError(`players/${tx.targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
       }
@@ -686,9 +698,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           const newTreasuryBalance = (player.treasuryBalance || 0) - debt;
           const playerRef = doc(db, 'players', player.id);
           batch.update(playerRef, { treasuryBalance: newTreasuryBalance });
-
-          // Record as transaction? User wanted them to be "debts in the new season"
-          // We apply it to treasuryBalance which persists.
         }
       }
     });

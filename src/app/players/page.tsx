@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 const AVAILABLE_ROLES: { id: Role, label: string }[] = [
   { id: 'player', label: 'Spieler' },
@@ -52,6 +53,7 @@ export default function PlayersPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentPlayer, setPaymentPlayer] = useState<Player | null>(null)
+  const [paymentAccount, setPaymentAccount] = useState<'drinks' | 'treasury'>('drinks')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -113,10 +115,11 @@ export default function PlayersPage() {
     if (!paymentPlayer || isNaN(amount) || amount <= 0) return;
     setIsSubmitting(true);
     try {
-      await recordPayment(paymentPlayer.id, amount);
+      await recordPayment(paymentPlayer.id, amount, paymentAccount);
       setIsPaymentOpen(false);
       setPaymentAmount("");
       setPaymentPlayer(null);
+      setPaymentAccount('drinks');
       toast({ title: "Zahlung verbucht" });
     } finally {
       setIsSubmitting(false);
@@ -272,7 +275,12 @@ export default function PlayersPage() {
                         variant="ghost" 
                         className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                         title="Zahlung verbuchen"
-                        onClick={() => { setPaymentPlayer(player); setPaymentAmount(""); setIsPaymentOpen(true); }}
+                        onClick={() => { 
+                          setPaymentPlayer(player); 
+                          setPaymentAmount(""); 
+                          setPaymentAccount('drinks');
+                          setIsPaymentOpen(true); 
+                        }}
                       >
                         <Banknote className="h-4 w-4" />
                       </Button>
@@ -351,9 +359,35 @@ export default function PlayersPage() {
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
               <DialogTitle>Zahlung verbuchen</DialogTitle>
-              <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen. Der Betrag wird primär auf die Getränkekasse gebucht.</DialogDescription>
+              <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
+              <div className="space-y-3">
+                <Label>Buchen auf Konto:</Label>
+                <RadioGroup value={paymentAccount} onValueChange={(v: any) => setPaymentAccount(v)} className="grid grid-cols-2 gap-4">
+                  <div>
+                    <RadioGroupItem value="drinks" id="acc-drinks" className="peer sr-only" />
+                    <Label
+                      htmlFor="acc-drinks"
+                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <Beer className="mb-2 h-6 w-6" />
+                      <span className="text-xs font-bold">Bierkasse</span>
+                    </Label>
+                  </div>
+                  <div>
+                    <RadioGroupItem value="treasury" id="acc-treasury" className="peer sr-only" />
+                    <Label
+                      htmlFor="acc-treasury"
+                      className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <TrendingUp className="mb-2 h-6 w-6" />
+                      <span className="text-xs font-bold">M-Kasse</span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               <div className="space-y-2">
                 <Label>Betrag (€)</Label>
                 <Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" />

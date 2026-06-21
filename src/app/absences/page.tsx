@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -22,7 +21,8 @@ import {
   UserX,
   Users,
   Search,
-  Filter
+  Filter,
+  Download
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -128,6 +128,37 @@ export default function AbsencesPage() {
   const getAbsenceLabel = (type: string) => {
     return ABSENCE_TYPES.find(t => t.id === type)?.label || type;
   }
+
+  const handleExportCsv = () => {
+    if (teamAbsences.length === 0) {
+      toast({ variant: "destructive", title: "Keine Daten", description: "Es gibt keine Abwesenheiten im gewählten Zeitraum zum Exportieren." });
+      return;
+    }
+
+    const headers = ["Spieler", "Von", "Bis", "Typ", "Bemerkung"];
+    const rows = teamAbsences.map(abs => [
+      abs.playerName,
+      format(new Date(abs.startDate), 'dd.MM.yyyy'),
+      format(new Date(abs.endDate), 'dd.MM.yyyy'),
+      getAbsenceLabel(abs.type),
+      abs.reason || ""
+    ]);
+
+    const csvContent = [
+      headers.join(";"),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(";"))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Abwesenheiten_${filterStart}_bis_${filterEnd}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "Export erfolgreich", description: "Die CSV-Datei wurde heruntergeladen." });
+  };
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -293,7 +324,7 @@ export default function AbsencesPage() {
                         </CardTitle>
                         <CardDescription>Übersicht aller gemeldeten Zeiträume.</CardDescription>
                       </div>
-                      <div className="flex items-center gap-2 bg-card p-2 rounded-xl border shadow-sm">
+                      <div className="flex flex-wrap items-center gap-3 bg-card p-2 rounded-xl border shadow-sm">
                         <div className="grid grid-cols-2 gap-2">
                            <div className="space-y-1">
                              <Label className="text-[10px] uppercase font-bold text-muted-foreground ml-1">Zeitraum von</Label>
@@ -304,6 +335,15 @@ export default function AbsencesPage() {
                              <Input type="date" value={filterEnd} onChange={e => setFilterEnd(e.target.value)} className="h-8 text-xs rounded-lg" />
                            </div>
                         </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-10 rounded-lg text-xs gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                          onClick={handleExportCsv}
+                        >
+                          <Download className="h-4 w-4" />
+                          Export (CSV)
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>

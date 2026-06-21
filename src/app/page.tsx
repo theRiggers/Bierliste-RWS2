@@ -121,8 +121,10 @@ export default function Dashboard() {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
+    const currentDay = now.getDate();
     
-    const seasonYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+    // Saisonwechsel am 15.06.
+    const seasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
     
@@ -135,6 +137,7 @@ export default function Dashboard() {
       if (currentMIdxInList !== -1) {
         isPastOrCurrent = mIdxInList <= currentMIdxInList;
       } else {
+        // Logik für Monate außerhalb von FEE_MONTHS (z.B. Juni)
         if (currentMonth === 5) isPastOrCurrent = true; 
         else isPastOrCurrent = false;
       }

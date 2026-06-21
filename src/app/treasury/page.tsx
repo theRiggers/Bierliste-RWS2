@@ -69,9 +69,13 @@ export default function TreasuryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Membership Fee States
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
-  const currentSeasonYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDay = now.getDate();
+  
+  // Saisonwechsel am 15.06.
+  const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1, currentSeasonYear - 2];
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
 

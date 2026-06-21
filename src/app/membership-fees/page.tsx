@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -21,11 +20,13 @@ export default function MembershipFeesPage() {
   const [mounted, setMounted] = useState(false)
   const { players, membershipFees, settings, addMembershipFee, deleteMembershipFee, loading, currentUserProfile } = useStore()
   
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDay = now.getDate();
   
-  // Saisonwechsel am 01.07. (Monat 6)
-  const currentSeasonYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+  // Saisonwechsel am 15.06. (Monat 5, Tag 15)
+  const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1, currentSeasonYear - 2];
   
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())

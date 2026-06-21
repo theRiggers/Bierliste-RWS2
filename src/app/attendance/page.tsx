@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -19,9 +18,13 @@ export default function AttendancePage() {
   const [mounted, setMounted] = useState(false)
   const { players, teamEvents, attendance, updatePlayerAttendance, loading, currentUserProfile } = useStore()
   
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
-  const currentSeasonYear = currentMonth < 6 ? currentYear - 1 : currentYear;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDay = now.getDate();
+  
+  // Saisonwechsel am 15.06.
+  const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1];
   
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
@@ -31,8 +34,8 @@ export default function AttendancePage() {
   const filteredPlayers = useMemo(() => players.filter(p => p.email !== 'kasse@kickoff.de'), [players]);
 
   const seasonEvents = useMemo(() => {
-    const seasonStart = new Date(parseInt(selectedSeason), 6, 1); // 1. Juli
-    const seasonEnd = new Date(parseInt(selectedSeason) + 1, 5, 30, 23, 59, 59); // 30. Juni
+    const seasonStart = new Date(parseInt(selectedSeason), 5, 15); // 15. Juni
+    const seasonEnd = new Date(parseInt(selectedSeason) + 1, 5, 14, 23, 59, 59); // 14. Juni
     
     return teamEvents
       .filter(e => {

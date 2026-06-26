@@ -262,6 +262,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return { ...rawData, id: d.id, roles, treasuryBalance: rawData.treasuryBalance || 0 } as Player;
   }) || [], [playersData]);
 
+  // Essential filtering: only include data associated with existing players
+  const activePlayerIds = useMemo(() => new Set(players.map(p => p.id)), [players]);
+
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
   const membershipFees = useMemo(() => feesData?.map(d => ({ ...d.data, id: d.id })) || [], [feesData]);
@@ -270,9 +273,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fines = useMemo(() => finesData?.map(d => ({ ...d.data, id: d.id })) || [], [finesData]);
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
   const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
-  const attendance = useMemo(() => attendanceData?.map(d => ({ ...d.data, id: d.id })) || [], [attendanceData]);
-  const absences = useMemo(() => absencesData?.map(d => ({ ...d.data, id: d.id })) || [], [absencesData]);
-  const lineups = useMemo(() => lineupsData?.map(d => ({ ...d.data, id: d.id })) || [], [lineupsData]);
+  
+  const attendance = useMemo(() => {
+    const raw = attendanceData?.map(d => ({ ...d.data, id: d.id })) || [];
+    return raw.filter(a => activePlayerIds.has(a.playerId));
+  }, [attendanceData, activePlayerIds]);
+
+  const absences = useMemo(() => {
+    const raw = absencesData?.map(d => ({ ...d.data, id: d.id })) || [];
+    return raw.filter(a => activePlayerIds.has(a.playerId));
+  }, [absencesData, activePlayerIds]);
+
+  const lineups = useMemo(() => {
+    const raw = lineupsData?.map(d => ({ ...d.data, id: d.id })) || [];
+    return raw.map(l => ({
+      ...l,
+      startingEleven: l.startingEleven.filter(pos => activePlayerIds.has(pos.playerId)),
+      substitutes: l.substitutes.filter(id => activePlayerIds.has(id))
+    }));
+  }, [lineupsData, activePlayerIds]);
 
   const settings = useMemo<AppSettings>(() => ({
     beerPrice: settingsData?.beerPrice ?? BEER_PRICE,

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { useStore, Role, Player } from "@/lib/store"
+import { useStore, Role, Player, FEE_MONTHS } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2, Info, TrendingUp, Beer } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2, Info, TrendingUp, Beer, ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 const AVAILABLE_ROLES: { id: Role, label: string }[] = [
   { id: 'player', label: 'Spieler' },
@@ -31,7 +32,7 @@ const AVAILABLE_ROLES: { id: Role, label: string }[] = [
 export default function PlayersPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, addPlayer, updatePlayer, deletePlayer, recordPayment, loading, currentUserProfile } = useStore()
+  const { players, membershipFees, settings, addPlayer, updatePlayer, deletePlayer, recordPayment, loading, currentUserProfile } = useStore()
   
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newName, setNewName] = useState("")
@@ -57,6 +58,39 @@ export default function PlayersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Helper to calculate personal treasury debt (unpaid fees)
+  const getTreasuryBalance = (player: Player) => {
+    if (player.isFeeExempt) return player.treasuryBalance;
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentDay = now.getDate();
+    const currentYear = now.getFullYear();
+
+    // Season starts 15.06.
+    const seasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
+    
+    const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === seasonYear);
+    const isAnnual = playerFees.some(f => f.type === 'annual');
+    
+    if (isAnnual) return player.treasuryBalance;
+
+    // Fees are Aug-May (10 months)
+    const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
+    let monthsToPay = 0;
+    if (currentMIdxInList !== -1) {
+      monthsToPay = currentMIdxInList + 1;
+    } else {
+      if (currentMonth === 5) monthsToPay = 10;
+      else monthsToPay = 0;
+    }
+
+    const paidCount = playerFees.filter(f => f.type === 'monthly').length;
+    const unpaidFees = Math.max(0, monthsToPay - paidCount) * settings.monthlyFee;
+    
+    return player.treasuryBalance - unpaidFees;
+  };
 
   if (loading || !mounted) {
     return (
@@ -126,20 +160,37 @@ export default function PlayersPage() {
     }
   }
 
-  const exportDebtList = () => {
-    const debtors = players.filter(p => (p.balance < 0 || p.treasuryBalance < 0) && p.email !== 'kasse@kickoff.de');
+  const exportDebtList = (type: 'all' | 'drinks' | 'treasury') => {
+    const debtors = players.filter(p => {
+      const tb = getTreasuryBalance(p);
+      if (type === 'all') return (p.balance < 0 || tb < 0);
+      if (type === 'drinks') return p.balance < 0;
+      if (type === 'treasury') return tb < 0;
+      return false;
+    }).filter(p => p.email !== 'kasse@kickoff.de');
+
     if (debtors.length === 0) {
-      toast({ title: "Keine Schulden", description: "Alle Konten sind ausgeglichen oder im Plus." });
+      toast({ title: "Keine Schulden", description: "In dieser Kategorie sind alle Konten ausgeglichen." });
       return;
     }
 
     const dateStr = format(new Date(), 'dd.MM.yyyy', { locale: de });
-    let text = `🍻 *Offene Schulden - RWS2*\n(Stand: ${dateStr})\n\n`;
+    const title = type === 'drinks' ? 'Bierliste' : type === 'treasury' ? 'Mannschaftskasse' : 'Offene Schulden';
+    let text = `🍻 *${title} - RWS2*\n(Stand: ${dateStr})\n\n`;
 
-    debtors.sort((a, b) => (a.balance + a.treasuryBalance) - (b.balance + b.treasuryBalance)).forEach(p => {
+    debtors.sort((a, b) => {
+      const tbA = getTreasuryBalance(a);
+      const tbB = getTreasuryBalance(b);
+      return (a.balance + tbA) - (b.balance + tbB);
+    }).forEach(p => {
+      const tb = getTreasuryBalance(p);
       text += `• ${p.name}:\n`;
-      if (p.balance < 0) text += `  - Getränke: ${p.balance.toFixed(2).replace('.', ',')} €\n`;
-      if (p.treasuryBalance < 0) text += `  - M-Kasse: ${p.treasuryBalance.toFixed(2).replace('.', ',')} €\n`;
+      if ((type === 'all' || type === 'drinks') && p.balance < 0) {
+        text += `  - Bierliste: ${p.balance.toFixed(2).replace('.', ',')} €\n`;
+      }
+      if ((type === 'all' || type === 'treasury') && tb < 0) {
+        text += `  - Mannschaftskasse: ${tb.toFixed(2).replace('.', ',')} €\n`;
+      }
       text += `\n`;
     });
 
@@ -166,9 +217,25 @@ export default function PlayersPage() {
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
           <h1 className="text-2xl font-bold text-primary font-headline">Spieler & Konten</h1>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={exportDebtList} className="rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20">
-              <Share2 className="h-4 w-4 mr-2" /> Schuldenliste exportieren
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20">
+                  <Share2 className="h-4 w-4 mr-2" /> Schuldenliste exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="rounded-xl w-56">
+                <DropdownMenuItem onClick={() => exportDebtList('all')} className="gap-2">
+                  <TrendingUp className="h-4 w-4" /> Alles zusammen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportDebtList('drinks')} className="gap-2">
+                  <Beer className="h-4 w-4" /> Nur Bierliste
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="gap-2">
+                  <Banknote className="h-4 w-4" /> Nur Mannschaftskasse
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {isAdmin && (
               <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogTrigger asChild><Button className="red-glow rounded-xl"><UserPlus className="h-4 w-4 mr-2" /> Neuer Spieler</Button></DialogTrigger>
@@ -221,100 +288,113 @@ export default function PlayersPage() {
                 </Button>
               )}
             </div>
-            <Button variant="outline" onClick={exportDebtList} className="w-full rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 h-10 text-xs">
-              <Share2 className="h-3 w-3 mr-2" /> Schuldenliste exportieren
-            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full rounded-xl border-emerald-600 text-emerald-700 dark:text-emerald-400 h-10 text-xs">
+                  <Share2 className="h-3 w-3 mr-2" /> Schuldenliste exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="rounded-xl w-[calc(100vw-2rem)]">
+                <DropdownMenuItem onClick={() => exportDebtList('all')} className="py-3">Alles zusammen</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportDebtList('drinks')} className="py-3">Nur Bierliste</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="py-3">Nur Mannschaftskasse</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {displayPlayers.map((player) => (
-              <Card key={player.id} className="border-none shadow-md rounded-2xl bg-card">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary"><UserCircle className="h-8 w-8" /></div>
-                    <div className="flex flex-col items-end gap-1">
-                      <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">
-                        {player.roles.map(r => (
-                          <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">
-                            {AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}
+            {displayPlayers.map((player) => {
+              const tb = getTreasuryBalance(player);
+              return (
+                <Card key={player.id} className="border-none shadow-md rounded-2xl bg-card">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary"><UserCircle className="h-8 w-8" /></div>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">
+                          {player.roles.map(r => (
+                            <Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">
+                              {AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}
+                            </Badge>
+                          ))}
+                        </div>
+                        {player.isFeeExempt && (
+                          <Badge variant="outline" className="text-[8px] bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 border-blue-200">
+                            BEITRAGSFREI
                           </Badge>
-                        ))}
+                        )}
                       </div>
-                      {player.isFeeExempt && (
-                        <Badge variant="outline" className="text-[8px] bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 border-blue-200">
-                          BEITRAGSFREI
-                        </Badge>
-                      )}
                     </div>
-                  </div>
-                  <h3 className="text-xl font-bold mb-4">{player.name}</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4 py-3 border-t">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
-                        <Beer className="h-2.5 w-2.5" /> Bierkasse
-                      </p>
-                      <p className={cn("text-base font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
-                        {player.balance.toFixed(2)} €
-                      </p>
+                    <h3 className="text-xl font-bold mb-4">{player.name}</h3>
+                    
+                    <div className="grid grid-cols-2 gap-4 py-3 border-t">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                          <Beer className="h-2.5 w-2.5" /> Bierkasse
+                        </p>
+                        <p className={cn("text-base font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
+                          {player.balance.toFixed(2)} €
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                          <TrendingUp className="h-2.5 w-2.5" /> M-Kasse
+                        </p>
+                        <p className={cn("text-base font-bold", tb < 0 ? 'text-destructive' : 'text-blue-600')}>
+                          {tb.toFixed(2)} €
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
-                        <TrendingUp className="h-2.5 w-2.5" /> M-Kasse
-                      </p>
-                      <p className={cn("text-base font-bold", player.treasuryBalance < 0 ? 'text-destructive' : 'text-blue-600')}>
-                        {player.treasuryBalance.toFixed(2)} €
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-end pt-3 border-t gap-1">
-                    {isKassenwart && (player.balance < 0 || player.treasuryBalance < 0) && (
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-                        title="Zahlung verbuchen"
-                        onClick={() => { 
-                          setPaymentPlayer(player); 
-                          setPaymentAmount(""); 
-                          setPaymentAccount('drinks');
-                          setIsPaymentOpen(true); 
-                        }}
-                      >
-                        <Banknote className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {isAdmin && (
-                      <>
+                    <div className="flex items-center justify-end pt-3 border-t gap-1">
+                      {isKassenwart && (player.balance < 0 || tb < 0) && (
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
+                          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                          title="Zahlung verbuchen"
                           onClick={() => { 
-                            setEditingPlayer(player); 
-                            setEditName(player.name); 
-                            setEditEmail(player.email); 
-                            setEditRoles(player.roles); 
-                            setEditIsExempt(player.isFeeExempt || false);
-                            setIsEditOpen(true); 
+                            setPaymentPlayer(player); 
+                            setPaymentAmount(""); 
+                            setPaymentAccount('drinks');
+                            setIsPaymentOpen(true); 
                           }}
                         >
-                          <ChevronRight className="h-4 w-4" />
+                          <Banknote className="h-4 w-4" />
                         </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      )}
+                      {isAdmin && (
+                        <>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => { 
+                              setEditingPlayer(player); 
+                              setEditName(player.name); 
+                              setEditEmail(player.email); 
+                              setEditRoles(player.roles); 
+                              setEditIsExempt(player.isFeeExempt || false);
+                              setIsEditOpen(true); 
+                            }}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
 

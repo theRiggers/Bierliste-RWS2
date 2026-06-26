@@ -132,6 +132,26 @@ export default function TreasuryPage() {
     }
   };
 
+  const handleToggleFee = (playerId: string, month: number) => {
+    const season = parseInt(selectedSeason);
+    const existing = membershipFees.find(f => f.playerId === playerId && f.month === month && f.year === season);
+    if (existing) {
+      deleteMembershipFee(existing.id);
+    } else {
+      addMembershipFee(playerId, 'monthly', season, month);
+    }
+  };
+
+  const handleToggleAnnual = (playerId: string) => {
+    const season = parseInt(selectedSeason);
+    const existing = membershipFees.find(f => f.playerId === playerId && f.type === 'annual' && f.year === season);
+    if (existing) {
+      deleteMembershipFee(existing.id);
+    } else {
+      addMembershipFee(playerId, 'annual', season);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'sponsor': return <ArrowUpCircle className="h-4 w-4 text-emerald-600" />;

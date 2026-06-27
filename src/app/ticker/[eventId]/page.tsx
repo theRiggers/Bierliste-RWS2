@@ -97,6 +97,8 @@ export default function TickerPage() {
 
       if (newType === 'goal') {
         await updateTickerScore(eventId, (ticker.homeScore || 0) + 1, ticker.awayScore || 0);
+      } else if (newType === 'goal_opponent') {
+        await updateTickerScore(eventId, ticker.homeScore || 0, (ticker.awayScore || 0) + 1);
       }
 
       setNewMinute(""); setNewText(""); setSelectedPlayer(""); setSelectedAssist(""); setPlayerIn(""); setPlayerOut("");
@@ -104,25 +106,6 @@ export default function TickerPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleOpponentGoal = async () => {
-    const min = prompt("In welcher Minute fiel das Gegner-Tor?", "");
-    if (!min) return;
-    const minute = parseInt(min);
-    if (isNaN(minute)) {
-      toast({ variant: "destructive", title: "Fehler", description: "Ungültige Minute." });
-      return;
-    }
-    
-    await addTickerEvent(eventId, {
-      type: 'goal_opponent',
-      minute,
-      text: "Gegner-Tor."
-    });
-    
-    await updateTickerScore(eventId, ticker.homeScore, ticker.awayScore + 1);
-    toast({ title: "Gegner-Tor verbucht" });
   };
 
   const getEventIcon = (type: string) => {
@@ -199,6 +182,7 @@ export default function TickerPage() {
                       <SelectContent>
                         <SelectItem value="comment">Kommentar</SelectItem>
                         <SelectItem value="goal">Tor RWS2 (+1)</SelectItem>
+                        <SelectItem value="goal_opponent">Gegner-Tor (+1)</SelectItem>
                         <SelectItem value="sub">Wechsel RWS2</SelectItem>
                         <SelectItem value="status">Spielstatus (Anpfiff, Pause...)</SelectItem>
                       </SelectContent>
@@ -261,11 +245,10 @@ export default function TickerPage() {
                 </div>
 
                 <div className="flex gap-2">
-                   <Button onClick={handleAddEvent} disabled={isSubmitting || !newMinute} className="flex-1 h-12 rounded-xl font-bold red-glow">
+                   <Button onClick={handleAddEvent} disabled={isSubmitting || !newMinute} className="w-full h-12 rounded-xl font-bold red-glow">
                      {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
                      Event posten
                    </Button>
-                   <Button variant="outline" onClick={handleOpponentGoal} className="h-12 px-6 rounded-xl border-destructive text-destructive font-black hover:bg-destructive/10">+ Gegner-Tor</Button>
                 </div>
               </CardContent>
             </Card>

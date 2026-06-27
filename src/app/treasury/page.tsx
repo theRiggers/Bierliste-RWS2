@@ -43,8 +43,7 @@ export default function TreasuryPage() {
   const { 
     players, membershipTransactions, membershipFees, totalMannschaftskasse, settings,
     addMembershipTransaction, deleteMembershipTransaction, addMembershipFee, deleteMembershipFee, closeSeason,
-    currentUserProfile, loading: storeLoading 
-  } = useStore()
+    currentUserProfile, loading: storeLoading } = useStore()
   
   const [mounted, setMounted] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)

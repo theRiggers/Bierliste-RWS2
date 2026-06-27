@@ -194,7 +194,7 @@ export default function TreasuryPage() {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-6xl mx-auto w-full pb-20">
           <div className="md:hidden flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-primary font-headline">M-Kasse</h1>
+            <h1 className="text-2xl font-bold text-primary font-headline">Mannschaftskasse</h1>
             <Badge variant="outline" className={cn("font-black text-sm", totalMannschaftskasse < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
               {totalMannschaftskasse.toFixed(2)} €
             </Badge>
@@ -304,7 +304,7 @@ export default function TreasuryPage() {
                            <p className="text-[10px] text-muted-foreground italic px-1">
                              {type === 'expense' 
                                ? 'Wird ein Spieler gewählt, bekommt dieser den Betrag als Schulden angerechnet.' 
-                               : 'Wird ein Spieler gewählt, wird der Betrag seinem M-Kasse-Konto gutgeschrieben (z.B. bei Rückzahlung von Auslagen).'}
+                               : 'Wird ein Spieler gewählt, wird der Betrag seinem Mannschaftskasse-Konto gutgeschrieben (z.B. bei Rückzahlung von Auslagen).'}
                            </p>
                         </div>
                       </div>

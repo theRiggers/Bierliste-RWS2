@@ -59,8 +59,8 @@ export default function PlayersPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Helper to calculate personal treasury debt (unpaid fees)
-  const getTreasuryBalance = (player: Player) => {
+  // Helper to calculate actual treasury balance (including unpaid fees)
+  const getFullTreasuryBalance = (player: Player) => {
     if (player.isFeeExempt) return player.treasuryBalance;
 
     const now = new Date();
@@ -162,7 +162,7 @@ export default function PlayersPage() {
 
   const exportDebtList = (type: 'all' | 'drinks' | 'treasury') => {
     const debtors = players.filter(p => {
-      const tb = getTreasuryBalance(p);
+      const tb = getFullTreasuryBalance(p);
       if (type === 'all') return (p.balance < 0 || tb < 0);
       if (type === 'drinks') return p.balance < 0;
       if (type === 'treasury') return tb < 0;
@@ -179,11 +179,11 @@ export default function PlayersPage() {
     let text = `🍻 *${title} - RWS2*\n(Stand: ${dateStr})\n\n`;
 
     debtors.sort((a, b) => {
-      const tbA = getTreasuryBalance(a);
-      const tbB = getTreasuryBalance(b);
+      const tbA = getFullTreasuryBalance(a);
+      const tbB = getFullTreasuryBalance(b);
       return (a.balance + tbA) - (b.balance + tbB);
     }).forEach(p => {
-      const tb = getTreasuryBalance(p);
+      const tb = getFullTreasuryBalance(p);
       text += `• ${p.name}:\n`;
       if ((type === 'all' || type === 'drinks') && p.balance < 0) {
         text += `  - Bierliste: ${p.balance.toFixed(2).replace('.', ',')} €\n`;
@@ -305,7 +305,7 @@ export default function PlayersPage() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {displayPlayers.map((player) => {
-              const tb = getTreasuryBalance(player);
+              const tb = getFullTreasuryBalance(player);
               return (
                 <Card key={player.id} className="border-none shadow-md rounded-2xl bg-card">
                   <CardContent className="p-6">
@@ -339,7 +339,7 @@ export default function PlayersPage() {
                       </div>
                       <div>
                         <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
-                          <TrendingUp className="h-2.5 w-2.5" /> M-Kasse
+                          <TrendingUp className="h-2.5 w-2.5" /> Mannschaftskasse
                         </p>
                         <p className={cn("text-base font-bold", tb < 0 ? 'text-destructive' : 'text-blue-600')}>
                           {tb.toFixed(2)} €
@@ -462,7 +462,7 @@ export default function PlayersPage() {
                       className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
                     >
                       <TrendingUp className="mb-2 h-6 w-6" />
-                      <span className="text-xs font-bold">M-Kasse</span>
+                      <span className="text-xs font-bold">Mannschaftskasse</span>
                     </Label>
                   </div>
                 </RadioGroup>

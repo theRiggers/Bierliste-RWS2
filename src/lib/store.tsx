@@ -425,7 +425,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addMembershipFee = (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => {
     if (!db) return;
     const amount = type === 'monthly' ? settings.monthlyFee : settings.annualFee;
-    const feeData = { playerId, type, year, month: type === 'monthly' ? month : null, amount, datePaid: new Date().toISOString() };
+    const feeData: any = { playerId, type, year, amount, datePaid: new Date().toISOString() };
+    if (month !== undefined) feeData.month = month;
+
     addDoc(collection(db, 'membershipFees'), feeData)
       .catch(handleMutationError('membershipFees', 'create', feeData));
   };
@@ -438,18 +440,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => {
     if (!db || !currentUserProfile) return;
-    const txData = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id, targetPlayerId };
+    
+    const txData: any = { 
+      description, 
+      amount, 
+      type, 
+      date: new Date().toISOString(), 
+      recordedBy: currentUserProfile.id 
+    };
+    
+    // Explicitly check for valid targetPlayerId (not undefined or "none")
+    if (targetPlayerId && targetPlayerId !== "none") {
+      txData.targetPlayerId = targetPlayerId;
+    }
+
     addDoc(collection(db, 'membershipTransactions'), txData)
       .catch(handleMutationError('membershipTransactions', 'create', txData));
 
     // Update player debt if applicable
-    if (targetPlayerId) {
-      const player = players.find(p => p.id === targetPlayerId);
+    if (txData.targetPlayerId) {
+      const player = players.find(p => p.id === txData.targetPlayerId);
       if (player) {
         const adjustment = type === 'expense' ? -amount : amount;
         const newTreasuryBalance = (player.treasuryBalance || 0) + adjustment;
-        setDoc(doc(db, 'players', targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
-          .catch(handleMutationError(`players/${targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
+        setDoc(doc(db, 'players', txData.targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
+          .catch(handleMutationError(`players/${txData.targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
       }
     }
   };
@@ -540,8 +555,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
     if (!db) return;
-    const newDoc = await addDoc(collection(db, 'teamEvents'), event)
-      .catch(handleMutationError('teamEvents', 'create', event));
+    
+    // Explicitly handle optional fields to avoid undefined in Firestore
+    const eventData: any = { ...event };
+    if (eventData.description === undefined) delete eventData.description;
+    if (eventData.location === undefined) delete eventData.location;
+
+    const newDoc = await addDoc(collection(db, 'teamEvents'), eventData)
+      .catch(handleMutationError('teamEvents', 'create', eventData));
 
     if (newDoc) {
       const eventDate = startOfDay(parseISO(event.date));
@@ -571,14 +592,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const upsertAttendance = async (eventId: string, status: 'going' | 'declined', reason?: string) => {
     if (!db || !currentUserProfile) return;
     const docId = `${eventId}_${currentUserProfile.id}`;
-    const attendanceData = {
+    const attendanceData: any = {
       eventId,
       playerId: currentUserProfile.id,
       playerName: currentUserProfile.name,
       status,
-      reason: status === 'declined' ? reason : null,
       updatedAt: new Date().toISOString(),
     };
+    if (status === 'declined' && reason) attendanceData.reason = reason;
+
     setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
   };
@@ -593,25 +615,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const attendanceData = {
+    const attendanceData: any = {
       eventId,
       playerId,
       playerName,
       status,
-      reason: status === 'declined' ? (reason || null) : null,
       updatedAt: new Date().toISOString(),
     };
+    if (status === 'declined' && reason) attendanceData.reason = reason;
+
     setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
   };
 
   const addAbsence = async (data: Omit<Absence, 'id' | 'playerId' | 'playerName'>) => {
     if (!db || !currentUserProfile) return;
-    const absenceData = { 
+    const absenceData: any = { 
       ...data, 
       playerId: currentUserProfile.id, 
       playerName: currentUserProfile.name 
     };
+    // Ensure optional fields aren't undefined
+    if (absenceData.reason === undefined) delete absenceData.reason;
+
     await addDoc(collection(db, 'absences'), absenceData)
       .catch(handleMutationError('absences', 'create', absenceData));
 

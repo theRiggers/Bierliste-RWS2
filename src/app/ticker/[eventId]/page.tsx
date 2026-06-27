@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, ArrowLeft, Trophy, Users, MessageSquare, Clock, Plus, Trash2, ShieldCheck, Flag, Replace, CheckCircle2, Radio, Check } from "lucide-react"
+import { Loader2, ArrowLeft, Trophy, Users, MessageSquare, Clock, Plus, Trash2, ShieldCheck, Flag, Replace, CheckCircle2, Radio, Check, X } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -104,13 +104,13 @@ export default function TickerPage() {
   };
 
   const handleOpponentGoal = async () => {
-    const min = prompt("In welcher Minute fiel das Gegentor?", "");
+    const min = prompt("In welcher Minute fiel das Gegner-Tor?", "");
     if (!min) return;
     
     await addTickerEvent(eventId, {
       type: 'goal_opponent',
       minute: parseInt(min),
-      text: "Tor für den Gegner."
+      text: "Gegner-Tor."
     });
     
     await updateTickerScore(eventId, ticker.homeScore, ticker.awayScore + 1);

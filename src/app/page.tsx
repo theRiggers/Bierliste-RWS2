@@ -223,7 +223,6 @@ export default function Dashboard() {
   if (!user) return null
 
   if (!currentUserProfile) {
-    // FIX: Added optional chaining to p.roles to avoid "includes of undefined"
     const hasAdmin = players.some(p => p.roles?.includes('admin'))
     return (
       <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">

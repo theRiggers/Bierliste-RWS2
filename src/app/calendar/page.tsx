@@ -355,7 +355,16 @@ export default function CalendarPage() {
                               <h3 className="font-bold text-base md:text-lg">{event.title}</h3>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(event.date), 'HH:mm')}</span>
-                                {event.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {event.location}</span>}
+                                {event.location && (
+                                  <a 
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                                  >
+                                    <MapPin className="h-3 w-3" /> {event.location}
+                                  </a>
+                                )}
                               </div>
                             </div>
                           </div>

@@ -72,6 +72,7 @@ export function Sidebar({ userRoles = ['player'] }: SidebarProps) {
       
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
         {navigation.map((item) => {
+          if (!user && item.href !== '/how-to') return null
           if (item.roles && !item.roles.some(r => userRoles.includes(r as Role))) return null
           const isActive = pathname === item.href
           return (
@@ -106,9 +107,11 @@ export function Sidebar({ userRoles = ['player'] }: SidebarProps) {
         )}
         <div className="flex items-center gap-2 mb-2">
           <ThemeToggle />
-          <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl">
-            <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
-          </Button>
+          {user && (
+            <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl">
+              <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -160,6 +163,7 @@ export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { use
                 </div>
                 <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
                   {navigation.map((item) => {
+                    if (!user && item.href !== '/how-to') return null
                     if (item.roles && !item.roles.some(r => userRoles.includes(r as Role))) return null
                     const isActive = pathname === item.href
                     return (
@@ -187,9 +191,11 @@ export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { use
                   )}
                   <div className="flex items-center gap-2">
                     <ThemeToggle />
-                    <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
-                      <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
-                    </Button>
+                    {user && (
+                      <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-7">
+                        <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

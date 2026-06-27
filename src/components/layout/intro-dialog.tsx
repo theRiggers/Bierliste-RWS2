@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -21,18 +22,20 @@ import {
   Users,
   CheckCircle2,
   ChevronRight,
-  Info
+  Info,
+  Radio,
+  LayoutGrid,
+  Trophy
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function IntroDialog() {
   const { currentUserProfile, markIntroSeen } = useStore()
   const [isOpen, setIsOpen] = useState(false)
-  const [step, setStep] = useState(0)
 
   useEffect(() => {
     if (currentUserProfile) {
-      const currentRoles = currentUserProfile.roles
+      const currentRoles = currentUserProfile.roles || []
       const lastSeen = currentUserProfile.lastIntroSeenRoles || []
       
       // Check if there are any roles that the user hasn't seen the intro for
@@ -47,11 +50,11 @@ export function IntroDialog() {
 
   if (!currentUserProfile) return null
 
-  const roles = currentUserProfile.roles
+  const roles = currentUserProfile.roles || []
   const isAdmin = roles.includes('admin')
-  const isKassenwart = roles.includes('kassenwart')
-  const isStrafenwart = roles.includes('strafenwart')
-  const isCoach = roles.some(r => ['coach', 'assistant_coach'].includes(r))
+  const isKassenwart = roles.includes('kassenwart') || isAdmin
+  const isStrafenwart = roles.includes('strafenwart') || isAdmin
+  const isCoach = roles.some(r => ['coach', 'assistant_coach'].includes(r)) || isAdmin
 
   const handleClose = async () => {
     await markIntroSeen(roles)
@@ -67,33 +70,33 @@ export function IntroDialog() {
     },
     {
       title: "Team-Kalender",
-      description: "Sag zu oder ab für Trainings und Spiele. Bei Absagen brauchen wir immer einen kurzen Grund.",
+      description: "Sag zu oder ab für Trainings und Spiele. Exportiere die Termine direkt in deinen Handy-Kalender.",
       icon: <Calendar className="h-6 w-6 text-blue-500" />,
       show: true
     },
     {
-      title: "Mannschaftskasse",
-      description: "Verwalte Sponsoren, Spenden und sonstige Ausgaben der Mannschaft.",
-      icon: <TrendingUp className="h-6 w-6 text-emerald-500" />,
-      show: isKassenwart || isAdmin
+      title: "Live-Ticker & Chat",
+      description: "Verfolge Spiele live, juble im Chat und checke die Torjägerliste direkt nach dem Abpfiff.",
+      icon: <Radio className="h-6 w-6 text-primary" />,
+      show: true
     },
     {
-      title: "Beitragsverwaltung",
-      description: "Behalte den Überblick über die monatlichen und jährlichen Mitgliedsbeiträge der Spieler.",
-      icon: <CheckCircle2 className="h-6 w-6 text-blue-600" />,
-      show: isKassenwart || isAdmin
+      title: "Mannschaftskasse",
+      description: "Verwalte Sponsoren, Spenden und sonstige Ausgaben. Behalte die Beitrags-Matrix im Griff.",
+      icon: <TrendingUp className="h-6 w-6 text-emerald-500" />,
+      show: isKassenwart
     },
     {
       title: "Strafenkatalog",
-      description: "Verwalte Vergehen und buche Strafen für Spieler direkt über das Strafen-Menü.",
+      description: "Verwalte Vergehen und buche Mehrfach-Strafen (z.B. 2x Tunnel) direkt für die Spieler.",
       icon: <Scale className="h-6 w-6 text-amber-600" />,
-      show: isStrafenwart || isAdmin
+      show: isStrafenwart
     },
     {
-      title: "Anwesenheitsmatrix",
-      description: "Analysiere die Trainingsbeteiligung über die gesamte Saison und korrigiere Anwesenheiten manuell.",
-      icon: <Users className="h-6 w-6 text-primary" />,
-      show: isCoach || isAdmin
+      title: "Trainer-Tools",
+      description: "Plane Aufstellungen auf dem Spielfeld und analysiere die Anwesenheits-Statistik der Saison.",
+      icon: <LayoutGrid className="h-6 w-6 text-blue-600" />,
+      show: isCoach
     },
     {
       title: "Administration",
@@ -113,7 +116,7 @@ export function IntroDialog() {
               Moin {currentUserProfile.name.split(' ')[0]}!
             </DialogTitle>
             <DialogDescription className="text-white/80 text-lg">
-              Willkommen im Headquarter RWS2. Hier ist ein kurzer Überblick über deine Funktionen.
+              Willkommen im Headquarter RWS2. Hier ist ein Überblick über deine Funktionen.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -138,7 +141,7 @@ export function IntroDialog() {
           <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900 flex gap-3 items-center">
             <Info className="h-5 w-5 text-blue-600 shrink-0" />
             <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">
-              Tipp: Installiere die App über das Menü auf deinem Home-Screen für den schnellsten Zugriff!
+              Tipp: Installiere die App über den Menüpunkt "App installieren" auf deinem Home-Screen für den schnellsten Zugriff!
             </p>
           </div>
         </div>

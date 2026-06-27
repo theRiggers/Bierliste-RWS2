@@ -25,12 +25,14 @@ import {
   TrendingUp as TreasuryIcon,
   Smartphone as SmartphoneIcon,
   CheckCircle2 as AttendanceIcon,
-  PlaneTakeoff as AbsenceIcon
+  PlaneTakeoff as AbsenceIcon,
+  Trophy as StatsIcon
 } from "lucide-react"
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: DashboardIcon },
   { name: 'Kalender', href: '/calendar', icon: CalendarIcon },
+  { name: 'Statistiken', href: '/stats', icon: StatsIcon },
   { name: 'Anwesenheit', href: '/attendance', icon: AttendanceIcon, roles: ['admin', 'coach', 'assistant_coach'] },
   { name: 'Abwesenheiten', href: '/absences', icon: AbsenceIcon },
   { name: 'Verlauf', href: '/history', icon: HistoryIcon },
@@ -98,18 +100,13 @@ export function Sidebar({ userRoles = ['player'] }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-sidebar-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
-                <div className="flex flex-wrap gap-0.5 mt-0.5">
-                  {currentUserProfile?.roles.slice(0, 2).map(r => (
-                    <span key={r} className="text-[9px] bg-primary/10 text-primary px-1 rounded capitalize">{r}</span>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
         )}
         <div className="flex items-center gap-2 mb-2">
           <ThemeToggle />
-          <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl py-6">
+          <Button variant="ghost" onClick={handleLogout} className="flex-1 justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl">
             <LogOutIcon className="mr-3 h-5 w-5" /> Abmelden
           </Button>
         </div>
@@ -184,11 +181,6 @@ export function MobileNavTrigger({ userRoles = ['player'], rightElement }: { use
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-sidebar-foreground truncate">{currentUserProfile?.name || user.displayName || 'Benutzer'}</p>
-                          <div className="flex flex-wrap gap-1 mt-0.5">
-                            {currentUserProfile?.roles.map(r => (
-                              <span key={r} className="text-[8px] bg-primary/10 text-primary px-1 rounded uppercase font-bold">{r}</span>
-                            ))}
-                          </div>
                         </div>
                       </div>
                     </div>

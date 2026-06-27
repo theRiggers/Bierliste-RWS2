@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye, UserCircle, LayoutGrid } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye, UserCircle, LayoutGrid, Radio } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
 import { de } from "date-fns/locale"
@@ -36,7 +37,6 @@ export default function CalendarPage() {
   const [mounted, setMounted] = useState(false)
   const { players, teamEvents, attendance, lineups, addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, currentUserProfile, settings, loading: storeLoading } = useStore()
   
-  // Single Add State
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newDate, setNewDate] = useState("")
@@ -44,7 +44,6 @@ export default function CalendarPage() {
   const [newType, setNewType] = useState<'training' | 'match' | 'social'>('training')
   const [newLocation, setNewLocation] = useState("")
   
-  // Bulk Add State
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [bulkTitle, setBulkTitle] = useState("Training")
   const [bulkLocation, setBulkLocation] = useState("")
@@ -53,7 +52,6 @@ export default function CalendarPage() {
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState("")
 
-  // Edit State
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<TeamEvent | null>(null)
   const [editTitle, setEditTitle] = useState("")
@@ -62,12 +60,10 @@ export default function CalendarPage() {
   const [editType, setEditType] = useState<'training' | 'match' | 'social'>('training')
   const [editLocation, setEditLocation] = useState("")
   
-  // Decline State
   const [isDeclineOpen, setIsDeclineOpen] = useState(false)
   const [declineEventId, setDeclineEventId] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState("")
 
-  // Details State
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [detailsEvent, setDetailsEvent] = useState<TeamEvent | null>(null)
 
@@ -163,15 +159,12 @@ export default function CalendarPage() {
       toast({ variant: "destructive", title: "Fehler", description: "Bitte fülle alle Felder aus." })
       return
     }
-
     const start = parseISO(startDate)
     const end = parseISO(endDate)
-
     if (isAfter(start, end)) {
       toast({ variant: "destructive", title: "Fehler", description: "Enddatum muss nach dem Startdatum liegen." })
       return
     }
-
     setIsSubmitting(true)
     let count = 0
     try {
@@ -181,7 +174,6 @@ export default function CalendarPage() {
         if (selectedWeekdays.includes(dayIdx)) {
           const time = weekdayTimes[dayIdx] || "19:00"
           const dateStr = format(current, 'yyyy-MM-dd')
-          
           await addTeamEvent({
             title: bulkTitle,
             type: 'training',
@@ -192,7 +184,6 @@ export default function CalendarPage() {
         }
         current = addDays(current, 1)
       }
-      
       setIsBulkOpen(false)
       setSelectedWeekdays([])
       setWeekdayTimes({})
@@ -204,12 +195,8 @@ export default function CalendarPage() {
   }
 
   const toggleWeekday = (id: number) => {
-    setSelectedWeekdays(prev => 
-      prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id]
-    )
-    if (!weekdayTimes[id]) {
-      setWeekdayTimes(prev => ({ ...prev, [id]: "19:00" }))
-    }
+    setSelectedWeekdays(prev => prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id])
+    if (!weekdayTimes[id]) setWeekdayTimes(prev => ({ ...prev, [id]: "19:00" }))
   }
 
   const handleDeclineClick = (eventId: string) => {
@@ -255,7 +242,7 @@ export default function CalendarPage() {
       <MobileNavTrigger userRoles={currentUserProfile?.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border">
+        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-card border-b border-border sticky top-0 z-20">
           <h1 className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <CalendarIcon className="h-6 w-6" /> Teamkalender
           </h1>
@@ -276,122 +263,48 @@ export default function CalendarPage() {
                       <DialogTitle className="text-xl md:text-2xl">Serientermine erstellen</DialogTitle>
                       <DialogDescription>Erstelle Trainings automatisch für einen Zeitraum.</DialogDescription>
                     </DialogHeader>
-                    
                     <ScrollArea className="flex-1">
                       <div className="p-6 space-y-8">
                         <div className="grid gap-4 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Titel</Label>
-                            <Input value={bulkTitle} onChange={e => setBulkTitle(e.target.value)} placeholder="Z.B. Training" className="h-11 rounded-xl bg-background" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Ort (Optional)</Label>
-                            <Input value={bulkLocation} onChange={e => setBulkLocation(e.target.value)} placeholder="Z.B. Kunstrasen" className="h-11 rounded-xl bg-background" />
-                          </div>
+                          <div className="space-y-2"><Label>Titel</Label><Input value={bulkTitle} onChange={e => setBulkTitle(e.target.value)} className="rounded-xl" /></div>
+                          <div className="space-y-2"><Label>Ort (Optional)</Label><Input value={bulkLocation} onChange={e => setBulkLocation(e.target.value)} className="rounded-xl" /></div>
                         </div>
-
                         <div className="space-y-4">
-                          <Label className="text-sm font-bold flex items-center gap-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">1</span>
-                            Trainingstage wählen
-                          </Label>
+                          <Label className="text-sm font-bold">1. Trainingstage wählen</Label>
                           <div className="flex flex-wrap gap-2">
                             {WEEKDAYS.map((day) => (
-                              <Button
-                                key={day.id}
-                                variant={selectedWeekdays.includes(day.id) ? "default" : "outline"}
-                                className={cn(
-                                  "h-12 w-12 rounded-xl text-xs font-bold p-0 transition-all",
-                                  selectedWeekdays.includes(day.id) ? "bg-blue-600 hover:bg-blue-700 shadow-md text-white" : "hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                                )}
-                                onClick={() => toggleWeekday(day.id)}
-                              >
-                                {day.short}
-                              </Button>
+                              <Button key={day.id} variant={selectedWeekdays.includes(day.id) ? "default" : "outline"} className={cn("h-12 w-12 rounded-xl", selectedWeekdays.includes(day.id) ? "bg-blue-600 text-white" : "")} onClick={() => toggleWeekday(day.id)}>{day.short}</Button>
                             ))}
                           </div>
                         </div>
-
                         {selectedWeekdays.length > 0 && (
-                          <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                            <Label className="text-sm font-bold flex items-center gap-2">
-                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">2</span>
-                              Uhrzeiten festlegen
-                            </Label>
+                          <div className="space-y-4">
+                            <Label className="text-sm font-bold">2. Uhrzeiten festlegen</Label>
                             <div className="grid gap-3 sm:grid-cols-2">
                               {WEEKDAYS.filter(d => selectedWeekdays.includes(d.id)).map(day => (
                                 <div key={day.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border">
                                   <span className="text-sm font-bold">{day.name}</span>
-                                  <Input 
-                                    type="time" 
-                                    className="w-28 h-9 rounded-lg bg-card" 
-                                    value={weekdayTimes[day.id] || "19:00"}
-                                    onChange={(e) => setWeekdayTimes(prev => ({ ...prev, [day.id]: e.target.value }))}
-                                  />
+                                  <Input type="time" className="w-28 h-9" value={weekdayTimes[day.id] || "19:00"} onChange={(e) => setWeekdayTimes(prev => ({ ...prev, [day.id]: e.target.value }))}/>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
-
                         <div className="space-y-4">
-                          <Label className="text-sm font-bold flex items-center gap-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px]">3</span>
-                            Zeitraum festlegen
-                          </Label>
+                          <Label className="text-sm font-bold">3. Zeitraum festlegen</Label>
                           <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label className="text-[10px] text-muted-foreground ml-1">Startdatum</Label>
-                              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="h-11 rounded-xl bg-background" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-[10px] text-muted-foreground ml-1">Enddatum</Label>
-                              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="h-11 rounded-xl bg-background" />
-                            </div>
+                            <div className="space-y-2"><Label>Start</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Ende</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
                           </div>
                         </div>
                       </div>
                     </ScrollArea>
-
                     <DialogFooter className="p-6 bg-muted/50 border-t">
-                      <Button 
-                        onClick={handleBulkAdd} 
-                        disabled={isSubmitting || selectedWeekdays.length === 0 || !endDate} 
-                        className="w-full h-12 rounded-2xl font-bold red-glow"
-                      >
-                        {isSubmitting ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Plus className="mr-2 h-5 w-5" />}
-                        Termine jetzt generieren
-                      </Button>
+                      <Button onClick={handleBulkAdd} disabled={isSubmitting || selectedWeekdays.length === 0 || !endDate} className="w-full h-12 rounded-2xl font-bold red-glow">Termine generieren</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-
-                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                  <DialogTrigger asChild><Button className="red-glow rounded-xl"><Plus className="h-4 w-4 mr-2" /> Einzeltermin</Button></DialogTrigger>
-                  <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
-                    <DialogHeader><DialogTitle>Neuer Einzeltermin</DialogTitle></DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="space-y-2"><Label>Titel</Label><Input placeholder="Z.B. Training" value={newTitle} onChange={e => setNewTitle(e.target.value)} /></div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label>Datum</Label><Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} /></div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Typ</Label>
-                        <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="training">Training</SelectItem>
-                            <SelectItem value="match">Spiel</SelectItem>
-                            <SelectItem value="social">Mannschaftsabend / Event</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2"><Label>Ort (Optional)</Label><Input placeholder="Z.B. Kunstrasen" value={newLocation} onChange={e => setNewLocation(e.target.value)} /></div>
-                    </div>
-                    <DialogFooter><Button onClick={handleAddEvent} disabled={isSubmitting} className="w-full rounded-xl">Speichern</Button></DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                <Button className="red-glow rounded-xl" onClick={() => setIsAddOpen(true)}><Plus className="h-4 w-4 mr-2" /> Einzeltermin</Button>
               </>
             )}
           </div>
@@ -401,36 +314,20 @@ export default function CalendarPage() {
           <div className="md:hidden flex flex-col gap-4 mb-4">
             <h1 className="text-2xl font-bold text-primary font-headline">Teamkalender</h1>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={handleExportAll} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 dark:text-blue-400 h-10">
-                <Download className="h-3 w-3 mr-1" /> Exportieren
-              </Button>
-              {isEditor && (
-                <>
-                  <Button size="sm" variant="outline" onClick={() => setIsBulkOpen(true)} className="flex-1 min-w-[120px] rounded-xl text-xs border-blue-600 text-blue-700 dark:text-blue-400 h-10">
-                    <CalendarDays className="h-3 w-3 mr-1" /> Serientermine
-                  </Button>
-                  <Button size="sm" className="flex-1 min-w-[120px] rounded-xl text-xs h-10" onClick={() => setIsAddOpen(true)}>
-                    <Plus className="h-3 w-3 mr-1" /> Einzeltermin
-                  </Button>
-                </>
-              )}
+              <Button size="sm" variant="outline" onClick={handleExportAll} className="flex-1 rounded-xl text-xs border-blue-600 h-10"><Download className="h-3 w-3 mr-1" /> Exportieren</Button>
+              {isEditor && <Button size="sm" className="flex-1 rounded-xl text-xs h-10" onClick={() => setIsAddOpen(true)}><Plus className="h-3 w-3 mr-1" /> Termin</Button>}
             </div>
           </div>
 
           <div className="space-y-4">
             {upcomingEvents.length === 0 ? (
-              <Card className="border-none shadow-sm bg-muted/20">
-                <CardContent className="p-8 text-center text-muted-foreground italic">
-                  Keine anstehenden Termine gefunden.
-                </CardContent>
-              </Card>
+              <Card className="border-none shadow-sm bg-muted/20"><CardContent className="p-8 text-center text-muted-foreground italic">Keine Termine geplant.</CardContent></Card>
             ) : (
               upcomingEvents.map((event) => {
                 const userAttendance = attendance.find(a => a.eventId === event.id && a.playerId === currentUserProfile?.id)
                 const eventAttendance = attendance.filter(a => a.eventId === event.id)
                 const goingCount = eventAttendance.filter(a => a.status === 'going').length
                 const declinedCount = eventAttendance.filter(a => a.status === 'declined').length
-                const lineup = lineups.find(l => l.eventId === event.id)
 
                 return (
                   <Card key={event.id} className="border-none shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-card">
@@ -450,92 +347,43 @@ export default function CalendarPage() {
                                    {getTypeIcon(event.type)}
                                    <span className="ml-1 uppercase">{event.type === 'training' ? 'Training' : event.type === 'match' ? 'Spiel' : 'Event'}</span>
                                  </span>
-                                 <Button 
-                                   variant="ghost" 
-                                   className={cn(
-                                     "h-auto p-1 px-2 flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 rounded-lg",
-                                     isEditor && "cursor-pointer"
-                                   )}
-                                   onClick={() => openDetailsDialog(event)}
-                                   disabled={!isEditor}
-                                 >
+                                 <Button variant="ghost" className="h-auto p-1 px-2 flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:bg-muted/50 rounded-lg" onClick={() => openDetailsDialog(event)}>
                                    <span className="flex items-center gap-0.5 text-emerald-600"><Check className="h-3 w-3" /> {goingCount}</span>
                                    <span className="flex items-center gap-0.5 text-destructive"><X className="h-3 w-3" /> {declinedCount}</span>
-                                   {isEditor && <Eye className="h-3 w-3 ml-1 opacity-50" />}
                                  </Button>
-                                 {event.type === 'match' && lineup && (
-                                   <Badge variant="outline" className="text-[8px] bg-emerald-50 text-emerald-700 border-emerald-200">Aufstellung vorhanden</Badge>
-                                 )}
                               </div>
                               <h3 className="font-bold text-base md:text-lg">{event.title}</h3>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(event.date), 'HH:mm')} Uhr</span>
-                                {event.location && (
-                                  <a 
-                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
-                                  >
-                                    <MapPin className="h-3 w-3" /> {event.location}
-                                  </a>
-                                )}
+                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(event.date), 'HH:mm')}</span>
+                                {event.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {event.location}</span>}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            {isEditor && event.type === 'match' && (
-                              <Link href={`/lineups/${event.id}`}>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-emerald-600 shrink-0" title="Aufstellung planen">
-                                  <LayoutGrid className="h-4 w-4" />
-                                </Button>
-                              </Link>
+                            {event.type === 'match' && (
+                              <div className="flex gap-1">
+                                <Link href={`/ticker/${event.id}`}>
+                                  <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10" title="Live Ticker"><Radio className="h-4 w-4" /></Button>
+                                </Link>
+                                {isEditor && (
+                                  <Link href={`/lineups/${event.id}`}>
+                                    <Button variant="ghost" size="icon" className="text-emerald-600" title="Aufstellung"><LayoutGrid className="h-4 w-4" /></Button>
+                                  </Link>
+                                )}
+                              </div>
                             )}
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleExportSingle(event)} 
-                              className="text-muted-foreground hover:text-blue-600 shrink-0 hidden sm:flex"
-                              title="Termin exportieren"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
                             {isEditor && (
                               <>
-                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(event)} className="text-muted-foreground hover:text-primary shrink-0">
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive shrink-0">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(event)} className="text-muted-foreground hover:text-primary"><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => deleteTeamEvent(event.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                               </>
                             )}
                           </div>
                         </CardContent>
-                        
-                        <CardFooter className="px-4 md:px-6 pb-4 pt-0 flex items-center justify-between gap-4 border-t border-muted/30 mt-2 pt-4">
+                        <CardFooter className="px-4 md:px-6 pb-4 pt-4 border-t border-muted/30 flex items-center justify-between gap-4">
                           <div className="flex items-center gap-2 flex-1">
-                            <Button 
-                              size="sm"
-                              className={cn(
-                                "rounded-xl font-bold flex-1 md:flex-none",
-                                userAttendance?.status === 'going' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-muted text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700"
-                              )}
-                              onClick={() => upsertAttendance(event.id, 'going')}
-                            >
-                              <Check className="h-4 w-4 mr-1" /> Zusage
-                            </Button>
-                            <Button 
-                              size="sm"
-                              variant="outline"
-                              className={cn(
-                                "rounded-xl font-bold flex-1 md:flex-none",
-                                userAttendance?.status === 'declined' ? "bg-destructive hover:bg-destructive/90 text-white border-none" : "border-destructive text-destructive hover:bg-destructive/10"
-                              )}
-                              onClick={() => handleDeclineClick(event.id)}
-                            >
-                              <X className="h-4 w-4 mr-1" /> Absage
-                            </Button>
+                            <Button size="sm" className={cn("rounded-xl font-bold flex-1 md:flex-none", userAttendance?.status === 'going' ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground")} onClick={() => upsertAttendance(event.id, 'going')}><Check className="h-4 w-4 mr-1" /> Zusage</Button>
+                            <Button size="sm" variant="outline" className={cn("rounded-xl font-bold flex-1 md:flex-none", userAttendance?.status === 'declined' ? "bg-destructive text-white border-none" : "border-destructive text-destructive")} onClick={() => handleDeclineClick(event.id)}><X className="h-4 w-4 mr-1" /> Absage</Button>
                           </div>
                           {userAttendance?.status === 'declined' && userAttendance.reason && (
                             <div className="hidden md:flex items-center gap-2 text-[10px] text-muted-foreground italic bg-muted/30 px-3 py-1.5 rounded-lg border">
@@ -552,41 +400,35 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Decline Reason Dialog */}
-        <Dialog open={isDeclineOpen} onOpenChange={setIsDeclineOpen}>
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
-            <DialogHeader>
-              <DialogTitle>Termin absagen</DialogTitle>
-              <DialogDescription>Bitte gib einen Grund für deine Absage an.</DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Grund (Pflichtfeld)</Label>
-              <Textarea 
-                placeholder="Z.B. Arbeit, Krankheit, Familie..." 
-                value={declineReason} 
-                onChange={(e) => setDeclineReason(e.target.value)}
-                className="mt-2 rounded-xl h-24"
-              />
+            <DialogHeader><DialogTitle>Neuer Termin</DialogTitle></DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2"><Label>Titel</Label><Input placeholder="Z.B. Training" value={newTitle} onChange={e => setNewTitle(e.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Datum</Label><Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} /></div>
+              </div>
+              <div className="space-y-2">
+                <Label>Typ</Label>
+                <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="training">Training</SelectItem>
+                    <SelectItem value="match">Spiel</SelectItem>
+                    <SelectItem value="social">Mannschaftsabend / Event</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label>Ort (Optional)</Label><Input placeholder="Z.B. Kunstrasen" value={newLocation} onChange={e => setNewLocation(e.target.value)} /></div>
             </div>
-            <DialogFooter>
-              <Button 
-                onClick={confirmDecline} 
-                disabled={!declineReason.trim()} 
-                className="w-full rounded-xl bg-destructive hover:bg-destructive/90 text-white font-bold h-12"
-              >
-                Absage bestätigen
-              </Button>
-            </DialogFooter>
+            <DialogFooter><Button onClick={handleAddEvent} disabled={isSubmitting} className="w-full rounded-xl">Speichern</Button></DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
-            <DialogHeader>
-              <DialogTitle>Termin bearbeiten</DialogTitle>
-              <DialogDescription>Passe die Details dieses Termins an.</DialogDescription>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Termin bearbeiten</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2"><Label>Titel</Label><Input value={editTitle} onChange={e => setEditTitle(e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-4">
@@ -606,55 +448,41 @@ export default function CalendarPage() {
               </div>
               <div className="space-y-2"><Label>Ort (Optional)</Label><Input value={editLocation} onChange={e => setEditLocation(e.target.value)} /></div>
             </div>
-            <DialogFooter>
-              <Button onClick={handleEditEvent} disabled={isSubmitting} className="w-full rounded-xl">
-                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Änderungen speichern"}
-              </Button>
-            </DialogFooter>
+            <DialogFooter><Button onClick={handleEditEvent} disabled={isSubmitting} className="w-full rounded-xl">Speichern</Button></DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Attendees Details Dialog */}
+        <Dialog open={isDeclineOpen} onOpenChange={setIsDeclineOpen}>
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
+            <DialogHeader><DialogTitle>Termin absagen</DialogTitle><DialogDescription>Bitte gib einen Grund an.</DialogDescription></DialogHeader>
+            <div className="py-4"><Textarea placeholder="Grund..." value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} className="rounded-xl h-24" /></div>
+            <DialogFooter><Button onClick={confirmDecline} disabled={!declineReason.trim()} className="w-full rounded-xl bg-destructive text-white h-12">Absage bestätigen</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent className="max-w-[95vw] md:max-w-lg rounded-3xl p-0 overflow-hidden bg-card">
-            <DialogHeader className="p-6 pb-2">
-              <DialogTitle className="text-xl">{detailsEvent?.title}</DialogTitle>
-              <DialogDescription>Übersicht der Zu- und Absagen</DialogDescription>
-            </DialogHeader>
-            
+            <DialogHeader className="p-6 pb-2"><DialogTitle className="text-xl">{detailsEvent?.title}</DialogTitle><DialogDescription>Übersicht</DialogDescription></DialogHeader>
             <ScrollArea className="max-h-[60vh] px-6 pb-6">
               <div className="space-y-6">
                 <div>
-                  <h4 className="text-sm font-bold text-emerald-600 flex items-center gap-2 mb-3">
-                    <Check className="h-4 w-4" /> Zusagen ({attendance.filter(a => a.eventId === detailsEvent?.id && a.status === 'going').length})
-                  </h4>
+                  <h4 className="text-sm font-bold text-emerald-600 flex items-center gap-2 mb-3"><Check className="h-4 w-4" /> Zusagen</h4>
                   <div className="grid gap-2">
                     {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
                       const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
                       if (att?.status !== 'going') return null;
                       return (
-                        <div key={player.id} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900 text-sm font-medium flex items-center justify-between group">
+                        <div key={player.id} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900 text-sm font-medium flex items-center justify-between group">
                           <span>{player.name}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, 'going')}
-                          >
-                            <X className="h-3 w-3 text-destructive" />
-                          </Button>
+                          {isEditor && <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, 'going')}><X className="h-3 w-3 text-destructive" /></Button>}
                         </div>
                       );
                     })}
                   </div>
                 </div>
-
                 <Separator />
-
                 <div>
-                  <h4 className="text-sm font-bold text-destructive flex items-center gap-2 mb-3">
-                    <X className="h-4 w-4" /> Absagen ({attendance.filter(a => a.eventId === detailsEvent?.id && a.status === 'declined').length})
-                  </h4>
+                  <h4 className="text-sm font-bold text-destructive flex items-center gap-2 mb-3"><X className="h-4 w-4" /> Absagen</h4>
                   <div className="grid gap-2">
                     {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
                       const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
@@ -663,58 +491,9 @@ export default function CalendarPage() {
                         <div key={player.id} className="p-3 rounded-xl bg-destructive/5 border border-destructive/10 space-y-1 group relative">
                           <div className="flex items-center justify-between">
                              <p className="text-sm font-bold">{player.name}</p>
-                             <Button 
-                               variant="ghost" 
-                               size="icon" 
-                               className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                               onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, 'declined')}
-                             >
-                               <Check className="h-3 w-3 text-emerald-600" />
-                             </Button>
+                             {isEditor && <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, 'declined')}><Check className="h-3 w-3 text-emerald-600" /></Button>}
                           </div>
-                          {att.reason && (
-                            <p className="text-xs text-muted-foreground flex items-start gap-1.5 italic">
-                              <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-                              {att.reason}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h4 className="text-sm font-bold text-muted-foreground flex items-center gap-2 mb-3">
-                    <UserCircle className="h-4 w-4" /> Keine Rückmeldung ({players.filter(p => p.email !== 'kasse@kickoff.de' && !attendance.some(a => a.eventId === detailsEvent?.id && a.playerId === p.id)).length})
-                  </h4>
-                  <div className="grid gap-2">
-                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
-                      const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
-                      if (att) return null;
-                      return (
-                        <div key={player.id} className="p-2 rounded-xl bg-muted/20 border border-border/50 text-sm flex items-center justify-between group">
-                          <span className="text-muted-foreground">{player.name}</span>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-7 w-7 text-emerald-600"
-                              onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, undefined)}
-                            >
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-7 w-7 text-destructive"
-                              onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, undefined)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          {att.reason && <p className="text-xs text-muted-foreground flex items-start gap-1.5 italic"><MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />{att.reason}</p>}
                         </div>
                       );
                     })}
@@ -722,9 +501,7 @@ export default function CalendarPage() {
                 </div>
               </div>
             </ScrollArea>
-            <div className="p-4 bg-muted/30 border-t flex justify-end">
-              <Button onClick={() => setIsDetailsOpen(false)} className="rounded-xl">Schließen</Button>
-            </div>
+            <div className="p-4 bg-muted/30 border-t flex justify-end"><Button onClick={() => setIsDetailsOpen(false)} className="rounded-xl">Schließen</Button></div>
           </DialogContent>
         </Dialog>
       </main>

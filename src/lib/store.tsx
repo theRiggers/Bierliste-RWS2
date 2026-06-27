@@ -127,6 +127,33 @@ export interface Lineup {
   updatedAt: string;
 }
 
+export interface Ticker {
+  id: string;
+  homeScore: number;
+  awayScore: number;
+  operatorId: string | null;
+  operatorName: string | null;
+  status: 'pre' | 'live' | 'finished';
+  updatedAt: string;
+}
+
+export interface TickerEvent {
+  id: string;
+  eventId: string;
+  type: 'goal' | 'sub' | 'comment' | 'card' | 'status';
+  minute: number;
+  playerId?: string;
+  playerName?: string;
+  assistPlayerId?: string;
+  assistPlayerName?: string;
+  playerOutId?: string;
+  playerOutName?: string;
+  playerInId?: string;
+  playerInName?: string;
+  text?: string;
+  timestamp: string;
+}
+
 export interface AppSettings {
   beerPrice: number;
   cratePrice: number;
@@ -171,6 +198,8 @@ interface StoreContextType {
   attendance: Attendance[];
   lineups: Lineup[];
   absences: Absence[];
+  tickers: Ticker[];
+  tickerEvents: TickerEvent[];
   currentUserProfile: Player | null;
   settings: AppSettings;
   loading: boolean;
@@ -202,6 +231,11 @@ interface StoreContextType {
   addAbsence: (data: Omit<Absence, 'id' | 'playerId' | 'playerName'>) => Promise<void>;
   deleteAbsence: (id: string) => Promise<void>;
   upsertLineup: (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => Promise<void>;
+  claimTicker: (eventId: string) => Promise<void>;
+  releaseTicker: (eventId: string) => Promise<void>;
+  updateTickerScore: (eventId: string, home: number, away: number) => Promise<void>;
+  addTickerEvent: (eventId: string, event: Omit<TickerEvent, 'id' | 'eventId' | 'timestamp'>) => Promise<void>;
+  deleteTickerEvent: (eventId: string, eventIdToRemove: string) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -254,6 +288,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const lineupsQuery = useMemo(() => db ? collection(db, 'lineups') as Query<Omit<Lineup, 'id'>> : null, [db]);
   const { data: lineupsData, loading: lineupsLoading } = useCollection<Omit<Lineup, 'id'>>(lineupsQuery);
 
+  const tickersQuery = useMemo(() => db ? collection(db, 'tickers') as Query<Omit<Ticker, 'id'>> : null, [db]);
+  const { data: tickersData, loading: tickersLoading } = useCollection<Omit<Ticker, 'id'>>(tickersQuery);
+
+  const tickerEventsQuery = useMemo(() => db ? query(collection(db, 'tickerEvents'), orderBy('timestamp', 'desc')) as Query<Omit<TickerEvent, 'id'>> : null, [db]);
+  const { data: tickerEventsData, loading: tickerEventsLoading } = useCollection<Omit<TickerEvent, 'id'>>(tickerEventsQuery);
+
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') as DocumentReference<AppSettings> : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
@@ -263,7 +303,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return { ...rawData, id: d.id, roles, treasuryBalance: rawData.treasuryBalance || 0 } as Player;
   }) || [], [playersData]);
 
-  // Essential filtering: only include data associated with existing players
   const activePlayerIds = useMemo(() => new Set(players.map(p => p.id)), [players]);
 
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
@@ -274,6 +313,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fines = useMemo(() => finesData?.map(d => ({ ...d.data, id: d.id })) || [], [finesData]);
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
   const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
+  const tickers = useMemo(() => tickersData?.map(d => ({ ...d.data, id: d.id })) || [], [tickersData]);
+  const tickerEvents = useMemo(() => tickerEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [tickerEventsData]);
   
   const attendance = useMemo(() => {
     const raw = attendanceData?.map(d => ({ ...d.data, id: d.id })) || [];
@@ -332,17 +373,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return bierkasseLiquidity - totalPlayerBalanceSum;
   }, [bierkasseLiquidity, players]);
 
-  useEffect(() => {
-    if (db && !fineCatalogLoading && fineCatalog.length === 0 && currentUserProfile?.roles.includes('admin')) {
-      const batch = writeBatch(db);
-      DEFAULT_FINES.forEach(name => {
-        const ref = doc(collection(db, 'fineCatalog'));
-        batch.set(ref, { name, amount: 2.00 });
-      });
-      batch.commit();
-    }
-  }, [fineCatalogLoading, fineCatalog.length, db, currentUserProfile]);
-
   const handleMutationError = (path: string, operation: SecurityRuleContext['operation'], data?: any) => (error: any) => {
     const permissionError = new FirestorePermissionError({
       path,
@@ -397,12 +427,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
         .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
     } else {
-      addMembershipTransaction(
-        `Zahlung: ${player.name}`,
-        amount,
-        'other',
-        playerId
-      );
+      addMembershipTransaction(`Zahlung: ${player.name}`, amount, 'other', playerId);
     }
   };
 
@@ -413,7 +438,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const player = players.find(p => p.id === payment.playerId);
     
     deleteDoc(doc(db, 'payments', paymentId))
-      .catch(handleMutationError(`payments/${paymentId}`, 'delete'));
+      .catch(handleMutationError('payments', 'delete'));
       
     if (player) {
       const newBalance = (player.balance || 0) - payment.amount;
@@ -440,18 +465,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => {
     if (!db || !currentUserProfile) return;
-    
-    const txData: any = { 
-      description, 
-      amount, 
-      type, 
-      date: new Date().toISOString(), 
-      recordedBy: currentUserProfile.id 
-    };
-    
-    if (targetPlayerId && targetPlayerId !== "none") {
-      txData.targetPlayerId = targetPlayerId;
-    }
+    const txData: any = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
+    if (targetPlayerId && targetPlayerId !== "none") txData.targetPlayerId = targetPlayerId;
 
     addDoc(collection(db, 'membershipTransactions'), txData)
       .catch(handleMutationError('membershipTransactions', 'create', txData));
@@ -495,12 +510,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const recordClubhousePayment = (amount: number) => {
     if (!db || !currentUserProfile) return;
-    const expData = { 
-      description: "Abrechnung Vereinsheim", 
-      amount, 
-      date: new Date().toISOString(), 
-      recordedBy: currentUserProfile.id 
-    };
+    const expData = { description: "Abrechnung Vereinsheim", amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
     addDoc(collection(db, 'treasuryExpenses'), expData)
       .catch(handleMutationError('treasuryExpenses', 'create', expData));
   };
@@ -552,7 +562,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
     if (!db) return;
-    
     const eventData: any = { ...event };
     if (eventData.description === undefined) delete eventData.description;
     if (eventData.location === undefined) delete eventData.location;
@@ -588,13 +597,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const upsertAttendance = async (eventId: string, status: 'going' | 'declined', reason?: string) => {
     if (!db || !currentUserProfile) return;
     const docId = `${eventId}_${currentUserProfile.id}`;
-    const attendanceData: any = {
-      eventId,
-      playerId: currentUserProfile.id,
-      playerName: currentUserProfile.name,
-      status,
-      updatedAt: new Date().toISOString(),
-    };
+    const attendanceData: any = { eventId, playerId: currentUserProfile.id, playerName: currentUserProfile.name, status, updatedAt: new Date().toISOString() };
     if (status === 'declined' && reason) attendanceData.reason = reason;
 
     setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
@@ -604,41 +607,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const updatePlayerAttendance = async (eventId: string, playerId: string, playerName: string, status: 'going' | 'declined' | null, reason?: string) => {
     if (!db) return;
     const docId = `${eventId}_${playerId}`;
-    
     if (status === null) {
-      deleteDoc(doc(db, 'eventAttendance', docId))
-        .catch(handleMutationError(`eventAttendance/${docId}`, 'delete'));
+      deleteDoc(doc(db, 'eventAttendance', docId)).catch(handleMutationError(`eventAttendance/${docId}`, 'delete'));
       return;
     }
-
-    const attendanceData: any = {
-      eventId,
-      playerId,
-      playerName,
-      status,
-      updatedAt: new Date().toISOString(),
-    };
+    const attendanceData: any = { eventId, playerId, playerName, status, updatedAt: new Date().toISOString() };
     if (status === 'declined' && reason) attendanceData.reason = reason;
-
     setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
   };
 
   const addAbsence = async (data: Omit<Absence, 'id' | 'playerId' | 'playerName'>) => {
     if (!db || !currentUserProfile) return;
-    const absenceData: any = { 
-      ...data, 
-      playerId: currentUserProfile.id, 
-      playerName: currentUserProfile.name 
-    };
+    const absenceData: any = { ...data, playerId: currentUserProfile.id, playerName: currentUserProfile.name };
     if (absenceData.reason === undefined) delete absenceData.reason;
-
-    await addDoc(collection(db, 'absences'), absenceData)
-      .catch(handleMutationError('absences', 'create', absenceData));
+    await addDoc(collection(db, 'absences'), absenceData).catch(handleMutationError('absences', 'create', absenceData));
 
     const start = startOfDay(parseISO(data.startDate));
     const end = endOfDay(parseISO(data.endDate));
-    
     teamEvents.forEach(event => {
       const eventDate = parseISO(event.date);
       if (eventDate >= start && eventDate <= end) {
@@ -650,107 +636,102 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAbsence = async (id: string) => {
     if (!db) return;
-    await deleteDoc(doc(db, 'absences', id))
-      .catch(handleMutationError(`absences/${id}`, 'delete'));
+    await deleteDoc(doc(db, 'absences', id)).catch(handleMutationError(`absences/${id}`, 'delete'));
   };
 
   const upsertLineup = async (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => {
     if (!db) return;
-    const lineupData = {
-      ...data,
-      eventId,
-      updatedAt: new Date().toISOString()
-    };
-    setDoc(doc(db, 'lineups', eventId), lineupData, { merge: true })
-      .catch(handleMutationError(`lineups/${eventId}`, 'write', lineupData));
+    const lineupData = { ...data, eventId, updatedAt: new Date().toISOString() };
+    setDoc(doc(db, 'lineups', eventId), lineupData, { merge: true }).catch(handleMutationError(`lineups/${eventId}`, 'write', lineupData));
+  };
+
+  const claimTicker = async (eventId: string) => {
+    if (!db || !currentUserProfile) return;
+    const tickerRef = doc(db, 'tickers', eventId);
+    const data = { operatorId: currentUserProfile.id, operatorName: currentUserProfile.name, updatedAt: new Date().toISOString() };
+    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+  };
+
+  const releaseTicker = async (eventId: string) => {
+    if (!db) return;
+    const tickerRef = doc(db, 'tickers', eventId);
+    const data = { operatorId: null, operatorName: null, updatedAt: new Date().toISOString() };
+    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+  };
+
+  const updateTickerScore = async (eventId: string, home: number, away: number) => {
+    if (!db) return;
+    const tickerRef = doc(db, 'tickers', eventId);
+    const data = { homeScore: home, awayScore: away, updatedAt: new Date().toISOString(), status: 'live' };
+    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+  };
+
+  const addTickerEvent = async (eventId: string, event: Omit<TickerEvent, 'id' | 'eventId' | 'timestamp'>) => {
+    if (!db) return;
+    const eventData = { ...event, eventId, timestamp: new Date().toISOString() };
+    addDoc(collection(db, 'tickerEvents'), eventData).catch(handleMutationError('tickerEvents', 'create', eventData));
+  };
+
+  const deleteTickerEvent = async (eventId: string, eventIdToRemove: string) => {
+    if (!db) return;
+    deleteDoc(doc(db, 'tickerEvents', eventIdToRemove)).catch(handleMutationError(`tickerEvents/${eventIdToRemove}`, 'delete'));
   };
 
   const addBezahlkiste = () => {
     if (!db) return;
-    const crateData = { 
-      playerId: 'clubhouse', 
-      playerName: 'Bezahlkiste (Mannschaft)', 
-      itemType: 'crate', 
-      cost: settings.cratePrice, 
-      date: new Date().toISOString() 
-    };
-    addDoc(collection(db, 'expenses'), crateData)
-      .catch(handleMutationError('expenses', 'create', crateData));
+    const crateData = { playerId: 'clubhouse', playerName: 'Bezahlkiste (Mannschaft)', itemType: 'crate', cost: settings.cratePrice, date: new Date().toISOString() };
+    addDoc(collection(db, 'expenses'), crateData).catch(handleMutationError('expenses', 'create', crateData));
   };
 
   const addPlayer = async (name: string, email: string, roles: Role[], uid?: string, isFeeExempt: boolean = false) => {
     if (!db) return;
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
     const playerData = { name, email, roles, balance: 0.00, treasuryBalance: 0.00, isFeeExempt };
-    await setDoc(playerRef, playerData, { merge: true })
-      .catch(handleMutationError(`players/${playerRef.id}`, uid ? 'update' : 'create', playerData));
+    await setDoc(playerRef, playerData, { merge: true }).catch(handleMutationError(`players/${playerRef.id}`, uid ? 'update' : 'create', playerData));
   };
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
     if (!db) return;
-    setDoc(doc(db, 'players', id), updates, { merge: true })
-      .catch(handleMutationError(`players/${id}`, 'update', updates));
+    setDoc(doc(db, 'players', id), updates, { merge: true }).catch(handleMutationError(`players/${id}`, 'update', updates));
   };
 
   const deletePlayer = async (id: string) => {
     if (!db) return;
-    await deleteDoc(doc(db, 'players', id))
-      .catch(handleMutationError(`players/${id}`, 'delete'));
+    await deleteDoc(doc(db, 'players', id)).catch(handleMutationError(`players/${id}`, 'delete'));
   };
 
   const updateSettings = async (updates: Partial<AppSettings>) => {
     if (!db) return;
-    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true })
-      .catch(handleMutationError('settings/global', 'update', updates));
+    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true }).catch(handleMutationError('settings/global', 'update', updates));
   };
 
   const resetClubhouseSeason = async () => {
     if (!db) return;
     const updates = { lastClubhouseResetDate: new Date().toISOString() };
-    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true })
-      .catch(handleMutationError('settings/global', 'update', updates));
+    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true }).catch(handleMutationError('settings/global', 'update', updates));
   };
 
   const markIntroSeen = async (roles: Role[]) => {
     if (!db || !currentUserProfile) return;
     const updates = { lastIntroSeenRoles: roles };
-    await setDoc(doc(db, 'players', currentUserProfile.id), updates, { merge: true })
-      .catch(handleMutationError(`players/${currentUserProfile.id}`, 'update', updates));
+    await setDoc(doc(db, 'players', currentUserProfile.id), updates, { merge: true }).catch(handleMutationError(`players/${currentUserProfile.id}`, 'update', updates));
   };
 
   const closeSeason = async (year: number) => {
     if (!db || !currentUserProfile) return;
     const batch = writeBatch(db);
-
     players.forEach(player => {
       if (player.isFeeExempt || player.email === 'kasse@kickoff.de') return;
-      
       const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === year);
-      const isAnnual = playerFees.some(f => f.type === 'annual');
-      
-      if (!isAnnual) {
-        const paidMonths = playerFees.filter(f => f.type === 'monthly').length;
-        const unpaidCount = 10 - paidMonths; 
-        
+      if (!playerFees.some(f => f.type === 'annual')) {
+        const unpaidCount = 10 - playerFees.filter(f => f.type === 'monthly').length;
         if (unpaidCount > 0) {
           const debt = unpaidCount * settings.monthlyFee;
-          const newTreasuryBalance = (player.treasuryBalance || 0) - debt;
-          const playerRef = doc(db, 'players', player.id);
-          batch.update(playerRef, { treasuryBalance: newTreasuryBalance });
+          batch.update(doc(db, 'players', player.id), { treasuryBalance: (player.treasuryBalance || 0) - debt });
         }
       }
     });
-
-    const currentTotal = totalMannschaftskasse;
-    const carryoverRef = doc(collection(db, 'membershipTransactions'));
-    batch.set(carryoverRef, {
-      description: `Saisonübertrag aus ${year}/${(year+1)%100}`,
-      amount: currentTotal,
-      type: 'other',
-      date: new Date().toISOString(),
-      recordedBy: currentUserProfile.id
-    });
-
+    batch.set(doc(collection(db, 'membershipTransactions')), { description: `Saisonübertrag aus ${year}/${(year+1)%100}`, amount: totalMannschaftskasse, type: 'other', date: new Date().toISOString(), recordedBy: currentUserProfile.id });
     await batch.commit();
   };
 
@@ -758,16 +739,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, currentUserProfile, settings,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, tickers, tickerEvents, currentUserProfile, settings,
       loading: criticalDataLoading,
-      totalMannschaftskasse,
-      totalBierkasse,
-      bierkasseLiquidity,
+      totalMannschaftskasse, totalBierkasse, bierkasseLiquidity,
       addExpense, deleteExpense, recordPayment, deletePayment,
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, 
-      addAbsence, deleteAbsence, upsertLineup,
+      addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, updateTickerScore, addTickerEvent, deleteTickerEvent,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
     }}>
       {children}

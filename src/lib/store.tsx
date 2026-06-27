@@ -248,6 +248,19 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
+// Helper to sanitize data for Firestore (removes undefined values)
+const cleanData = (obj: any) => {
+  const newObj: any = {};
+  Object.keys(obj).forEach(key => {
+    const val = obj[key];
+    if (val !== undefined) {
+      if (typeof val === 'number' && isNaN(val)) return;
+      newObj[key] = val;
+    }
+  });
+  return newObj;
+};
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
   const { user, loading: authLoading } = useUser();
@@ -314,7 +327,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
   const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
   const tickers = useMemo(() => tickersData?.map(d => ({ ...d.data, id: d.id })) || [], [tickersData]);
-  const tickerEvents = useMemo(() => tickerEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [tickerEventsData]);
+  const tickerEvents = useMemo(() => {
+    const raw = tickerEventsData?.map(d => ({ ...d.data, id: d.id })) || [];
+    return raw.filter(e => {
+        const isPlayerGoal = e.type === 'goal' ? activePlayerIds.has(e.playerId || '') : true;
+        return isPlayerGoal;
+    });
+  }, [tickerEventsData, activePlayerIds]);
   
   const attendance = useMemo(() => {
     const raw = attendanceData?.map(d => ({ ...d.data, id: d.id })) || [];
@@ -450,8 +469,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addMembershipFee = (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => {
     if (!db) return;
     const amount = type === 'monthly' ? settings.monthlyFee : settings.annualFee;
-    const feeData: any = { playerId, type, year, amount, datePaid: new Date().toISOString() };
-    if (month !== undefined) feeData.month = month;
+    const feeData = cleanData({ playerId, type, year, amount, datePaid: new Date().toISOString(), month });
 
     addDoc(collection(db, 'membershipFees'), feeData)
       .catch(handleMutationError('membershipFees', 'create', feeData));
@@ -465,8 +483,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => {
     if (!db || !currentUserProfile) return;
-    const txData: any = { description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
-    if (targetPlayerId && targetPlayerId !== "none") txData.targetPlayerId = targetPlayerId;
+    const txData = cleanData({ description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id, targetPlayerId: (targetPlayerId === "none" ? undefined : targetPlayerId) });
 
     addDoc(collection(db, 'membershipTransactions'), txData)
       .catch(handleMutationError('membershipTransactions', 'create', txData));
@@ -544,14 +561,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateFineType = async (id: string, name: string, amount: number) => {
     if (!db) return;
-    setDoc(doc(db, 'fineCatalog', id), { name, amount }, { merge: true })
-      .catch(handleMutationError(`fineCatalog/${id}`, 'update', { name, amount }));
+    const data = { name, amount };
+    setDoc(doc(db, 'fineCatalog', id), data, { merge: true })
+      .catch(handleMutationError(`fineCatalog/${id}`, 'update', data));
   };
 
   const addFineType = async (name: string, amount: number) => {
     if (!db) return;
-    addDoc(collection(db, 'fineCatalog'), { name, amount })
-      .catch(handleMutationError('fineCatalog', 'create', { name, amount }));
+    const data = { name, amount };
+    addDoc(collection(db, 'fineCatalog'), data)
+      .catch(handleMutationError('fineCatalog', 'create', data));
   };
 
   const deleteFineType = async (id: string) => {
@@ -562,9 +581,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
     if (!db) return;
-    const eventData: any = { ...event };
-    if (eventData.description === undefined) delete eventData.description;
-    if (eventData.location === undefined) delete eventData.location;
+    const eventData = cleanData({ ...event });
 
     const newDoc = await addDoc(collection(db, 'teamEvents'), eventData)
       .catch(handleMutationError('teamEvents', 'create', eventData));
@@ -584,8 +601,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateTeamEvent = async (id: string, updates: Partial<TeamEvent>) => {
     if (!db) return;
-    setDoc(doc(db, 'teamEvents', id), updates, { merge: true })
-      .catch(handleMutationError(`teamEvents/${id}`, 'update', updates));
+    const data = cleanData(updates);
+    setDoc(doc(db, 'teamEvents', id), data, { merge: true })
+      .catch(handleMutationError(`teamEvents/${id}`, 'update', data));
   };
 
   const deleteTeamEvent = async (id: string) => {
@@ -597,8 +615,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const upsertAttendance = async (eventId: string, status: 'going' | 'declined', reason?: string) => {
     if (!db || !currentUserProfile) return;
     const docId = `${eventId}_${currentUserProfile.id}`;
-    const attendanceData: any = { eventId, playerId: currentUserProfile.id, playerName: currentUserProfile.name, status, updatedAt: new Date().toISOString() };
-    if (status === 'declined' && reason) attendanceData.reason = reason;
+    const attendanceData = cleanData({ eventId, playerId: currentUserProfile.id, playerName: currentUserProfile.name, status, updatedAt: new Date().toISOString(), reason });
 
     setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
@@ -611,16 +628,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteDoc(doc(db, 'eventAttendance', docId)).catch(handleMutationError(`eventAttendance/${docId}`, 'delete'));
       return;
     }
-    const attendanceData: any = { eventId, playerId, playerName, status, updatedAt: new Date().toISOString() };
-    if (status === 'declined' && reason) attendanceData.reason = reason;
+    const attendanceData = cleanData({ eventId, playerId, playerName, status, updatedAt: new Date().toISOString(), reason });
     setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
       .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
   };
 
   const addAbsence = async (data: Omit<Absence, 'id' | 'playerId' | 'playerName'>) => {
     if (!db || !currentUserProfile) return;
-    const absenceData: any = { ...data, playerId: currentUserProfile.id, playerName: currentUserProfile.name };
-    if (absenceData.reason === undefined) delete absenceData.reason;
+    const absenceData = cleanData({ ...data, playerId: currentUserProfile.id, playerName: currentUserProfile.name });
     await addDoc(collection(db, 'absences'), absenceData).catch(handleMutationError('absences', 'create', absenceData));
 
     const start = startOfDay(parseISO(data.startDate));
@@ -648,7 +663,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const claimTicker = async (eventId: string) => {
     if (!db || !currentUserProfile) return;
     const tickerRef = doc(db, 'tickers', eventId);
-    const data = { operatorId: currentUserProfile.id, operatorName: currentUserProfile.name, updatedAt: new Date().toISOString() };
+    const data = { 
+        operatorId: currentUserProfile.id, 
+        operatorName: currentUserProfile.name, 
+        updatedAt: new Date().toISOString(),
+        // Initialize scores to 0 if it's a new claim
+        homeScore: 0,
+        awayScore: 0,
+        status: 'live' as const
+    };
     setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
   };
 
@@ -662,13 +685,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const updateTickerScore = async (eventId: string, home: number, away: number) => {
     if (!db) return;
     const tickerRef = doc(db, 'tickers', eventId);
-    const data = { homeScore: home, awayScore: away, updatedAt: new Date().toISOString(), status: 'live' };
+    const data = cleanData({ homeScore: home, awayScore: away, updatedAt: new Date().toISOString(), status: 'live' });
     setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
   };
 
   const addTickerEvent = async (eventId: string, event: Omit<TickerEvent, 'id' | 'eventId' | 'timestamp'>) => {
     if (!db) return;
-    const eventData = { ...event, eventId, timestamp: new Date().toISOString() };
+    const eventData = cleanData({ ...event, eventId, timestamp: new Date().toISOString() });
     addDoc(collection(db, 'tickerEvents'), eventData).catch(handleMutationError('tickerEvents', 'create', eventData));
   };
 
@@ -692,7 +715,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
     if (!db) return;
-    setDoc(doc(db, 'players', id), updates, { merge: true }).catch(handleMutationError(`players/${id}`, 'update', updates));
+    const data = cleanData(updates);
+    setDoc(doc(db, 'players', id), data, { merge: true }).catch(handleMutationError(`players/${id}`, 'update', data));
   };
 
   const deletePlayer = async (id: string) => {
@@ -702,7 +726,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateSettings = async (updates: Partial<AppSettings>) => {
     if (!db) return;
-    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true }).catch(handleMutationError('settings/global', 'update', updates));
+    const data = cleanData(updates);
+    await setDoc(doc(db, 'settings', 'global'), data, { merge: true }).catch(handleMutationError('settings/global', 'update', data));
   };
 
   const resetClubhouseSeason = async () => {
@@ -735,7 +760,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await batch.commit();
   };
 
-  const criticalDataLoading = authLoading || playersLoading || settingsLoading || teamEventsLoading;
+  const criticalDataLoading = authLoading || (players.length === 0 && playersLoading) || settingsLoading || (teamEvents.length === 0 && teamEventsLoading);
 
   return (
     <StoreContext.Provider value={{ 

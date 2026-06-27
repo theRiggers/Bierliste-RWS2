@@ -41,9 +41,20 @@ export default function TickerPage() {
   useEffect(() => { setMounted(true) }, [])
 
   const event = useMemo(() => teamEvents.find(e => e.id === eventId), [teamEvents, eventId]);
-  const ticker = useMemo(() => tickers.find(t => t.id === eventId) || {
-    id: eventId, homeScore: 0, awayScore: 0, operatorId: null, status: 'pre'
-  } as Ticker, [tickers, eventId]);
+  
+  const ticker = useMemo(() => {
+    const found = tickers.find(t => t.id === eventId);
+    return {
+      id: eventId,
+      homeScore: 0,
+      awayScore: 0,
+      operatorId: null,
+      operatorName: null,
+      status: 'pre' as const,
+      updatedAt: new Date().toISOString(),
+      ...found
+    } as Ticker;
+  }, [tickers, eventId]);
 
   const sortedEvents = useMemo(() => 
     tickerEvents.filter(e => e.eventId === eventId)
@@ -81,7 +92,7 @@ export default function TickerPage() {
       });
 
       if (newType === 'goal') {
-        updateTickerScore(eventId, ticker.homeScore + 1, ticker.awayScore);
+        updateTickerScore(eventId, (ticker.homeScore || 0) + 1, ticker.awayScore || 0);
       }
 
       setNewText(""); setSelectedPlayer(""); setSelectedAssist(""); setPlayerIn(""); setPlayerOut("");
@@ -214,7 +225,7 @@ export default function TickerPage() {
                      Event posten
                    </Button>
                    <div className="flex gap-1 border rounded-xl p-1 bg-muted/30">
-                      <Button variant="ghost" size="sm" onClick={() => updateTickerScore(eventId, ticker.homeScore, ticker.awayScore + 1)} className="h-10 px-3 text-xs font-bold text-destructive">+ Gast-Tor</Button>
+                      <Button variant="ghost" size="sm" onClick={() => updateTickerScore(eventId, (ticker.homeScore || 0), (ticker.awayScore || 0) + 1)} className="h-10 px-3 text-xs font-bold text-destructive">+ Gast-Tor</Button>
                    </div>
                 </div>
               </CardContent>

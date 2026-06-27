@@ -11,17 +11,16 @@ let firestoreInstance: Firestore | null = null;
 export function initializeFirebase() {
   const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   
-  // Singleton pattern to ensure initializeFirestore is only called once
   if (!firestoreInstance) {
+    // Check if firestore is already initialized to avoid "already called" error
     try {
-      // Try to initialize with persistence
       firestoreInstance = initializeFirestore(firebaseApp, {
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager()
         })
       });
-    } catch (e) {
-      // Fallback if already initialized elsewhere
+    } catch (e: any) {
+      // If initialization fails because it was already called, just get the instance
       firestoreInstance = getFirestore(firebaseApp);
     }
   }

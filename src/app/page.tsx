@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -34,9 +35,10 @@ import {
   Calculator,
   Medal,
   Copy,
-  RotateCcw
+  RotateCcw,
+  AlertCircle
 } from "lucide-react"
-import { format, isAfter } from "date-fns"
+import { format, isAfter, isBefore, addDays } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
@@ -44,12 +46,13 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { useStore as useStoreInstance } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { IntroDialog } from "@/components/layout/intro-dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -59,7 +62,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity, currentUserProfile, settings, addPlayer, recordPayment, recordClubhousePayment, addBezahlkiste, resetClubhouseSeason, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, attendance, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity, currentUserProfile, settings, addPlayer, recordPayment, recordClubhousePayment, addBezahlkiste, resetClubhouseSeason, upsertAttendance, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
@@ -70,6 +73,11 @@ export default function Dashboard() {
   const [isSelfPaymentDialogOpen, setIsSelfPaymentDialogOpen] = useState(false)
   const [selfPaymentAmount, setSelfPaymentAmount] = useState("")
   const [selfPaymentType, setSelfPaymentType] = useState<'drinks' | 'treasury' | 'fines'>('drinks')
+
+  // Quick Decline State
+  const [isQuickDeclineOpen, setIsQuickDeclineOpen] = useState(false)
+  const [quickDeclineEventId, setQuickDeclineEventId] = useState<string | null>(null)
+  const [quickDeclineReason, setQuickDeclineReason] = useState("")
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -84,6 +92,22 @@ export default function Dashboard() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return futureEvents[0] || null;
   }, [teamEvents]);
+
+  const rsvpReminder = useMemo(() => {
+    if (!nextEvent || !currentUserProfile) return null;
+    
+    const userAttendance = attendance.find(a => a.eventId === nextEvent.id && a.playerId === currentUserProfile.id);
+    if (userAttendance) return null;
+
+    const eventDate = new Date(nextEvent.date);
+    const now = new Date();
+    const reminderThreshold = addDays(now, 5);
+
+    if (isBefore(eventDate, reminderThreshold)) {
+      return nextEvent;
+    }
+    return null;
+  }, [nextEvent, currentUserProfile, attendance]);
 
   const clubhouseStats = useMemo(() => {
     const resetDate = settings.lastClubhouseResetDate ? new Date(settings.lastClubhouseResetDate) : new Date(0);
@@ -123,7 +147,6 @@ export default function Dashboard() {
     const currentMonth = now.getMonth();
     const currentDay = now.getDate();
     
-    // Saisonwechsel am 15.06.
     const seasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
@@ -137,7 +160,6 @@ export default function Dashboard() {
       if (currentMIdxInList !== -1) {
         isPastOrCurrent = mIdxInList <= currentMIdxInList;
       } else {
-        // Logik für Monate außerhalb von FEE_MONTHS (z.B. Juni)
         if (currentMonth === 5) isPastOrCurrent = true; 
         else isPastOrCurrent = false;
       }
@@ -239,6 +261,24 @@ export default function Dashboard() {
         </Card>
       </div>
     )
+  }
+
+  const handleQuickRSVP = async (eventId: string, status: 'going' | 'declined') => {
+    if (status === 'going') {
+      await upsertAttendance(eventId, 'going');
+      toast({ title: "Zusage gespeichert", description: "Wir sehen uns beim Termin!" });
+    } else {
+      setQuickDeclineEventId(eventId);
+      setQuickDeclineReason("");
+      setIsQuickDeclineOpen(true);
+    }
+  }
+
+  const confirmQuickDecline = async () => {
+    if (!quickDeclineEventId || !quickDeclineReason.trim()) return;
+    await upsertAttendance(quickDeclineEventId, 'declined', quickDeclineReason);
+    setIsQuickDeclineOpen(false);
+    toast({ title: "Absage gespeichert" });
   }
 
   const handlePayInitiate = (type: 'drinks' | 'treasury' | 'fines') => {
@@ -385,6 +425,42 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           </div>
 
+          {/* RSVP Hint */}
+          {rsvpReminder && (
+            <Alert className="bg-primary/10 border-primary/20 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary rounded-xl text-white shrink-0 mt-0.5">
+                    <CalendarDays className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <AlertTitle className="font-black text-primary uppercase text-xs tracking-wider">Erinnerung: Rückmeldung fehlt!</AlertTitle>
+                    <AlertDescription className="text-sm font-medium text-foreground">
+                      Du hast noch nicht für <strong className="text-primary">{rsvpReminder.title}</strong> am {format(new Date(rsvpReminder.date), 'dd.MM. HH:mm')} Uhr rückgemeldet.
+                    </AlertDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                   <Button 
+                    size="sm" 
+                    className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 h-10 px-4"
+                    onClick={() => handleQuickRSVP(rsvpReminder.id, 'going')}
+                   >
+                     <Check className="h-4 w-4 mr-1.5" /> Ich bin dabei
+                   </Button>
+                   <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="rounded-xl font-bold border-destructive text-destructive hover:bg-destructive/10 h-10 px-4"
+                    onClick={() => handleQuickRSVP(rsvpReminder.id, 'declined')}
+                   >
+                     <X className="h-4 w-4 mr-1.5" /> Absagen
+                   </Button>
+                </div>
+              </div>
+            </Alert>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-none shadow-md bg-card rounded-2xl">
               <CardContent className="pt-6">
@@ -419,28 +495,28 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <>
-                <div className="flex items-center justify-between">
-                  <h2 className={cn("text-2xl font-bold", feeStatus.totalDebt > 0 ? 'text-destructive' : 'text-emerald-600')}>
-                    {feeStatus.totalDebt > 0 ? `-${feeStatus.totalDebt.toFixed(2)}` : '0.00'} €
-                  </h2>
-                  {feeStatus.totalDebt > 0 && (
-                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                      Bezahlen <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-                <div className="mt-4 grid grid-cols-5 gap-1 pt-4 border-t border-border">
-                  {feeStatus.monthsStatus.map((m) => (
-                    <div key={m.month} className="flex flex-col items-center">
-                      <div className={cn("h-6 w-6 rounded-lg flex items-center justify-center mb-1 text-[8px] font-bold", m.isPaid ? "bg-emerald-500 text-white" : m.isPastOrCurrent ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-muted text-muted-foreground")}>
-                        {m.isPaid ? <Check className="h-3 w-3" /> : m.isPastOrCurrent ? <X className="h-3 w-3" /> : null}
-                      </div>
-                      <span className="text-[8px] text-muted-foreground font-medium">{m.name}</span>
+                    <div className="flex items-center justify-between">
+                      <h2 className={cn("text-2xl font-bold", feeStatus.totalDebt > 0 ? 'text-destructive' : 'text-emerald-600')}>
+                        {feeStatus.totalDebt > 0 ? `-${feeStatus.totalDebt.toFixed(2)}` : '0.00'} €
+                      </h2>
+                      {feeStatus.totalDebt > 0 && (
+                        <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                          Bezahlen <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
+                    <div className="mt-4 grid grid-cols-5 gap-1 pt-4 border-t border-border">
+                      {feeStatus.monthsStatus.map((m) => (
+                        <div key={m.month} className="flex flex-col items-center">
+                          <div className={cn("h-6 w-6 rounded-lg flex items-center justify-center mb-1 text-[8px] font-bold", m.isPaid ? "bg-emerald-500 text-white" : m.isPastOrCurrent ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-muted text-muted-foreground")}>
+                            {m.isPaid ? <Check className="h-3 w-3" /> : m.isPastOrCurrent ? <X className="h-3 w-3" /> : null}
+                          </div>
+                          <span className="text-[8px] text-muted-foreground font-medium">{m.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -664,6 +740,34 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
+
+        {/* Quick Decline Reason Dialog */}
+        <Dialog open={isQuickDeclineOpen} onOpenChange={setIsQuickDeclineOpen}>
+          <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
+            <DialogHeader>
+              <DialogTitle>Termin absagen</DialogTitle>
+              <DialogDescription>Bitte gib einen kurzen Grund für deine Absage an.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label className="text-xs font-bold uppercase text-muted-foreground ml-1">Grund (Pflichtfeld)</Label>
+              <Textarea 
+                placeholder="Z.B. Arbeit, Krankheit, Familie..." 
+                value={quickDeclineReason} 
+                onChange={(e) => setQuickDeclineReason(e.target.value)}
+                className="mt-2 rounded-xl h-24"
+              />
+            </div>
+            <DialogFooter>
+              <Button 
+                onClick={confirmQuickDecline} 
+                disabled={!quickDeclineReason.trim()} 
+                className="w-full rounded-xl bg-destructive hover:bg-destructive/90 text-white font-bold h-12"
+              >
+                Absage bestätigen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Payment Dialog for Treasurer */}
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>

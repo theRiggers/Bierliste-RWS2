@@ -156,7 +156,6 @@ export default function HistoryPage() {
 
   if (!user || !currentUserProfile) return null
 
-  // Admins and Kassenwarte can delete entries
   const isAdmin = currentUserProfile.roles.includes('admin')
   const isKassenwart = currentUserProfile.roles.includes('kassenwart') || isAdmin
   const canDelete = isKassenwart
@@ -196,7 +195,7 @@ export default function HistoryPage() {
       case 'payment': return 'Zahlung';
       case 'fine': return item.description || 'Strafe';
       case 'membershipFee': return item.description || 'Beitrag';
-      case 'treasury': return item.description || 'Bierkasse-Ausgabe';
+      case 'treasury': return item.description || 'Mannschaftskasse-Ausgabe';
       case 'sponsor': return 'Sponsor';
       case 'donation': return 'Spende';
       case 'expense': return item.description || 'M-Kasse Ausgabe';
@@ -265,7 +264,7 @@ export default function HistoryPage() {
                   <SelectItem value="payment">Zahlungen</SelectItem>
                   <SelectItem value="membershipFee">Beiträge</SelectItem>
                   <SelectItem value="fine">Strafen</SelectItem>
-                  <SelectItem value="treasury">Bierliste (Abrechnung)</SelectItem>
+                  <SelectItem value="treasury">Mannschaftskasse (Abrechnung)</SelectItem>
                   <SelectItem value="membershipTransaction">Mannschaftskasse (Sonstiges)</SelectItem>
                 </SelectContent>
               </Select>

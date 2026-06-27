@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -9,13 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { 
   TrendingUp, 
-  TrendingDown, 
   Plus, 
-  Minus, 
   Loader2, 
   Banknote, 
   Calendar,
-  Search,
   Trash2,
   ArrowUpCircle,
   ArrowDownCircle,
@@ -37,7 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 const MONTH_NAMES = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -74,7 +72,6 @@ export default function TreasuryPage() {
   const currentMonth = now.getMonth();
   const currentDay = now.getDate();
   
-  // Saisonwechsel am 15.06.
   const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1, currentSeasonYear - 2];
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
@@ -101,6 +98,26 @@ export default function TreasuryPage() {
       </div>
     )
   }
+
+  const handleToggleFee = (playerId: string, month: number) => {
+    const season = parseInt(selectedSeason);
+    const existing = membershipFees.find(f => f.playerId === playerId && f.month === month && f.year === season);
+    if (existing) {
+      deleteMembershipFee(existing.id);
+    } else {
+      addMembershipFee(playerId, 'monthly', season, month);
+    }
+  };
+
+  const handleToggleAnnual = (playerId: string) => {
+    const season = parseInt(selectedSeason);
+    const existing = membershipFees.find(f => f.playerId === playerId && f.type === 'annual' && f.year === season);
+    if (existing) {
+      deleteMembershipFee(existing.id);
+    } else {
+      addMembershipFee(playerId, 'annual', season);
+    }
+  };
 
   const handleAddTransaction = async () => {
     const val = parseFloat(amount)
@@ -129,26 +146,6 @@ export default function TreasuryPage() {
       toast({ title: "Saison abgeschlossen", description: "Schulden wurden übernommen und Übertrag gebucht." });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleToggleFee = (playerId: string, month: number) => {
-    const season = parseInt(selectedSeason);
-    const existing = membershipFees.find(f => f.playerId === playerId && f.month === month && f.year === season);
-    if (existing) {
-      deleteMembershipFee(existing.id);
-    } else {
-      addMembershipFee(playerId, 'monthly', season, month);
-    }
-  };
-
-  const handleToggleAnnual = (playerId: string) => {
-    const season = parseInt(selectedSeason);
-    const existing = membershipFees.find(f => f.playerId === playerId && f.type === 'annual' && f.year === season);
-    if (existing) {
-      deleteMembershipFee(existing.id);
-    } else {
-      addMembershipFee(playerId, 'annual', season);
     }
   };
 
@@ -301,11 +298,6 @@ export default function TreasuryPage() {
                                {filteredPlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                              </SelectContent>
                            </Select>
-                           <p className="text-[10px] text-muted-foreground italic px-1">
-                             {type === 'expense' 
-                               ? 'Wird ein Spieler gewählt, bekommt dieser den Betrag als Schulden angerechnet.' 
-                               : 'Wird ein Spieler gewählt, wird der Betrag seinem Mannschaftskasse-Konto gutgeschrieben (z.B. bei Rückzahlung von Auslagen).'}
-                           </p>
                         </div>
                       </div>
                       <DialogFooter>

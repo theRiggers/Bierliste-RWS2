@@ -2,16 +2,33 @@
 'use client';
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, Firestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
+let firestoreInstance: Firestore | null = null;
+
 export function initializeFirebase() {
   const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-  const firestore = getFirestore(firebaseApp);
+  
+  // Singleton pattern to ensure initializeFirestore is only called once
+  if (!firestoreInstance) {
+    try {
+      // Try to initialize with persistence
+      firestoreInstance = initializeFirestore(firebaseApp, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
+    } catch (e) {
+      // Fallback if already initialized elsewhere
+      firestoreInstance = getFirestore(firebaseApp);
+    }
+  }
+
   const auth = getAuth(firebaseApp);
 
-  return { firebaseApp, firestore, auth };
+  return { firebaseApp, firestore: firestoreInstance, auth };
 }
 
 export * from './provider';

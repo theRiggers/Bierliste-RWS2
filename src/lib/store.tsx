@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -15,7 +16,7 @@ export interface Player {
   email: string;
   roles: Role[];
   balance: number;
-  treasuryBalance: number; // Balance in the team treasury (membership debts etc)
+  treasuryBalance: number; 
   isFeeExempt?: boolean;
   lastIntroSeenRoles?: Role[];
 }
@@ -42,8 +43,8 @@ export interface MembershipFee {
   id: string;
   playerId: string;
   type: 'monthly' | 'annual';
-  month?: number; // 0-11
-  year: number; // Start year of the season
+  month?: number; 
+  year: number; 
   amount: number;
   datePaid: string;
 }
@@ -55,7 +56,7 @@ export interface MembershipTransaction {
   type: 'sponsor' | 'donation' | 'other' | 'expense';
   date: string;
   recordedBy: string;
-  targetPlayerId?: string; // Optional: link an expense or income to a specific player
+  targetPlayerId?: string;
 }
 
 export interface TreasuryExpense {
@@ -118,11 +119,11 @@ export interface LineupPosition {
 }
 
 export interface Lineup {
-  id: string; // usually eventId
+  id: string;
   eventId: string;
   formation: string;
   startingEleven: LineupPosition[];
-  substitutes: string[]; // playerIds
+  substitutes: string[]; 
   updatedAt: string;
 }
 
@@ -396,7 +397,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
         .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
     } else {
-      // Record as treasury payment (income)
       addMembershipTransaction(
         `Zahlung: ${player.name}`,
         amount,
@@ -435,7 +435,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const deleteMembershipFee = (feeId: string) => {
     if (!db) return;
     deleteDoc(doc(db, 'membershipFees', feeId))
-      .catch(handleMutationError(`membershipFees/${feeId}`, 'delete'));
+      .catch(handleMutationError('membershipFees', 'delete'));
   };
 
   const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => {
@@ -449,7 +449,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       recordedBy: currentUserProfile.id 
     };
     
-    // Explicitly check for valid targetPlayerId (not undefined or "none")
     if (targetPlayerId && targetPlayerId !== "none") {
       txData.targetPlayerId = targetPlayerId;
     }
@@ -457,7 +456,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addDoc(collection(db, 'membershipTransactions'), txData)
       .catch(handleMutationError('membershipTransactions', 'create', txData));
 
-    // Update player debt if applicable
     if (txData.targetPlayerId) {
       const player = players.find(p => p.id === txData.targetPlayerId);
       if (player) {
@@ -477,7 +475,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteDoc(doc(db, 'membershipTransactions', transactionId))
       .catch(handleMutationError(`membershipTransactions/${transactionId}`, 'delete'));
 
-    // Revert individual debt if applicable
     if (tx.targetPlayerId) {
       const player = players.find(p => p.id === tx.targetPlayerId);
       if (player) {
@@ -556,7 +553,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
     if (!db) return;
     
-    // Explicitly handle optional fields to avoid undefined in Firestore
     const eventData: any = { ...event };
     if (eventData.description === undefined) delete eventData.description;
     if (eventData.location === undefined) delete eventData.location;
@@ -635,7 +631,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       playerId: currentUserProfile.id, 
       playerName: currentUserProfile.name 
     };
-    // Ensure optional fields aren't undefined
     if (absenceData.reason === undefined) delete absenceData.reason;
 
     await addDoc(collection(db, 'absences'), absenceData)
@@ -727,7 +722,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db || !currentUserProfile) return;
     const batch = writeBatch(db);
 
-    // 1. For each player, calculate unpaid monthly fees for this year
     players.forEach(player => {
       if (player.isFeeExempt || player.email === 'kasse@kickoff.de') return;
       
@@ -736,7 +730,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       
       if (!isAnnual) {
         const paidMonths = playerFees.filter(f => f.type === 'monthly').length;
-        const unpaidCount = 10 - paidMonths; // 10 months defined in FEE_MONTHS
+        const unpaidCount = 10 - paidMonths; 
         
         if (unpaidCount > 0) {
           const debt = unpaidCount * settings.monthlyFee;
@@ -747,7 +741,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // 2. Add current total balance as carryover for the new season
     const currentTotal = totalMannschaftskasse;
     const carryoverRef = doc(collection(db, 'membershipTransactions'));
     batch.set(carryoverRef, {
@@ -761,10 +754,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await batch.commit();
   };
 
+  const criticalDataLoading = authLoading || playersLoading || settingsLoading || teamEventsLoading;
+
   return (
     <StoreContext.Provider value={{ 
       players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, currentUserProfile, settings,
-      loading: playersLoading || expensesLoading || paymentsLoading || feesLoading || mTransactionsLoading || tExpensesLoading || finesLoading || fineCatalogLoading || authLoading || settingsLoading || teamEventsLoading || attendanceLoading || absencesLoading || lineupsLoading,
+      loading: criticalDataLoading,
       totalMannschaftskasse,
       totalBierkasse,
       bierkasseLiquidity,

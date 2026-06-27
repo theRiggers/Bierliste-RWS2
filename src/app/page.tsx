@@ -8,18 +8,15 @@ import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useStore, FEE_MONTHS, Role } from "@/lib/store"
 import { 
-  Wallet, 
+   Wallet, 
   Beer, 
   Clock, 
-  ArrowUpRight, 
   Loader2, 
   UserCircle, 
   ShieldCheck, 
   ExternalLink, 
   Banknote, 
   ShoppingCart, 
-  Send, 
-  FileText, 
   CreditCard, 
   PlusCircle, 
   Package, 
@@ -31,12 +28,10 @@ import {
   MapPin,
   Trophy,
   ChevronRight,
-  Info,
   Calculator,
   Medal,
   Copy,
-  RotateCcw,
-  AlertCircle
+  RotateCcw
 } from "lucide-react"
 import { format, isAfter, isBefore, addDays } from "date-fns"
 import { de } from "date-fns/locale"
@@ -47,7 +42,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { IntroDialog } from "@/components/layout/intro-dialog"
@@ -69,12 +64,10 @@ export default function Dashboard() {
   const [paymentPlayerId, setPaymentPlayerId] = useState("")
   const [paymentAmount, setPaymentAmount] = useState("")
 
-  // States for player self-payment
   const [isSelfPaymentDialogOpen, setIsSelfPaymentDialogOpen] = useState(false)
   const [selfPaymentAmount, setSelfPaymentAmount] = useState("")
   const [selfPaymentType, setSelfPaymentType] = useState<'drinks' | 'treasury' | 'fines'>('drinks')
 
-  // Quick Decline State
   const [isQuickDeclineOpen, setIsQuickDeclineOpen] = useState(false)
   const [quickDeclineEventId, setQuickDeclineEventId] = useState<string | null>(null)
   const [quickDeclineReason, setQuickDeclineReason] = useState("")
@@ -246,7 +239,7 @@ export default function Dashboard() {
               <Label htmlFor="onboarding-name" className="text-xs uppercase font-bold text-muted-foreground ml-1">Dein Name</Label>
               <Input id="onboarding-name" placeholder="Z.B. Max Mustermann" value={onboardingName} onChange={(e) => setOnboardingName(e.target.value)} className="rounded-xl h-12 bg-muted/30 border-none text-base" disabled={isSubmitting} />
             </div>
-            <Button className={cn("w-full h-12 rounded-xl font-bold text-lg", !hasAdmin ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 dark:shadow-none shadow-lg" : "cyan-glow")} onClick={async () => {
+            <Button className={cn("w-full h-12 rounded-xl font-bold text-lg", !hasAdmin ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200 dark:shadow-none shadow-lg" : "red-glow")} onClick={async () => {
               if (!onboardingName.trim()) return;
               setIsSubmitting(true);
               try {
@@ -425,7 +418,6 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-primary font-headline">Dashboard</h1>
           </div>
 
-          {/* RSVP Hint */}
           {rsvpReminder && (
             <Alert className="bg-primary/10 border-primary/20 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-500">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
@@ -741,7 +733,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Quick Decline Reason Dialog */}
         <Dialog open={isQuickDeclineOpen} onOpenChange={setIsQuickDeclineOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
@@ -769,7 +760,6 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* Payment Dialog for Treasurer */}
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
@@ -801,7 +791,6 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* User Self-Payment Dialog */}
         <Dialog open={isSelfPaymentDialogOpen} onOpenChange={setIsSelfPaymentDialogOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
@@ -837,7 +826,7 @@ export default function Dashboard() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handlePayConfirm} className="w-full h-12 rounded-xl font-bold cyan-glow">
+              <Button onClick={handlePayConfirm} className="w-full h-12 rounded-xl font-bold red-glow">
                 Weiter zu PayPal
               </Button>
             </DialogFooter>

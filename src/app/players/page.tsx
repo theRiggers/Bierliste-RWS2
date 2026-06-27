@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -5,11 +6,11 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player, FEE_MONTHS } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Save, Loader2, Trash2, Banknote, Check, Share2, Info, TrendingUp, Beer, ChevronDown } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Loader2, Trash2, Banknote, Share2, TrendingUp, Beer, ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"

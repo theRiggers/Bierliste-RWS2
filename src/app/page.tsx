@@ -428,7 +428,7 @@ export default function Dashboard() {
                   <div className="space-y-1">
                     <AlertTitle className="font-black text-primary uppercase text-xs tracking-wider">Erinnerung: Rückmeldung fehlt!</AlertTitle>
                     <AlertDescription className="text-sm font-medium text-foreground">
-                      Du hast noch nicht für <strong className="text-primary">{rsvpReminder.title}</strong> am {format(new Date(rsvpReminder.date), 'dd.MM. HH:mm')} Uhr rückgemeldet.
+                      Du hast dich noch nicht für <strong className="text-primary">{rsvpReminder.title}</strong> am {format(new Date(rsvpReminder.date), 'dd.MM. HH:mm')} Uhr angemeldet.
                     </AlertDescription>
                   </div>
                 </div>

@@ -218,10 +218,7 @@ export default function PlayersPage() {
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary"><UserCircle className="h-8 w-8" /></div>
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">{player.roles.map(r => (<Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">{AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}</Badge>))}</div>
-                        {player.isFeeExempt && <Badge variant="outline" className="text-[8px] bg-blue-50/50 text-blue-600 border-blue-200">BEITRAGSFREI</Badge>}
-                      </div>
+                      <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">{player.roles.map(r => (<Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">{AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}</Badge>))}</div>
                     </div>
                     <h3 className="text-xl font-bold mb-4">{player.name}</h3>
                     <div className="grid grid-cols-2 gap-4 py-3 border-t">
@@ -254,7 +251,10 @@ export default function PlayersPage() {
 
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
-            <DialogHeader><DialogTitle>Zahlung verbuchen</DialogTitle><DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Zahlung verbuchen</DialogTitle>
+              <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
+            </DialogHeader>
             <div className="grid gap-6 py-4">
               <div className="space-y-3"><Label>Buchen auf Konto:</Label><RadioGroup value={paymentAccount} onValueChange={(v: any) => setPaymentAccount(v)} className="grid grid-cols-2 gap-4"><div><RadioGroupItem value="drinks" id="acc-drinks" className="peer sr-only" /><Label htmlFor="acc-drinks" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><Beer className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Bierkasse</span></Label></div><div><RadioGroupItem value="treasury" id="acc-treasury" className="peer sr-only" /><Label htmlFor="acc-treasury" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><TrendingUp className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Mannschaftskasse</span></Label></div></RadioGroup></div>
               <div className="space-y-2"><Label>Betrag (€)</Label><Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>

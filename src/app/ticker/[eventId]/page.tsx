@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, ArrowLeft, Trophy, Users, MessageSquare, Clock, Plus, Trash2, ShieldCheck, Flag, Replace, CheckCircle2 } from "lucide-react"
+import { Loader2, ArrowLeft, Trophy, Users, MessageSquare, Clock, Plus, Trash2, ShieldCheck, Flag, Replace, CheckCircle2, Radio, Check } from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 export default function TickerPage() {
   const params = useParams()
@@ -25,7 +26,7 @@ export default function TickerPage() {
 
   const [mounted, setMounted] = useState(false)
   const { 
-    players, teamEvents, tickers, tickerEvents, claimTicker, releaseTicker, 
+    players, teamEvents, tickers, tickerEvents, claimTicker, releaseTicker, finishTicker,
     updateTickerScore, addTickerEvent, deleteTickerEvent, currentUserProfile, loading 
   } = useStore()
 
@@ -46,13 +47,12 @@ export default function TickerPage() {
     const found = tickers.find(t => t.id === eventId);
     return {
       id: eventId,
-      homeScore: 0,
-      awayScore: 0,
-      operatorId: null,
-      operatorName: null,
-      status: 'pre' as const,
-      updatedAt: new Date().toISOString(),
-      ...found
+      homeScore: found?.homeScore ?? 0,
+      awayScore: found?.awayScore ?? 0,
+      operatorId: found?.operatorId ?? null,
+      operatorName: found?.operatorName ?? null,
+      status: found?.status ?? 'pre',
+      updatedAt: found?.updatedAt ?? new Date().toISOString()
     } as Ticker;
   }, [tickers, eventId]);
 
@@ -66,7 +66,8 @@ export default function TickerPage() {
   if (!event || !currentUserProfile) return null;
 
   const isOperator = ticker.operatorId === currentUserProfile.id;
-  const isAvailable = !ticker.operatorId;
+  const isAvailable = !ticker.operatorId && ticker.status !== 'finished';
+  const isFinished = ticker.status === 'finished';
 
   const handleAddEvent = async () => {
     if (!newMinute) return;
@@ -102,9 +103,24 @@ export default function TickerPage() {
     }
   };
 
+  const handleOpponentGoal = async () => {
+    const min = prompt("In welcher Minute fiel das Gegentor?", "");
+    if (!min) return;
+    
+    await addTickerEvent(eventId, {
+      type: 'goal_opponent',
+      minute: parseInt(min),
+      text: "Tor für den Gegner."
+    });
+    
+    await updateTickerScore(eventId, ticker.homeScore, ticker.awayScore + 1);
+    toast({ title: "Gegner-Tor verbucht" });
+  };
+
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'goal': return <Trophy className="h-4 w-4 text-yellow-500" />;
+      case 'goal_opponent': return <X className="h-4 w-4 text-destructive" />;
       case 'sub': return <Replace className="h-4 w-4 text-blue-500" />;
       case 'comment': return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
       case 'status': return <Clock className="h-4 w-4 text-emerald-500" />;
@@ -127,8 +143,10 @@ export default function TickerPage() {
             <div className="bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/20 flex items-center gap-2">
               <span className="text-lg font-black">{ticker.homeScore} : {ticker.awayScore}</span>
             </div>
-            {isAvailable ? (
-              <Button size="sm" onClick={() => claimTicker(eventId)} className="rounded-xl h-9 bg-emerald-600">Bedienen</Button>
+            {isFinished ? (
+              <Badge variant="outline" className="h-9 px-3 rounded-xl border-emerald-500 text-emerald-600 bg-emerald-50 font-black">BEENDET</Badge>
+            ) : isAvailable ? (
+              <Button size="sm" onClick={() => claimTicker(eventId)} className="rounded-xl h-9 bg-emerald-600"><Radio className="h-4 w-4 mr-2" /> Übernehmen</Button>
             ) : isOperator ? (
               <Button size="sm" variant="outline" onClick={() => releaseTicker(eventId)} className="rounded-xl h-9">Freigeben</Button>
             ) : (
@@ -140,10 +158,25 @@ export default function TickerPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-4xl mx-auto w-full pb-24">
-          {isOperator && (
-            <Card className="border-none shadow-lg rounded-2xl bg-card border-l-4 border-l-primary overflow-hidden">
-              <CardHeader className="bg-primary/5 pb-4">
+          {isOperator && !isFinished && (
+            <Card className="border-none shadow-lg rounded-2xl bg-card border-l-4 border-l-primary overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+              <CardHeader className="bg-primary/5 pb-4 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Ticker-Konsole</CardTitle>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-destructive hover:bg-destructive/10 uppercase tracking-widest"><X className="h-3 w-3 mr-1" /> Abpfiff</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-card">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Spiel wirklich beenden?</AlertDialogTitle>
+                      <AlertDialogDescription>Danach kann der Ticker nicht mehr bedient oder verändert werden.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="rounded-xl">Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => finishTicker(eventId)} className="bg-destructive text-white rounded-xl">Beenden</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -224,9 +257,7 @@ export default function TickerPage() {
                      {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
                      Event posten
                    </Button>
-                   <div className="flex gap-1 border rounded-xl p-1 bg-muted/30">
-                      <Button variant="ghost" size="sm" onClick={() => updateTickerScore(eventId, (ticker.homeScore || 0), (ticker.awayScore || 0) + 1)} className="h-10 px-3 text-xs font-bold text-destructive">+ Gast-Tor</Button>
-                   </div>
+                   <Button variant="outline" onClick={handleOpponentGoal} className="h-12 px-6 rounded-xl border-destructive text-destructive font-black hover:bg-destructive/10">+ Gegner-Tor</Button>
                 </div>
               </CardContent>
             </Card>
@@ -245,6 +276,7 @@ export default function TickerPage() {
                   <div className={cn(
                     "h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm border-2 border-background",
                     e.type === 'goal' ? 'bg-yellow-400 text-yellow-950' : 
+                    e.type === 'goal_opponent' ? 'bg-destructive text-white' :
                     e.type === 'sub' ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'
                   )}>
                     {getEventIcon(e.type)}
@@ -255,7 +287,7 @@ export default function TickerPage() {
                         <div className="flex items-center gap-2">
                            <span className="font-black text-sm">{e.minute}'</span>
                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                             {e.type === 'goal' ? 'Tor!' : e.type === 'sub' ? 'Wechsel' : 'Info'}
+                             {e.type === 'goal' ? 'Tor!' : e.type === 'goal_opponent' ? 'Gegner-Tor' : e.type === 'sub' ? 'Wechsel' : 'Info'}
                            </span>
                         </div>
                         {e.type === 'goal' && (
@@ -263,6 +295,9 @@ export default function TickerPage() {
                             <p className="font-bold text-base">{e.playerName}</p>
                             {e.assistPlayerName && <p className="text-xs text-muted-foreground">V: {e.assistPlayerName}</p>}
                           </div>
+                        )}
+                        {e.type === 'goal_opponent' && (
+                          <p className="font-bold text-base text-destructive">Tor für den Gegner</p>
                         )}
                         {e.type === 'sub' && (
                           <div className="flex items-center gap-2 text-sm font-medium">
@@ -272,7 +307,7 @@ export default function TickerPage() {
                         )}
                         {e.text && <p className="text-sm font-medium leading-relaxed">{e.text}</p>}
                       </div>
-                      {isOperator && (
+                      {isOperator && !isFinished && (
                         <Button variant="ghost" size="icon" onClick={() => deleteTickerEvent(eventId, e.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0">
                           <Trash2 className="h-4 w-4" />
                         </Button>

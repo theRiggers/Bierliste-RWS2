@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
-import { useCollection, useDoc, useUser, useFirestore } from '@/firebase';
+import { useCollection, useDoc, useUser, useFirebase, useFirestore } from '@/firebase';
 import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp, Firestore, Query, DocumentReference } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -140,7 +140,7 @@ export interface Ticker {
 export interface TickerEvent {
   id: string;
   eventId: string;
-  type: 'goal' | 'sub' | 'comment' | 'card' | 'status';
+  type: 'goal' | 'sub' | 'comment' | 'card' | 'status' | 'goal_opponent';
   minute: number;
   playerId?: string;
   playerName?: string;
@@ -233,6 +233,7 @@ interface StoreContextType {
   upsertLineup: (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => Promise<void>;
   claimTicker: (eventId: string) => Promise<void>;
   releaseTicker: (eventId: string) => Promise<void>;
+  finishTicker: (eventId: string) => Promise<void>;
   updateTickerScore: (eventId: string, home: number, away: number) => Promise<void>;
   addTickerEvent: (eventId: string, event: Omit<TickerEvent, 'id' | 'eventId' | 'timestamp'>) => Promise<void>;
   deleteTickerEvent: (eventId: string, eventIdToRemove: string) => Promise<void>;
@@ -663,15 +664,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const claimTicker = async (eventId: string) => {
     if (!db || !currentUserProfile) return;
     const tickerRef = doc(db, 'tickers', eventId);
-    const data = { 
+    const data = cleanData({ 
         operatorId: currentUserProfile.id, 
         operatorName: currentUserProfile.name, 
         updatedAt: new Date().toISOString(),
-        // Initialize scores to 0 if it's a new claim
-        homeScore: 0,
-        awayScore: 0,
         status: 'live' as const
-    };
+    });
     setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
   };
 
@@ -679,6 +677,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const tickerRef = doc(db, 'tickers', eventId);
     const data = { operatorId: null, operatorName: null, updatedAt: new Date().toISOString() };
+    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+  };
+
+  const finishTicker = async (eventId: string) => {
+    if (!db) return;
+    const tickerRef = doc(db, 'tickers', eventId);
+    const data = { status: 'finished', operatorId: null, operatorName: null, updatedAt: new Date().toISOString() };
     setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
   };
 
@@ -771,7 +776,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
       addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, 
-      addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, updateTickerScore, addTickerEvent, deleteTickerEvent,
+      addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, finishTicker, updateTickerScore, addTickerEvent, deleteTickerEvent,
       addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
     }}>
       {children}

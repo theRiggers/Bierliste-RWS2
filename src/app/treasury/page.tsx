@@ -128,9 +128,16 @@ export default function TreasuryPage() {
                 <h3 className="text-base md:text-lg font-bold flex items-center gap-2"><ArrowUpCircle className="h-5 w-5 text-emerald-600" /> Umsätze</h3>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <AlertDialog>
-                    <AlertDialogTrigger asChild><Button variant="outline" size="sm" className="rounded-xl h-9 border-amber-600 text-amber-700"><RotateCcw className="h-4 w-4 mr-2" /> Saisonabschluss</Button></AlertDialogTrigger>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-xl h-9 border-amber-600 text-amber-700">
+                        <RotateCcw className="h-4 w-4 mr-2" /> Saisonabschluss
+                      </Button>
+                    </AlertDialogTrigger>
                     <AlertDialogContent className="bg-card">
-                      <AlertDialogHeader><AlertDialogTitle>Saison abschließen?</AlertDialogTitle><AlertDialogDescription>Unbezahlte Beiträge werden als Schulden übernommen.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Saison {selectedSeason}/{(parseInt(selectedSeason)+1)%100} abschließen?</AlertDialogTitle>
+                        <AlertDialogDescription>Dies berechnet alle unbezahlten Beiträge dieser Saison und bucht sie als Schulden auf die Konten der Spieler.</AlertDialogDescription>
+                      </AlertDialogHeader>
                       <AlertDialogFooter><AlertDialogCancel>Abbrechen</AlertDialogCancel><AlertDialogAction onClick={handleCloseSeason} className="bg-amber-600 text-white">Abschließen</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

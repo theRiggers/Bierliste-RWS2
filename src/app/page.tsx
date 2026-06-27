@@ -33,7 +33,7 @@ import {
   Copy,
   RotateCcw
 } from "lucide-react"
-import { format, isAfter, isBefore, addDays } from "date-fns"
+import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
@@ -428,7 +428,7 @@ export default function Dashboard() {
                   <div className="space-y-1">
                     <AlertTitle className="font-black text-primary uppercase text-xs tracking-wider">Erinnerung: Rückmeldung fehlt!</AlertTitle>
                     <AlertDescription className="text-sm font-medium text-foreground">
-                      Du hast dich noch nicht für <strong className="text-primary">{rsvpReminder.title}</strong> am {format(new Date(rsvpReminder.date), 'dd.MM. HH:mm')} Uhr angemeldet.
+                      Du hast dich noch nicht fürs <strong className="text-primary">{rsvpReminder.title}</strong> am {format(new Date(rsvpReminder.date), 'dd.MM. HH:mm')} angemeldet!
                     </AlertDescription>
                   </div>
                 </div>

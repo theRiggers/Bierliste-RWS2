@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -178,12 +177,17 @@ export const PAYPAL_ME_LINK = "";
 export const CLUBHOUSE_PAYPAL_EMAIL = "";
 export const TREASURY_PAYPAL_EMAIL = "";
 
-export const DEFAULT_FINES = [
-  "Dumme Aktion", "Arroganzspruch", "Tunnel beim Kreisspiel", "Sachen liegen lassen",
-  "Während Training pinkeln", "Nicht aufräumen", "Zu spät absagen",
-  "Zu spät zum Training", "Trinken im Trikot", "Zu spät zum Spiel",
-  "Gar nicht absagen", "Verkatert beim Spiel", "Tunnel Mallerunde"
-];
+const cleanData = (obj: any) => {
+  const newObj: any = {};
+  Object.keys(obj).forEach(key => {
+    const val = obj[key];
+    if (val !== undefined && val !== null) {
+      if (typeof val === 'number' && isNaN(val)) return;
+      newObj[key] = val;
+    }
+  });
+  return newObj;
+};
 
 interface StoreContextType {
   players: Player[];
@@ -236,7 +240,7 @@ interface StoreContextType {
   finishTicker: (eventId: string) => Promise<void>;
   updateTickerScore: (eventId: string, home: number, away: number) => Promise<void>;
   addTickerEvent: (eventId: string, event: Omit<TickerEvent, 'id' | 'eventId' | 'timestamp'>) => Promise<void>;
-  deleteTickerEvent: (eventId: string, eventIdToRemove: string) => Promise<void>;
+  deleteTickerEvent: (eventId: string, event: TickerEvent) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -248,19 +252,6 @@ interface StoreContextType {
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
-
-// Helper to sanitize data for Firestore (removes undefined values)
-const cleanData = (obj: any) => {
-  const newObj: any = {};
-  Object.keys(obj).forEach(key => {
-    const val = obj[key];
-    if (val !== undefined) {
-      if (typeof val === 'number' && isNaN(val)) return;
-      newObj[key] = val;
-    }
-  });
-  return newObj;
-};
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const db = useFirestore();
@@ -311,12 +302,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') as DocumentReference<AppSettings> : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
-  const players = useMemo(() => playersData?.map(d => {
-    const rawData = d.data as any;
-    const roles = rawData.roles || (rawData.role ? [rawData.role] : ['player']);
-    return { ...rawData, id: d.id, roles, treasuryBalance: rawData.treasuryBalance || 0 } as Player;
-  }) || [], [playersData]);
-
+  const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
   const activePlayerIds = useMemo(() => new Set(players.map(p => p.id)), [players]);
 
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);
@@ -328,32 +314,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
   const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
   const tickers = useMemo(() => tickersData?.map(d => ({ ...d.data, id: d.id })) || [], [tickersData]);
-  const tickerEvents = useMemo(() => {
-    const raw = tickerEventsData?.map(d => ({ ...d.data, id: d.id })) || [];
-    return raw.filter(e => {
-        const isPlayerGoal = e.type === 'goal' ? activePlayerIds.has(e.playerId || '') : true;
-        return isPlayerGoal;
-    });
-  }, [tickerEventsData, activePlayerIds]);
+  const tickerEvents = useMemo(() => tickerEventsData?.map(d => ({ ...d.data, id: d.id })).filter(e => e.type !== 'goal' || activePlayerIds.has(e.playerId || '')) || [], [tickerEventsData, activePlayerIds]);
   
-  const attendance = useMemo(() => {
-    const raw = attendanceData?.map(d => ({ ...d.data, id: d.id })) || [];
-    return raw.filter(a => activePlayerIds.has(a.playerId));
-  }, [attendanceData, activePlayerIds]);
-
-  const absences = useMemo(() => {
-    const raw = absencesData?.map(d => ({ ...d.data, id: d.id })) || [];
-    return raw.filter(a => activePlayerIds.has(a.playerId));
-  }, [absencesData, activePlayerIds]);
-
-  const lineups = useMemo(() => {
-    const raw = lineupsData?.map(d => ({ ...d.data, id: d.id })) || [];
-    return raw.map(l => ({
-      ...l,
-      startingEleven: (l.startingEleven || []).filter(pos => activePlayerIds.has(pos.playerId)),
-      substitutes: (l.substitutes || []).filter(id => activePlayerIds.has(id))
-    }));
-  }, [lineupsData, activePlayerIds]);
+  const attendance = useMemo(() => attendanceData?.map(d => ({ ...d.data, id: d.id })).filter(a => activePlayerIds.has(a.playerId)) || [], [attendanceData, activePlayerIds]);
+  const absences = useMemo(() => absencesData?.map(d => ({ ...d.data, id: d.id })).filter(a => activePlayerIds.has(a.playerId)) || [], [absencesData, activePlayerIds]);
+  const lineups = useMemo(() => lineupsData?.map(d => ({
+    ...d.data,
+    id: d.id,
+    startingEleven: (d.data.startingEleven || []).filter(pos => activePlayerIds.has(pos.playerId)),
+    substitutes: (d.data.substitutes || []).filter(id => activePlayerIds.has(id))
+  })) || [], [lineupsData, activePlayerIds]);
 
   const settings = useMemo<AppSettings>(() => ({
     beerPrice: settingsData?.beerPrice ?? BEER_PRICE,
@@ -368,37 +338,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     lastClubhouseResetDate: settingsData?.lastClubhouseResetDate || "",
   }), [settingsData]);
 
-  const currentUserProfile = useMemo(() => {
-    if (!user || players.length === 0) return null;
-    return players.find(p => p.id === user.uid) || null;
-  }, [user, players]);
+  const currentUserProfile = useMemo(() => user ? players.find(p => p.id === user.uid) || null : null, [user, players]);
 
   const totalMannschaftskasse = useMemo(() => {
     const feeSum = membershipFees.reduce((sum, f) => sum + f.amount, 0);
     const finesSum = fines.reduce((sum, f) => sum + f.amount, 0);
-    const transactionSum = membershipTransactions.reduce((sum, t) => {
-      return t.type === 'expense' ? sum - t.amount : sum + t.amount;
-    }, 0);
+    const transactionSum = membershipTransactions.reduce((sum, t) => t.type === 'expense' ? sum - t.amount : sum + t.amount, 0);
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
 
-  const bierkasseLiquidity = useMemo(() => {
+  const { totalBierkasse, bierkasseLiquidity } = useMemo(() => {
     const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
     const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
-    return cashIn - cashOut;
-  }, [payments, treasuryExpenses]);
-
-  const totalBierkasse = useMemo(() => {
-    const totalPlayerBalanceSum = players.reduce((sum, p) => sum + (p.balance || 0), 0);
-    return bierkasseLiquidity - totalPlayerBalanceSum;
-  }, [bierkasseLiquidity, players]);
+    const liquidity = cashIn - cashOut;
+    const receivables = players.reduce((sum, p) => sum + (p.balance || 0), 0);
+    return {
+      totalBierkasse: liquidity - receivables,
+      bierkasseLiquidity: liquidity
+    };
+  }, [payments, treasuryExpenses, players]);
 
   const handleMutationError = (path: string, operation: SecurityRuleContext['operation'], data?: any) => (error: any) => {
-    const permissionError = new FirestorePermissionError({
-      path,
-      operation,
-      requestResourceData: data,
-    });
+    const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
     errorEmitter.emit('permission-error', permissionError);
   };
 
@@ -407,14 +368,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const cost = itemType === 'beer' ? settings.beerPrice : settings.cratePrice;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-    
     const expenseData = { playerId, playerName: player.name, itemType, cost, date: new Date().toISOString() };
-    addDoc(collection(db, 'expenses'), expenseData)
-      .catch(handleMutationError('expenses', 'create', expenseData));
-      
-    const newBalance = (player.balance || 0) - cost;
-    setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
-      .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
+    addDoc(collection(db, 'expenses'), expenseData).catch(handleMutationError('expenses', 'create', expenseData));
+    setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) - cost }, { merge: true }).catch(handleMutationError(`players/${playerId}`, 'update'));
   };
 
   const deleteExpense = (expenseId: string) => {
@@ -422,30 +378,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const expense = expenses.find(e => e.id === expenseId);
     if (!expense) return;
     const player = players.find(p => p.id === expense.playerId);
-    
-    deleteDoc(doc(db, 'expenses', expenseId))
-      .catch(handleMutationError(`expenses/${expenseId}`, 'delete'));
-      
-    if (player) {
-      const newBalance = (player.balance || 0) + expense.cost;
-      setDoc(doc(db, 'players', player.id), { balance: newBalance }, { merge: true })
-        .catch(handleMutationError(`players/${player.id}`, 'update', { balance: newBalance }));
-    }
+    deleteDoc(doc(db, 'expenses', expenseId)).catch(handleMutationError(`expenses/${expenseId}`, 'delete'));
+    if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true }).catch(handleMutationError(`players/${player.id}`, 'update'));
   };
 
   const recordPayment = (playerId: string, amount: number, account: 'drinks' | 'treasury' = 'drinks') => {
     if (!db || !currentUserProfile) return;
     const player = players.find(p => p.id === playerId);
     if (!player) return;
-    
     if (account === 'drinks') {
       const paymentData = { playerId, playerName: player.name, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
-      addDoc(collection(db, 'payments'), paymentData)
-        .catch(handleMutationError('payments', 'create', paymentData));
-        
-      const newBalance = (player.balance || 0) + amount;
-      setDoc(doc(db, 'players', playerId), { balance: newBalance }, { merge: true })
-        .catch(handleMutationError(`players/${playerId}`, 'update', { balance: newBalance }));
+      addDoc(collection(db, 'payments'), paymentData).catch(handleMutationError('payments', 'create', paymentData));
+      setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) + amount }, { merge: true }).catch(handleMutationError(`players/${playerId}`, 'update'));
     } else {
       addMembershipTransaction(`Zahlung: ${player.name}`, amount, 'other', playerId);
     }
@@ -456,46 +400,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) return;
     const player = players.find(p => p.id === payment.playerId);
-    
-    deleteDoc(doc(db, 'payments', paymentId))
-      .catch(handleMutationError('payments', 'delete'));
-      
-    if (player) {
-      const newBalance = (player.balance || 0) - payment.amount;
-      setDoc(doc(db, 'players', player.id), { balance: newBalance }, { merge: true })
-        .catch(handleMutationError(`players/${player.id}`, 'update', { balance: newBalance }));
-    }
+    deleteDoc(doc(db, 'payments', paymentId)).catch(handleMutationError('payments', 'delete'));
+    if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) - payment.amount }, { merge: true }).catch(handleMutationError(`players/${player.id}`, 'update'));
   };
 
   const addMembershipFee = (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => {
     if (!db) return;
     const amount = type === 'monthly' ? settings.monthlyFee : settings.annualFee;
     const feeData = cleanData({ playerId, type, year, amount, datePaid: new Date().toISOString(), month });
-
-    addDoc(collection(db, 'membershipFees'), feeData)
-      .catch(handleMutationError('membershipFees', 'create', feeData));
+    addDoc(collection(db, 'membershipFees'), feeData).catch(handleMutationError('membershipFees', 'create', feeData));
   };
 
   const deleteMembershipFee = (feeId: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'membershipFees', feeId))
-      .catch(handleMutationError('membershipFees', 'delete'));
+    deleteDoc(doc(db, 'membershipFees', feeId)).catch(handleMutationError('membershipFees', 'delete'));
   };
 
   const addMembershipTransaction = (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => {
     if (!db || !currentUserProfile) return;
-    const txData = cleanData({ description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id, targetPlayerId: (targetPlayerId === "none" ? undefined : targetPlayerId) });
-
-    addDoc(collection(db, 'membershipTransactions'), txData)
-      .catch(handleMutationError('membershipTransactions', 'create', txData));
-
-    if (txData.targetPlayerId) {
-      const player = players.find(p => p.id === txData.targetPlayerId);
+    const txData = cleanData({ description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id, targetPlayerId });
+    addDoc(collection(db, 'membershipTransactions'), txData).catch(handleMutationError('membershipTransactions', 'create', txData));
+    if (targetPlayerId) {
+      const player = players.find(p => p.id === targetPlayerId);
       if (player) {
         const adjustment = type === 'expense' ? -amount : amount;
-        const newTreasuryBalance = (player.treasuryBalance || 0) + adjustment;
-        setDoc(doc(db, 'players', txData.targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
-          .catch(handleMutationError(`players/${txData.targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
+        setDoc(doc(db, 'players', targetPlayerId), { treasuryBalance: (player.treasuryBalance || 0) + adjustment }, { merge: true }).catch(handleMutationError(`players/${targetPlayerId}`, 'update'));
       }
     }
   };
@@ -504,17 +433,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const tx = membershipTransactions.find(t => t.id === transactionId);
     if (!tx) return;
-    
-    deleteDoc(doc(db, 'membershipTransactions', transactionId))
-      .catch(handleMutationError('membershipTransactions', 'delete'));
-
+    deleteDoc(doc(db, 'membershipTransactions', transactionId)).catch(handleMutationError('membershipTransactions', 'delete'));
     if (tx.targetPlayerId) {
       const player = players.find(p => p.id === tx.targetPlayerId);
       if (player) {
         const adjustment = tx.type === 'expense' ? tx.amount : -tx.amount;
-        const newTreasuryBalance = (player.treasuryBalance || 0) + adjustment;
-        setDoc(doc(db, 'players', tx.targetPlayerId), { treasuryBalance: newTreasuryBalance }, { merge: true })
-          .catch(handleMutationError(`players/${tx.targetPlayerId}`, 'update', { treasuryBalance: newTreasuryBalance }));
+        setDoc(doc(db, 'players', tx.targetPlayerId), { treasuryBalance: (player.treasuryBalance || 0) + adjustment }, { merge: true }).catch(handleMutationError(`players/${tx.targetPlayerId}`, 'update'));
       }
     }
   };
@@ -522,21 +446,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addTreasuryExpense = (description: string, amount: number) => {
     if (!db || !currentUserProfile) return;
     const expData = { description, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
-    addDoc(collection(db, 'treasuryExpenses'), expData)
-      .catch(handleMutationError('treasuryExpenses', 'create', expData));
-  };
-
-  const recordClubhousePayment = (amount: number) => {
-    if (!db || !currentUserProfile) return;
-    const expData = { description: "Abrechnung Vereinsheim", amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
-    addDoc(collection(db, 'treasuryExpenses'), expData)
-      .catch(handleMutationError('treasuryExpenses', 'create', expData));
+    addDoc(collection(db, 'treasuryExpenses'), expData).catch(handleMutationError('treasuryExpenses', 'create', expData));
   };
 
   const deleteTreasuryExpense = (expenseId: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'treasuryExpenses', expenseId))
-      .catch(handleMutationError(`treasuryExpenses/${expenseId}`, 'delete'));
+    deleteDoc(doc(db, 'treasuryExpenses', expenseId)).catch(handleMutationError(`treasuryExpenses/${expenseId}`, 'delete'));
+  };
+
+  const recordClubhousePayment = (amount: number) => {
+    if (!db || !currentUserProfile) return;
+    addDoc(collection(db, 'treasuryExpenses'), { description: "Abrechnung Vereinsheim", amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id }).catch(handleMutationError('treasuryExpenses', 'create'));
   };
 
   const addFine = (playerId: string, reason: string, amount: number) => {
@@ -544,57 +464,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const player = players.find(p => p.id === playerId);
     if (!player) return;
     const fineData = { playerId, playerName: player.name, reason, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id, isPaid: false };
-    addDoc(collection(db, 'fines'), fineData)
-      .catch(handleMutationError('fines', 'create', fineData));
+    addDoc(collection(db, 'fines'), fineData).catch(handleMutationError('fines', 'create', fineData));
   };
 
   const markFineAsPaid = (fineId: string) => {
     if (!db) return;
-    setDoc(doc(db, 'fines', fineId), { isPaid: true }, { merge: true })
-      .catch(handleMutationError(`fines/${fineId}`, 'update', { isPaid: true }));
+    setDoc(doc(db, 'fines', fineId), { isPaid: true }, { merge: true }).catch(handleMutationError(`fines/${fineId}`, 'update'));
   };
 
   const deleteFine = (fineId: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'fines', fineId))
-      .catch(handleMutationError(`fines/${fineId}`, 'delete'));
+    deleteDoc(doc(db, 'fines', fineId)).catch(handleMutationError(`fines/${fineId}`, 'delete'));
   };
 
   const updateFineType = async (id: string, name: string, amount: number) => {
     if (!db) return;
-    const data = { name, amount };
-    setDoc(doc(db, 'fineCatalog', id), data, { merge: true })
-      .catch(handleMutationError(`fineCatalog/${id}`, 'update', data));
+    setDoc(doc(db, 'fineCatalog', id), { name, amount }, { merge: true }).catch(handleMutationError(`fineCatalog/${id}`, 'update'));
   };
 
   const addFineType = async (name: string, amount: number) => {
     if (!db) return;
-    const data = { name, amount };
-    addDoc(collection(db, 'fineCatalog'), data)
-      .catch(handleMutationError('fineCatalog', 'create', data));
+    addDoc(collection(db, 'fineCatalog'), { name, amount }).catch(handleMutationError('fineCatalog', 'create'));
   };
 
   const deleteFineType = async (id: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'fineCatalog', id))
-      .catch(handleMutationError(`fineCatalog/${id}`, 'delete'));
+    deleteDoc(doc(db, 'fineCatalog', id)).catch(handleMutationError(`fineCatalog/${id}`, 'delete'));
   };
 
   const addTeamEvent = async (event: Omit<TeamEvent, 'id'>) => {
     if (!db) return;
-    const eventData = cleanData({ ...event });
-
-    const newDoc = await addDoc(collection(db, 'teamEvents'), eventData)
-      .catch(handleMutationError('teamEvents', 'create', eventData));
-
+    const newDoc = await addDoc(collection(db, 'teamEvents'), cleanData(event)).catch(handleMutationError('teamEvents', 'create'));
     if (newDoc) {
       const eventDate = startOfDay(parseISO(event.date));
       absences.forEach(abs => {
-        const start = startOfDay(parseISO(abs.startDate));
-        const end = endOfDay(parseISO(abs.endDate));
-        if (eventDate >= start && eventDate <= end) {
-          const typeLabels: any = { vacation: 'Urlaub', injury: 'Verletzung', illness: 'Krankheit', work: 'Arbeit', other: 'Abwesenheit' };
-          updatePlayerAttendance(newDoc.id, abs.playerId, abs.playerName, 'declined', `Abwesend: ${typeLabels[abs.type] || abs.type}`);
+        if (eventDate >= startOfDay(parseISO(abs.startDate)) && eventDate <= endOfDay(parseISO(abs.endDate))) {
+          updatePlayerAttendance(newDoc.id, abs.playerId, abs.playerName, 'declined', `Abwesend: ${abs.type}`);
         }
       });
     }
@@ -602,24 +507,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updateTeamEvent = async (id: string, updates: Partial<TeamEvent>) => {
     if (!db) return;
-    const data = cleanData(updates);
-    setDoc(doc(db, 'teamEvents', id), data, { merge: true })
-      .catch(handleMutationError(`teamEvents/${id}`, 'update', data));
+    setDoc(doc(db, 'teamEvents', id), cleanData(updates), { merge: true }).catch(handleMutationError(`teamEvents/${id}`, 'update'));
   };
 
   const deleteTeamEvent = async (id: string) => {
     if (!db) return;
-    deleteDoc(doc(db, 'teamEvents', id))
-      .catch(handleMutationError(`teamEvents/${id}`, 'delete'));
+    deleteDoc(doc(db, 'teamEvents', id)).catch(handleMutationError(`teamEvents/${id}`, 'delete'));
   };
 
   const upsertAttendance = async (eventId: string, status: 'going' | 'declined', reason?: string) => {
     if (!db || !currentUserProfile) return;
     const docId = `${eventId}_${currentUserProfile.id}`;
-    const attendanceData = cleanData({ eventId, playerId: currentUserProfile.id, playerName: currentUserProfile.name, status, updatedAt: new Date().toISOString(), reason });
-
-    setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
-      .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
+    const data = cleanData({ eventId, playerId: currentUserProfile.id, playerName: currentUserProfile.name, status, updatedAt: new Date().toISOString(), reason });
+    setDoc(doc(db, 'eventAttendance', docId), data, { merge: true }).catch(handleMutationError(`eventAttendance/${docId}`, 'write', data));
   };
 
   const updatePlayerAttendance = async (eventId: string, playerId: string, playerName: string, status: 'going' | 'declined' | null, reason?: string) => {
@@ -629,163 +529,139 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteDoc(doc(db, 'eventAttendance', docId)).catch(handleMutationError(`eventAttendance/${docId}`, 'delete'));
       return;
     }
-    const attendanceData = cleanData({ eventId, playerId, playerName, status, updatedAt: new Date().toISOString(), reason });
-    setDoc(doc(db, 'eventAttendance', docId), attendanceData, { merge: true })
-      .catch(handleMutationError(`eventAttendance/${docId}`, 'write', attendanceData));
+    const data = cleanData({ eventId, playerId, playerName, status, updatedAt: new Date().toISOString(), reason });
+    setDoc(doc(db, 'eventAttendance', docId), data, { merge: true }).catch(handleMutationError(`eventAttendance/${docId}`, 'write', data));
   };
 
   const addAbsence = async (data: Omit<Absence, 'id' | 'playerId' | 'playerName'>) => {
     if (!db || !currentUserProfile) return;
-    const absenceData = cleanData({ ...data, playerId: currentUserProfile.id, playerName: currentUserProfile.name });
-    await addDoc(collection(db, 'absences'), absenceData).catch(handleMutationError('absences', 'create', absenceData));
-
+    const absData = cleanData({ ...data, playerId: currentUserProfile.id, playerName: currentUserProfile.name });
+    await addDoc(collection(db, 'absences'), absData).catch(handleMutationError('absences', 'create'));
     const start = startOfDay(parseISO(data.startDate));
     const end = endOfDay(parseISO(data.endDate));
     teamEvents.forEach(event => {
-      const eventDate = parseISO(event.date);
-      if (eventDate >= start && eventDate <= end) {
-        const typeLabels: any = { vacation: 'Urlaub', injury: 'Verletzung', illness: 'Krankheit', work: 'Arbeit', other: 'Abwesenheit' };
-        updatePlayerAttendance(event.id, currentUserProfile.id, currentUserProfile.name, 'declined', `Abwesend: ${typeLabels[data.type] || data.type}`);
-      }
+      const d = parseISO(event.date);
+      if (d >= start && d <= end) updatePlayerAttendance(event.id, currentUserProfile.id, currentUserProfile.name, 'declined', `Abwesend: ${data.type}`);
     });
   };
 
   const deleteAbsence = async (id: string) => {
     if (!db) return;
-    await deleteDoc(doc(db, 'absences', id)).catch(handleMutationError(`absences/${id}`, 'delete'));
+    deleteDoc(doc(db, 'absences', id)).catch(handleMutationError(`absences/${id}`, 'delete'));
   };
 
   const upsertLineup = async (eventId: string, data: Omit<Lineup, 'id' | 'eventId' | 'updatedAt'>) => {
     if (!db) return;
     const lineupData = { ...data, eventId, updatedAt: new Date().toISOString() };
-    setDoc(doc(db, 'lineups', eventId), lineupData, { merge: true }).catch(handleMutationError(`lineups/${eventId}`, 'write', lineupData));
+    setDoc(doc(db, 'lineups', eventId), lineupData, { merge: true }).catch(handleMutationError(`lineups/${eventId}`, 'write'));
   };
 
   const claimTicker = async (eventId: string) => {
     if (!db || !currentUserProfile) return;
-    const tickerRef = doc(db, 'tickers', eventId);
-    const data = cleanData({ 
-        operatorId: currentUserProfile.id, 
-        operatorName: currentUserProfile.name, 
-        updatedAt: new Date().toISOString(),
-        status: 'live' as const
-    });
-    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+    setDoc(doc(db, 'tickers', eventId), cleanData({ operatorId: currentUserProfile.id, operatorName: currentUserProfile.name, updatedAt: new Date().toISOString(), status: 'live' }), { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update'));
   };
 
   const releaseTicker = async (eventId: string) => {
     if (!db) return;
-    const tickerRef = doc(db, 'tickers', eventId);
-    const data = { operatorId: null, operatorName: null, updatedAt: new Date().toISOString() };
-    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+    setDoc(doc(db, 'tickers', eventId), { operatorId: null, operatorName: null, updatedAt: new Date().toISOString() }, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update'));
   };
 
   const finishTicker = async (eventId: string) => {
     if (!db) return;
-    const tickerRef = doc(db, 'tickers', eventId);
-    const data = { status: 'finished', operatorId: null, operatorName: null, updatedAt: new Date().toISOString() };
-    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+    setDoc(doc(db, 'tickers', eventId), { status: 'finished', operatorId: null, operatorName: null, updatedAt: new Date().toISOString() }, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update'));
   };
 
   const updateTickerScore = async (eventId: string, home: number, away: number) => {
     if (!db) return;
-    const tickerRef = doc(db, 'tickers', eventId);
-    const data = cleanData({ homeScore: home, awayScore: away, updatedAt: new Date().toISOString(), status: 'live' });
-    setDoc(tickerRef, data, { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update', data));
+    setDoc(doc(db, 'tickers', eventId), cleanData({ homeScore: home, awayScore: away, updatedAt: new Date().toISOString() }), { merge: true }).catch(handleMutationError(`tickers/${eventId}`, 'update'));
   };
 
   const addTickerEvent = async (eventId: string, event: Omit<TickerEvent, 'id' | 'eventId' | 'timestamp'>) => {
     if (!db) return;
-    const eventData = cleanData({ ...event, eventId, timestamp: new Date().toISOString() });
-    addDoc(collection(db, 'tickerEvents'), eventData).catch(handleMutationError('tickerEvents', 'create', eventData));
+    const data = cleanData({ ...event, eventId, timestamp: new Date().toISOString() });
+    addDoc(collection(db, 'tickerEvents'), data).catch(handleMutationError('tickerEvents', 'create', data));
   };
 
-  const deleteTickerEvent = async (eventId: string, eventIdToRemove: string) => {
+  const deleteTickerEvent = async (eventId: string, event: TickerEvent) => {
     if (!db) return;
-    deleteDoc(doc(db, 'tickerEvents', eventIdToRemove)).catch(handleMutationError(`tickerEvents/${eventIdToRemove}`, 'delete'));
+    if (event.type === 'goal' || event.type === 'goal_opponent') {
+      const ticker = tickers.find(t => t.id === eventId);
+      if (ticker) {
+        let h = ticker.homeScore || 0;
+        let a = ticker.awayScore || 0;
+        if (event.type === 'goal') h = Math.max(0, h - 1);
+        else a = Math.max(0, a - 1);
+        updateTickerScore(eventId, h, a);
+      }
+    }
+    deleteDoc(doc(db, 'tickerEvents', event.id)).catch(handleMutationError(`tickerEvents/${event.id}`, 'delete'));
   };
 
   const addBezahlkiste = () => {
     if (!db) return;
-    const crateData = { playerId: 'clubhouse', playerName: 'Bezahlkiste (Mannschaft)', itemType: 'crate', cost: settings.cratePrice, date: new Date().toISOString() };
-    addDoc(collection(db, 'expenses'), crateData).catch(handleMutationError('expenses', 'create', crateData));
+    addDoc(collection(db, 'expenses'), { playerId: 'clubhouse', playerName: 'Bezahlkiste (Mannschaft)', itemType: 'crate', cost: settings.cratePrice, date: new Date().toISOString() }).catch(handleMutationError('expenses', 'create'));
   };
 
   const addPlayer = async (name: string, email: string, roles: Role[], uid?: string, isFeeExempt: boolean = false) => {
     if (!db) return;
     const playerRef = uid ? doc(db, 'players', uid) : doc(collection(db, 'players'));
-    const playerData = { name, email, roles, balance: 0.00, treasuryBalance: 0.00, isFeeExempt };
-    await setDoc(playerRef, playerData, { merge: true }).catch(handleMutationError(`players/${playerRef.id}`, uid ? 'update' : 'create', playerData));
+    const data = { name, email, roles, balance: 0, treasuryBalance: 0, isFeeExempt };
+    await setDoc(playerRef, data, { merge: true }).catch(handleMutationError(`players/${playerRef.id}`, uid ? 'update' : 'create', data));
   };
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
     if (!db) return;
-    const data = cleanData(updates);
-    setDoc(doc(db, 'players', id), data, { merge: true }).catch(handleMutationError(`players/${id}`, 'update', data));
+    setDoc(doc(db, 'players', id), cleanData(updates), { merge: true }).catch(handleMutationError(`players/${id}`, 'update'));
   };
 
   const deletePlayer = async (id: string) => {
     if (!db) return;
-    await deleteDoc(doc(db, 'players', id)).catch(handleMutationError(`players/${id}`, 'delete'));
+    deleteDoc(doc(db, 'players', id)).catch(handleMutationError(`players/${id}`, 'delete'));
   };
 
   const updateSettings = async (updates: Partial<AppSettings>) => {
     if (!db) return;
-    const data = cleanData(updates);
-    await setDoc(doc(db, 'settings', 'global'), data, { merge: true }).catch(handleMutationError('settings/global', 'update', data));
+    setDoc(doc(db, 'settings', 'global'), cleanData(updates), { merge: true }).catch(handleMutationError('settings/global', 'update'));
   };
 
   const resetClubhouseSeason = async () => {
     if (!db) return;
-    const updates = { lastClubhouseResetDate: new Date().toISOString() };
-    await setDoc(doc(db, 'settings', 'global'), updates, { merge: true }).catch(handleMutationError('settings/global', 'update', updates));
+    setDoc(doc(db, 'settings', 'global'), { lastClubhouseResetDate: new Date().toISOString() }, { merge: true }).catch(handleMutationError('settings/global', 'update'));
   };
 
   const markIntroSeen = async (roles: Role[]) => {
     if (!db || !currentUserProfile) return;
-    const updates = { lastIntroSeenRoles: roles };
-    await setDoc(doc(db, 'players', currentUserProfile.id), updates, { merge: true }).catch(handleMutationError(`players/${currentUserProfile.id}`, 'update', updates));
+    setDoc(doc(db, 'players', currentUserProfile.id), { lastIntroSeenRoles: roles }, { merge: true }).catch(handleMutationError(`players/${currentUserProfile.id}`, 'update'));
   };
 
   const closeSeason = async (year: number) => {
     if (!db || !currentUserProfile) return;
     const batch = writeBatch(db);
-    players.forEach(player => {
-      if (player.isFeeExempt || player.email === 'kasse@kickoff.de') return;
-      const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === year);
-      if (!playerFees.some(f => f.type === 'annual')) {
-        const unpaidCount = 10 - playerFees.filter(f => f.type === 'monthly').length;
-        if (unpaidCount > 0) {
-          const debt = unpaidCount * settings.monthlyFee;
-          batch.update(doc(db, 'players', player.id), { treasuryBalance: (player.treasuryBalance || 0) - debt });
-        }
+    players.forEach(p => {
+      if (p.isFeeExempt || p.email === 'kasse@kickoff.de') return;
+      const pFees = membershipFees.filter(f => f.playerId === p.id && f.year === year);
+      if (!pFees.some(f => f.type === 'annual')) {
+        const unpaid = Math.max(0, 10 - pFees.filter(f => f.type === 'monthly').length);
+        if (unpaid > 0) batch.update(doc(db, 'players', p.id), { treasuryBalance: (p.treasuryBalance || 0) - (unpaid * settings.monthlyFee) });
       }
     });
     batch.set(doc(collection(db, 'membershipTransactions')), { description: `Saisonübertrag aus ${year}/${(year+1)%100}`, amount: totalMannschaftskasse, type: 'other', date: new Date().toISOString(), recordedBy: currentUserProfile.id });
     await batch.commit();
   };
 
-  const criticalDataLoading = authLoading || (players.length === 0 && playersLoading) || settingsLoading || (teamEvents.length === 0 && teamEventsLoading);
+  const loadingState = authLoading || (players.length === 0 && playersLoading) || settingsLoading || (teamEvents.length === 0 && teamEventsLoading);
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, tickers, tickerEvents, currentUserProfile, settings,
-      loading: criticalDataLoading,
-      totalMannschaftskasse, totalBierkasse, bierkasseLiquidity,
-      addExpense, deleteExpense, recordPayment, deletePayment,
-      addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction,
-      addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
-      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, 
-      addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, finishTicker, updateTickerScore, addTickerEvent, deleteTickerEvent,
-      addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
-    }}>
-      {children}
-    </StoreContext.Provider>
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, tickers, tickerEvents, currentUserProfile, settings, loading: loadingState, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity,
+      addExpense, deleteExpense, recordPayment, deletePayment, addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction, addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
+      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, finishTicker, updateTickerScore, addTickerEvent, deleteTickerEvent, addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
+    }}>{children}</StoreContext.Provider>
   );
 }
 
 export function useStore() {
-  const useContextResult = useContext(StoreContext);
-  if (useContextResult === undefined) throw new Error('useStore must be used within a StoreProvider');
-  return useContextResult;
+  const context = useContext(StoreContext);
+  if (!context) throw new Error('useStore must be used within StoreProvider');
+  return context;
 }

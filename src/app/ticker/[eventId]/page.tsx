@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -70,7 +69,11 @@ export default function TickerPage() {
   const isFinished = ticker.status === 'finished';
 
   const handleAddEvent = async () => {
-    if (!newMinute) return;
+    const minute = parseInt(newMinute);
+    if (isNaN(minute)) {
+      toast({ variant: "destructive", title: "Fehler", description: "Bitte gib eine gültige Minute an." });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const p = players.find(x => x.id === selectedPlayer);
@@ -80,7 +83,7 @@ export default function TickerPage() {
 
       await addTickerEvent(eventId, {
         type: newType,
-        minute: parseInt(newMinute),
+        minute,
         playerId: selectedPlayer || undefined,
         playerName: p?.name,
         assistPlayerId: selectedAssist || undefined,
@@ -93,10 +96,10 @@ export default function TickerPage() {
       });
 
       if (newType === 'goal') {
-        updateTickerScore(eventId, (ticker.homeScore || 0) + 1, ticker.awayScore || 0);
+        await updateTickerScore(eventId, (ticker.homeScore || 0) + 1, ticker.awayScore || 0);
       }
 
-      setNewText(""); setSelectedPlayer(""); setSelectedAssist(""); setPlayerIn(""); setPlayerOut("");
+      setNewMinute(""); setNewText(""); setSelectedPlayer(""); setSelectedAssist(""); setPlayerIn(""); setPlayerOut("");
       toast({ title: "Event hinzugefügt" });
     } finally {
       setIsSubmitting(false);
@@ -106,10 +109,15 @@ export default function TickerPage() {
   const handleOpponentGoal = async () => {
     const min = prompt("In welcher Minute fiel das Gegner-Tor?", "");
     if (!min) return;
+    const minute = parseInt(min);
+    if (isNaN(minute)) {
+      toast({ variant: "destructive", title: "Fehler", description: "Ungültige Minute." });
+      return;
+    }
     
     await addTickerEvent(eventId, {
       type: 'goal_opponent',
-      minute: parseInt(min),
+      minute,
       text: "Gegner-Tor."
     });
     
@@ -308,7 +316,7 @@ export default function TickerPage() {
                         {e.text && <p className="text-sm font-medium leading-relaxed">{e.text}</p>}
                       </div>
                       {isOperator && !isFinished && (
-                        <Button variant="ghost" size="icon" onClick={() => deleteTickerEvent(eventId, e.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => deleteTickerEvent(eventId, e)} className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}

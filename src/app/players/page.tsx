@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -60,7 +59,9 @@ export default function PlayersPage() {
   useEffect(() => { setMounted(true) }, [])
 
   const getFullTreasuryBalance = (player: Player) => {
-    if (player.isFeeExempt) return player.treasuryBalance;
+    const baseBalance = player.treasuryBalance || 0;
+    if (player.isFeeExempt) return baseBalance;
+    
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -68,13 +69,13 @@ export default function PlayersPage() {
     const seasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
     
     const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === seasonYear);
-    if (playerFees.some(f => f.type === 'annual')) return player.treasuryBalance;
+    if (playerFees.some(f => f.type === 'annual')) return baseBalance;
 
     const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
     let monthsToPay = currentMIdxInList !== -1 ? currentMIdxInList + 1 : (currentMonth === 5 ? 10 : 0);
     const paidCount = playerFees.filter(f => f.type === 'monthly').length;
     const unpaidFees = Math.max(0, monthsToPay - paidCount) * settings.monthlyFee;
-    return player.treasuryBalance - unpaidFees;
+    return baseBalance - unpaidFees;
   };
 
   if (loading || !mounted) return <div className="flex h-svh items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -123,8 +124,8 @@ export default function PlayersPage() {
   const exportDebtList = (type: 'all' | 'drinks' | 'treasury') => {
     const debtors = players.filter(p => {
       const tb = getFullTreasuryBalance(p);
-      if (type === 'all') return (p.balance < 0 || tb < 0);
-      if (type === 'drinks') return p.balance < 0;
+      if (type === 'all') return ((p.balance || 0) < 0 || tb < 0);
+      if (type === 'drinks') return (p.balance || 0) < 0;
       if (type === 'treasury') return tb < 0;
       return false;
     }).filter(p => p.email !== 'kasse@kickoff.de');
@@ -135,10 +136,10 @@ export default function PlayersPage() {
     const title = type === 'drinks' ? 'Bierliste' : type === 'treasury' ? 'Mannschaftskasse' : 'Offene Schulden';
     let text = `🍻 *${title} - RWS2*\n(Stand: ${dateStr})\n\n`;
 
-    debtors.sort((a, b) => (a.balance + getFullTreasuryBalance(a)) - (b.balance + getFullTreasuryBalance(b))).forEach(p => {
+    debtors.sort((a, b) => ((a.balance || 0) + getFullTreasuryBalance(a)) - ((b.balance || 0) + getFullTreasuryBalance(b))).forEach(p => {
       const tb = getFullTreasuryBalance(p);
       text += `• ${p.name}:\n`;
-      if ((type === 'all' || type === 'drinks') && p.balance < 0) text += `  - Bierliste: ${p.balance.toFixed(2).replace('.', ',')} €\n`;
+      if ((type === 'all' || type === 'drinks') && (p.balance || 0) < 0) text += `  - Bierliste: ${(p.balance || 0).toFixed(2).replace('.', ',')} €\n`;
       if ((type === 'all' || type === 'treasury') && tb < 0) text += `  - Mannschaftskasse: ${tb.toFixed(2).replace('.', ',')} €\n`;
       text += `\n`;
     });
@@ -222,11 +223,11 @@ export default function PlayersPage() {
                     </div>
                     <h3 className="text-xl font-bold mb-4">{player.name}</h3>
                     <div className="grid grid-cols-2 gap-4 py-3 border-t">
-                      <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><Beer className="h-2.5 w-2.5" /> Bierkasse</p><p className={cn("text-base font-bold", player.balance < 0 ? 'text-destructive' : 'text-emerald-600')}>{player.balance.toFixed(2)} €</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><Beer className="h-2.5 w-2.5" /> Bierkasse</p><p className={cn("text-base font-bold", (player.balance || 0) < 0 ? 'text-destructive' : 'text-emerald-600')}>{(player.balance || 0).toFixed(2)} €</p></div>
                       <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> Mannschaftskasse</p><p className={cn("text-base font-bold", tb < 0 ? 'text-destructive' : 'text-blue-600')}>{tb.toFixed(2)} €</p></div>
                     </div>
                     <div className="flex items-center justify-end pt-3 border-t gap-1">
-                      {isKassenwart && (player.balance < 0 || tb < 0) && (<Button size="icon" variant="ghost" className="text-emerald-600 hover:text-emerald-700" onClick={() => { setPaymentPlayer(player); setPaymentAmount(""); setPaymentAccount('drinks'); setIsPaymentOpen(true); }}><Banknote className="h-4 w-4" /></Button>)}
+                      {isKassenwart && ((player.balance || 0) < 0 || tb < 0) && (<Button size="icon" variant="ghost" className="text-emerald-600 hover:text-emerald-700" onClick={() => { setPaymentPlayer(player); setPaymentAmount(""); setPaymentAccount('drinks'); setIsPaymentOpen(true); }}><Banknote className="h-4 w-4" /></Button>)}
                       {isAdmin && (<><Button size="icon" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}><Trash2 className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => { setEditingPlayer(player); setEditName(player.name); setEditEmail(player.email); setEditRoles(player.roles); setEditIsExempt(player.isFeeExempt || false); setIsEditOpen(true); }}><ChevronRight className="h-4 w-4" /></Button></>)}
                     </div>
                   </CardContent>

@@ -317,7 +317,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') as DocumentReference<AppSettings> : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
-  const players = useMemo(() => playersData?.map(d => ({ ...d.data, id: d.id })) || [], [playersData]);
+  const players = useMemo(() => playersData?.map(d => ({ 
+    ...d.data, 
+    id: d.id,
+    balance: d.data.balance ?? 0,
+    treasuryBalance: d.data.treasuryBalance ?? 0,
+    roles: d.data.roles || ['player']
+  })) || [], [playersData]);
+
   const activePlayerIds = useMemo(() => new Set(players.map(p => p.id)), [players]);
 
   const expenses = useMemo(() => expensesData?.map(d => ({ ...d.data, id: d.id })) || [], [expensesData]);

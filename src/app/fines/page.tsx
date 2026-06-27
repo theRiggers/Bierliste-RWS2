@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Scale, Plus, Trash2, Loader2, UserCircle, AlertCircle, CheckCircle2, History, Share2 } from "lucide-react"
+import { Scale, Plus, Trash2, Loader2, UserCircle, AlertCircle, CheckCircle2, History, Share2, Calculator } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
@@ -23,6 +22,7 @@ export default function FinesPage() {
   const [selectedPlayer, setSelectedPlayer] = useState("")
   const [selectedFineTypeId, setSelectedFineTypeId] = useState("")
   const [customAmount, setCustomAmount] = useState("")
+  const [quantity, setQuantity] = useState("1")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -95,19 +95,23 @@ export default function FinesPage() {
 
   const handleAddFine = async () => {
     const val = parseFloat(customAmount)
+    const qty = parseInt(quantity)
     const fineType = fineCatalog.find(f => f.id === selectedFineTypeId)
     
-    if (!selectedPlayer || !fineType || isNaN(val) || val <= 0) {
+    if (!selectedPlayer || !fineType || isNaN(val) || val <= 0 || isNaN(qty) || qty <= 0) {
       toast({ variant: "destructive", title: "Fehler", description: "Bitte fülle alle Felder korrekt aus." })
       return
     }
     setIsSubmitting(true)
     try {
-      addFine(selectedPlayer, fineType.name, val)
+      const totalAmount = val * qty;
+      const reason = qty === 1 ? fineType.name : `${fineType.name} (${qty}x)`;
+      addFine(selectedPlayer, reason, totalAmount);
       toast({ title: "Strafe eingetragen" })
       setSelectedFineTypeId("")
       setCustomAmount("")
       setSelectedPlayer("")
+      setQuantity("1")
     } finally {
       setIsSubmitting(false)
     }
@@ -171,25 +175,46 @@ export default function FinesPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Betrag anpassen (€)</Label>
-                <div className="relative">
-                  <Input 
-                    type="number" 
-                    step="0.50" 
-                    value={customAmount} 
-                    onChange={(e) => setCustomAmount(e.target.value)} 
-                    className="rounded-xl h-12 pl-10" 
-                  />
-                  <Scale className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Einzelbetrag (€)</Label>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      step="0.50" 
+                      value={customAmount} 
+                      onChange={(e) => setCustomAmount(e.target.value)} 
+                      className="rounded-xl h-12 pl-10" 
+                    />
+                    <Scale className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" /> Betrag wird automatisch aus dem Katalog geladen, kann aber überschrieben werden.
-                </p>
+                <div className="space-y-2">
+                  <Label>Anzahl</Label>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      min="1"
+                      step="1" 
+                      value={quantity} 
+                      onChange={(e) => setQuantity(e.target.value)} 
+                      className="rounded-xl h-12 pl-10" 
+                    />
+                    <Calculator className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
               </div>
 
+              {parseInt(quantity) > 1 && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-900">
+                  <p className="text-sm font-bold text-amber-800 dark:text-amber-400">
+                    Gesamtbetrag: {(parseFloat(customAmount || "0") * parseInt(quantity || "0")).toFixed(2)} €
+                  </p>
+                </div>
+              )}
+
               <Button onClick={handleAddFine} disabled={isSubmitting || !selectedPlayer || !selectedFineTypeId} className="w-full rounded-xl h-12 font-bold text-base mt-2 shadow-lg shadow-amber-200 dark:shadow-none bg-amber-600 hover:bg-amber-700 text-white">
-                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="h-5 w-5 mr-2" />}
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
                 Strafe buchen
               </Button>
             </CardContent>

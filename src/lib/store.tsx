@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -289,8 +288,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const raw = lineupsData?.map(d => ({ ...d.data, id: d.id })) || [];
     return raw.map(l => ({
       ...l,
-      startingEleven: l.startingEleven.filter(pos => activePlayerIds.has(pos.playerId)),
-      substitutes: l.substitutes.filter(id => activePlayerIds.has(id))
+      startingEleven: (l.startingEleven || []).filter(pos => activePlayerIds.has(pos.playerId)),
+      substitutes: (l.substitutes || []).filter(id => activePlayerIds.has(id))
     }));
   }, [lineupsData, activePlayerIds]);
 
@@ -473,7 +472,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!tx) return;
     
     deleteDoc(doc(db, 'membershipTransactions', transactionId))
-      .catch(handleMutationError(`membershipTransactions/${transactionId}`, 'delete'));
+      .catch(handleMutationError('membershipTransactions', 'delete'));
 
     if (tx.targetPlayerId) {
       const player = players.find(p => p.id === tx.targetPlayerId);

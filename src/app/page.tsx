@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { useStore, FEE_MONTHS, Role } from "@/lib/store"
 import { 
    Wallet, 
@@ -223,7 +223,8 @@ export default function Dashboard() {
   if (!user) return null
 
   if (!currentUserProfile) {
-    const hasAdmin = players.some(p => p.roles.includes('admin'))
+    // FIX: Added optional chaining to p.roles to avoid "includes of undefined"
+    const hasAdmin = players.some(p => p.roles?.includes('admin'))
     return (
       <div className="flex flex-col items-center justify-center min-h-svh bg-background p-4">
         <Card className="w-full max-md border-none shadow-2xl rounded-3xl overflow-hidden bg-card">
@@ -373,8 +374,8 @@ export default function Dashboard() {
     }
   }
 
-  const isAdmin = currentUserProfile.roles.includes('admin')
-  const isKassenwart = currentUserProfile.roles.includes('kassenwart') || isAdmin
+  const isAdmin = currentUserProfile.roles?.includes('admin')
+  const isKassenwart = currentUserProfile.roles?.includes('kassenwart') || isAdmin
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -617,7 +618,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold",
-                          idx === 0 ? "bg-yellow-400 text-yellow-900" : 
+                          idx === 0 ? "bg-yellow-400 text-yellow-950" : 
                           idx === 1 ? "bg-slate-300 text-slate-700" : 
                           idx === 2 ? "bg-amber-600 text-amber-50" : "bg-muted text-muted-foreground"
                         )}>

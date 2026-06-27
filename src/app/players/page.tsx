@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -79,8 +80,8 @@ export default function PlayersPage() {
   if (loading || !mounted) return <div className="flex h-svh items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   if (!currentUserProfile) return null;
 
-  const isAdmin = currentUserProfile.roles.includes('admin')
-  const isKassenwart = currentUserProfile.roles.includes('kassenwart') || isAdmin
+  const isAdmin = currentUserProfile.roles?.includes('admin')
+  const isKassenwart = currentUserProfile.roles?.includes('kassenwart') || isAdmin
 
   if (!isAdmin && !isKassenwart) return <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center"><h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2><Button onClick={() => window.location.href = "/"} className="mt-4">Zurück</Button></div>
 
@@ -217,7 +218,7 @@ export default function PlayersPage() {
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center text-primary"><UserCircle className="h-8 w-8" /></div>
-                      <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">{player.roles.map(r => (<Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">{AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}</Badge>))}</div>
+                      <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">{ (player.roles || []).map(r => (<Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">{AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}</Badge>))}</div>
                     </div>
                     <h3 className="text-xl font-bold mb-4">{player.name}</h3>
                     <div className="grid grid-cols-2 gap-4 py-3 border-t">
@@ -242,7 +243,7 @@ export default function PlayersPage() {
               <div className="space-y-2"><Label>Name</Label><Input value={editName} onChange={e => setEditName(e.target.value)} /></div>
               <div className="space-y-2"><Label>E-Mail</Label><Input value={editEmail} onChange={e => setEditEmail(e.target.value)} /></div>
               <div className="p-3 bg-muted/30 rounded-xl flex items-center justify-between border"><div className="space-y-0.5"><Label className="text-sm font-bold">Beitragsbefreiung</Label></div><Switch checked={editIsExempt} onCheckedChange={setEditIsExempt} /></div>
-              <div className="space-y-3"><Label>Rollen</Label><div className="grid grid-cols-2 gap-3">{AVAILABLE_ROLES.map(role => (<div key={role.id} className="flex items-center space-x-2 p-2 rounded-lg border hover:bg-muted/50"><Checkbox id={`edit-role-${role.id}`} checked={editRoles.includes(role.id)} onCheckedChange={() => toggleRole(role.id, editRoles, setEditRoles)}/><label htmlFor={`edit-role-${role.id}`} className="text-xs font-medium cursor-pointer flex-1">{role.label}</label></div>))}</div></div>
+              <div className="space-y-3"><Label>Rollen</Label><div className="grid grid-cols-2 gap-3">{AVAILABLE_ROLES.map(role => ( <div key={role.id} className="flex items-center space-x-2 p-2 rounded-lg border hover:bg-muted/50"> <Checkbox id={`edit-role-${role.id}`} checked={editRoles.includes(role.id)} onCheckedChange={() => toggleRole(role.id, editRoles, setEditRoles)} /> <label htmlFor={`edit-role-${role.id}`} className="text-xs font-medium cursor-pointer flex-1">{role.label}</label> </div> ))}</div></div>
             </div>
             <DialogFooter><Button onClick={savePlayerChanges} className="w-full h-11 rounded-xl">Speichern</Button></DialogFooter>
           </DialogContent>
@@ -251,7 +252,7 @@ export default function PlayersPage() {
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
-              <DialogTitle>Zahlung verbuchen</DialogTitle>
+              <DialogTitle>Zahlung erfassen</DialogTitle>
               <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">

@@ -7,7 +7,7 @@ import { useStore, Player, LineupPosition } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Loader2, ArrowLeft, Save, Plus, X, Users, Trophy, Trash2, Info } from "lucide-react"
+import { Loader2, ArrowLeft, Save, Plus, X, Users, Trophy, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
@@ -15,23 +15,6 @@ import { format } from "date-fns"
 import { de } from "date-fns/locale"
 
 const FORMATIONS = [
-  { 
-    id: "4-4-2", 
-    label: "4-4-2", 
-    positions: [
-      { id: "gk", label: "TW", top: "85%", left: "50%" },
-      { id: "lb", label: "LV", top: "65%", left: "15%" },
-      { id: "cb1", label: "IV", top: "70%", left: "38%" },
-      { id: "cb2", label: "IV", top: "70%", left: "62%" },
-      { id: "rb", label: "RV", top: "65%", left: "85%" },
-      { id: "lm", label: "LM", top: "40%", left: "15%" },
-      { id: "cm1", label: "ZM", top: "45%", left: "38%" },
-      { id: "cm2", label: "ZM", top: "45%", left: "62%" },
-      { id: "rm", label: "RM", top: "40%", left: "85%" },
-      { id: "st1", label: "ST", top: "15%", left: "38%" },
-      { id: "st2", label: "ST", top: "15%", left: "62%" },
-    ]
-  },
   { 
     id: "4-3-3", 
     label: "4-3-3", 
@@ -42,7 +25,7 @@ const FORMATIONS = [
       { id: "cb2", label: "IV", top: "70%", left: "62%" },
       { id: "rb", label: "RV", top: "65%", left: "85%" },
       { id: "cm1", label: "ZM", top: "45%", left: "25%" },
-      { id: "cdm", label: "DM", top: "50%", left: "50%" },
+      { id: "cdm", label: "DM", top: "52%", left: "50%" },
       { id: "cm2", label: "ZM", top: "45%", left: "75%" },
       { id: "lw", label: "LA", top: "18%", left: "20%" },
       { id: "st", label: "MS", top: "15%", left: "50%" },
@@ -50,39 +33,39 @@ const FORMATIONS = [
     ]
   },
   { 
-    id: "4-2-3-1", 
-    label: "4-2-3-1", 
+    id: "4-5-1", 
+    label: "4-5-1", 
     positions: [
       { id: "gk", label: "TW", top: "85%", left: "50%" },
       { id: "lb", label: "LV", top: "68%", left: "15%" },
       { id: "cb1", label: "IV", top: "72%", left: "38%" },
       { id: "cb2", label: "IV", top: "72%", left: "62%" },
       { id: "rb", label: "RV", top: "68%", left: "85%" },
-      { id: "cdm1", label: "DM", top: "52%", left: "38%" },
-      { id: "cdm2", label: "DM", top: "52%", left: "62%" },
-      { id: "lm", label: "LM", top: "30%", left: "15%" },
-      { id: "cam", label: "OM", top: "32%", left: "50%" },
-      { id: "rm", label: "RM", top: "30%", left: "85%" },
-      { id: "st", label: "ST", top: "12%", left: "50%" },
+      { id: "lm", label: "LM", top: "40%", left: "15%" },
+      { id: "cm1", label: "ZM", top: "45%", left: "35%" },
+      { id: "cdm", label: "DM", top: "52%", left: "50%" },
+      { id: "cm2", label: "ZM", top: "45%", left: "65%" },
+      { id: "rm", label: "RM", top: "40%", left: "85%" },
+      { id: "st", label: "ST", top: "15%", left: "50%" },
     ]
   },
   { 
-    id: "3-5-2", 
-    label: "3-5-2", 
+    id: "3-4-3", 
+    label: "3-4-3", 
     positions: [
       { id: "gk", label: "TW", top: "85%", left: "50%" },
-      { id: "cb1", label: "IV", top: "70%", left: "25%" },
+      { id: "cb1", label: "IV", top: "72%", left: "25%" },
       { id: "cb2", label: "IV", top: "75%", left: "50%" },
-      { id: "cb3", label: "IV", top: "70%", left: "75%" },
-      { id: "lm", label: "LAV", top: "45%", left: "12%" },
-      { id: "cm1", label: "ZM", top: "50%", left: "35%" },
-      { id: "cdm", label: "DM", top: "55%", left: "50%" },
-      { id: "cm2", label: "ZM", top: "50%", left: "65%" },
-      { id: "rm", label: "RAV", top: "45%", left: "88%" },
-      { id: "st1", label: "ST", top: "15%", left: "38%" },
-      { id: "st2", label: "ST", top: "15%", left: "62%" },
+      { id: "cb3", label: "IV", top: "72%", left: "75%" },
+      { id: "lm", label: "LM", top: "45%", left: "15%" },
+      { id: "cm1", label: "ZM", top: "48%", left: "38%" },
+      { id: "cm2", label: "ZM", top: "48%", left: "62%" },
+      { id: "rm", label: "RM", top: "45%", left: "85%" },
+      { id: "lw", label: "LA", top: "18%", left: "25%" },
+      { id: "st", label: "MS", top: "15%", left: "50%" },
+      { id: "rw", label: "RA", top: "18%", left: "75%" },
     ]
-  },
+  }
 ];
 
 export default function LineupPage() {
@@ -94,7 +77,7 @@ export default function LineupPage() {
   const [mounted, setMounted] = useState(false)
   const { players, teamEvents, attendance, lineups, upsertLineup, currentUserProfile, loading: storeLoading } = useStore()
   
-  const [selectedFormationId, setSelectedFormationId] = useState("4-4-2")
+  const [selectedFormationId, setSelectedFormationId] = useState("4-3-3")
   const [startingEleven, setStartingEleven] = useState<LineupPosition[]>([])
   const [substitutes, setSubstitutes] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -104,7 +87,6 @@ export default function LineupPage() {
   const currentEvent = useMemo(() => teamEvents.find(e => e.id === eventId), [teamEvents, eventId]);
   const currentLineup = useMemo(() => lineups.find(l => l.eventId === eventId), [lineups, eventId]);
   
-  // Only players who RSVP'd "going"
   const availablePlayers = useMemo(() => {
     const goingIds = attendance.filter(a => a.eventId === eventId && a.status === 'going').map(a => a.playerId);
     return players.filter(p => goingIds.includes(p.id));
@@ -164,7 +146,6 @@ export default function LineupPage() {
   }
 
   const togglePlayerOnPosition = (posId: string, playerId: string) => {
-    // Remove player if they were on another position or on the bench
     const newLineup = startingEleven.filter(p => p.playerId !== playerId && p.positionId !== posId);
     const newBench = substitutes.filter(id => id !== playerId);
 
@@ -179,7 +160,6 @@ export default function LineupPage() {
   const addSubstitute = (playerId: string) => {
     if (substitutes.includes(playerId)) return;
     
-    // Remove from starting eleven if present
     const newStarting = startingEleven.filter(p => p.playerId !== playerId);
     setStartingEleven(newStarting);
     setSubstitutes(prev => [...prev, playerId]);
@@ -255,10 +235,8 @@ export default function LineupPage() {
           </div>
 
           <div className="grid gap-8 lg:grid-cols-3">
-            {/* Pitch Layout */}
             <div className="lg:col-span-2 space-y-4">
               <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-emerald-700/10 dark:bg-emerald-950/20 relative aspect-[2/3] md:aspect-[3/4] max-w-2xl mx-auto border-4 border-emerald-600/30">
-                {/* Field Markings */}
                 <div className="absolute inset-0 pointer-events-none opacity-20">
                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[15%] border-b-2 border-x-2 border-white"></div>
                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-[15%] border-t-2 border-x-2 border-white"></div>
@@ -266,7 +244,6 @@ export default function LineupPage() {
                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full border-2 border-white"></div>
                 </div>
 
-                {/* Positions */}
                 {currentFormation.positions.map((pos) => {
                   const player = getPlayerOnPosition(pos.id);
                   return (
@@ -315,7 +292,6 @@ export default function LineupPage() {
               </div>
             </div>
 
-            {/* Sidebar: Substitutes & Availability */}
             <div className="space-y-6">
               <Card className="border-none shadow-xl rounded-2xl overflow-hidden bg-card">
                 <CardHeader className="bg-primary/5">

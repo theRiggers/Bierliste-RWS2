@@ -177,24 +177,24 @@ export default function TickerPage() {
       <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex h-16 items-center justify-between px-4 md:px-8 bg-card border-b border-border sticky top-0 z-20 shadow-sm">
-          <div className="flex items-center gap-3">
-             <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full"><ArrowLeft className="h-5 w-5" /></Button>
-             <h1 className="text-lg font-bold text-primary font-headline truncate max-w-[150px] md:max-w-none">{event.title}</h1>
+        <header className="flex h-16 items-center justify-between px-3 md:px-8 bg-card border-b border-border sticky top-0 z-20 shadow-sm">
+          <div className="flex items-center gap-1.5 md:gap-3 shrink min-w-0">
+             <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full shrink-0 h-9 w-9"><ArrowLeft className="h-4 w-4" /></Button>
+             <h1 className="text-sm md:text-lg font-bold text-primary font-headline truncate max-w-[110px] md:max-w-none">{event.title}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/20 flex items-center gap-2">
-              <span className="text-lg font-black">{ticker.homeScore} : {ticker.awayScore}</span>
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+            <div className="bg-primary/10 px-2 md:px-3 py-1 rounded-lg md:rounded-xl border border-primary/20 flex items-center gap-1.5 md:gap-2">
+              <span className="text-base md:text-lg font-black tracking-tighter whitespace-nowrap">{ticker.homeScore} : {ticker.awayScore}</span>
             </div>
             {isFinished ? (
-              <Badge variant="outline" className="h-9 px-3 rounded-xl border-emerald-500 text-emerald-600 bg-emerald-50 font-black">BEENDET</Badge>
+              <Badge variant="outline" className="h-8 md:h-9 px-2 md:px-3 rounded-lg md:rounded-xl border-emerald-500 text-emerald-600 bg-emerald-50 font-black text-[10px] md:text-xs">ABGEPFIFFEN</Badge>
             ) : isAvailable ? (
-              <Button size="sm" onClick={() => claimTicker(eventId)} className="rounded-xl h-9 bg-emerald-600"><Radio className="h-4 w-4 mr-2" /> Übernehmen</Button>
+              <Button size="sm" onClick={() => claimTicker(eventId)} className="rounded-lg md:rounded-xl h-8 md:h-9 px-2 md:px-4 bg-emerald-600 text-[10px] md:text-xs font-bold"><Radio className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" /> Übernehmen</Button>
             ) : isOperator ? (
-              <Button size="sm" variant="outline" onClick={() => releaseTicker(eventId)} className="rounded-xl h-9">Freigeben</Button>
+              <Button size="sm" variant="outline" onClick={() => releaseTicker(eventId)} className="rounded-lg md:rounded-xl h-8 md:h-9 px-2 md:px-4 text-[10px] md:text-xs font-bold">Freigeben</Button>
             ) : (
-              <Badge variant="outline" className="h-9 px-3 rounded-xl border-amber-500 text-amber-600 bg-amber-50">
-                Ticker läuft...
+              <Badge variant="outline" className="h-8 md:h-9 px-2 md:px-3 rounded-lg md:rounded-xl border-amber-500 text-amber-600 bg-amber-50 text-[10px] md:text-xs font-bold">
+                LIVE
               </Badge>
             )}
           </div>

@@ -66,7 +66,33 @@ export default function HistoryPage() {
   }, [mounted, authLoading, user, router])
 
   const combinedHistory = useMemo(() => {
-    const formattedExpenses = expenses.map(e => ({
+    if (!currentUserProfile) return [];
+
+    const isPrivileged = currentUserProfile.roles.some(r => ['admin', 'kassenwart', 'strafenwart'].includes(r));
+    const currentUserId = currentUserProfile.id;
+
+    // Filter data based on permissions
+    const filteredExpenses = isPrivileged 
+      ? expenses 
+      : expenses.filter(e => e.playerId === currentUserId);
+      
+    const filteredPayments = isPrivileged 
+      ? payments 
+      : payments.filter(p => p.playerId === currentUserId);
+      
+    const filteredFines = isPrivileged 
+      ? fines 
+      : fines.filter(f => f.playerId === currentUserId);
+      
+    const filteredFees = isPrivileged 
+      ? membershipFees 
+      : membershipFees.filter(f => f.playerId === currentUserId);
+      
+    const filteredMTransactions = isPrivileged 
+      ? membershipTransactions 
+      : membershipTransactions.filter(m => m.targetPlayerId === currentUserId);
+
+    const formattedExpenses = filteredExpenses.map(e => ({
       id: e.id,
       playerId: e.playerId,
       playerName: e.playerName,
@@ -76,7 +102,7 @@ export default function HistoryPage() {
       category: 'expense' as const
     }));
 
-    const formattedPayments = payments.map(p => ({
+    const formattedPayments = filteredPayments.map(p => ({
       id: p.id,
       playerId: p.playerId,
       playerName: p.playerName,
@@ -86,7 +112,7 @@ export default function HistoryPage() {
       category: 'payment' as const
     }));
 
-    const formattedTreasury = treasuryExpenses.map(t => ({
+    const formattedTreasury = isPrivileged ? treasuryExpenses.map(t => ({
       id: t.id,
       playerId: 'bierliste',
       playerName: 'Bierliste (Gesamt)',
@@ -95,12 +121,12 @@ export default function HistoryPage() {
       amount: -t.amount,
       date: t.date,
       category: 'treasury' as const
-    }));
+    })) : [];
 
-    const formattedMembership = membershipTransactions.map(m => ({
+    const formattedMembership = filteredMTransactions.map(m => ({
       id: m.id,
-      playerId: 'mannschaft',
-      playerName: 'Mannschaftskasse',
+      playerId: m.targetPlayerId || 'mannschaft',
+      playerName: m.targetPlayerId ? (players.find(p => p.id === m.targetPlayerId)?.name || 'Spieler') : 'Mannschaftskasse',
       type: m.type,
       description: m.description,
       amount: m.type === 'expense' ? -m.amount : m.amount,
@@ -108,7 +134,7 @@ export default function HistoryPage() {
       category: 'membershipTransaction' as const
     }));
 
-    const formattedFines = fines.map(f => ({
+    const formattedFines = filteredFines.map(f => ({
       id: f.id,
       playerId: f.playerId,
       playerName: f.playerName,
@@ -119,7 +145,7 @@ export default function HistoryPage() {
       category: 'fine' as const
     }));
 
-    const formattedFees = membershipFees.map(f => {
+    const formattedFees = filteredFees.map(f => {
       const player = players.find(p => p.id === f.playerId);
       const monthName = f.type === 'monthly' && f.month !== undefined ? MONTH_NAMES_SHORT[f.month] : '';
       return {
@@ -144,7 +170,7 @@ export default function HistoryPage() {
     ].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [expenses, payments, treasuryExpenses, membershipTransactions, fines, membershipFees, players]);
+  }, [expenses, payments, treasuryExpenses, membershipTransactions, fines, membershipFees, players, currentUserProfile]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -165,7 +191,7 @@ export default function HistoryPage() {
   }
 
   const filteredHistory = combinedHistory.filter(item => {
-    const searchString = (item.playerName + (item as any).description || '').toLowerCase()
+    const searchString = (item.playerName + ((item as any).description || '')).toLowerCase()
     const matchesSearch = searchString.includes(searchTerm.toLowerCase())
     const matchesFilter = filterType === "all" || item.category === filterType
     return matchesSearch && matchesFilter

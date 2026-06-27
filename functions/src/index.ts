@@ -104,3 +104,35 @@ export const sendDailyRsvpReminders = onSchedule({
     console.error("Fehler im Cron-Job-Ablauf:", error);
   }
 });
+
+/**
+ * Scheduled Function zum Löschen alter Match-Chats.
+ * Läuft täglich um 04:00 Uhr morgens.
+ */
+export const cleanupOldMatchChats = onSchedule({
+  schedule: "0 4 * * *",
+  timeZone: "Europe/Berlin"
+}, async (): Promise<void> => {
+  const now = new Date().toISOString();
+  
+  try {
+    const expiredCommentsSnapshot = await db.collection("matchComments")
+      .where("expiresAt", "<", now)
+      .get();
+    
+    if (expiredCommentsSnapshot.empty) {
+      console.log("Keine abgelaufenen Chat-Nachrichten gefunden.");
+      return;
+    }
+
+    const batch = db.batch();
+    expiredCommentsSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    console.log(`${expiredCommentsSnapshot.size} alte Chat-Nachrichten gelöscht.`);
+  } catch (error) {
+    console.error("Fehler beim Bereinigen der Chats:", error);
+  }
+});

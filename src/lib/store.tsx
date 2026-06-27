@@ -2,10 +2,10 @@
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
 import { useCollection, useDoc, useUser, useFirebase, useFirestore } from '@/firebase';
-import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp, Firestore, Query, DocumentReference } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, query, orderBy, limit, deleteDoc, writeBatch, serverTimestamp, Firestore, Query, DocumentReference, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { isWithinInterval, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
+import { isWithinInterval, parseISO, startOfDay, endOfDay, isBefore, isAfter, addDays } from 'date-fns';
 
 export type Role = 'player' | 'admin' | 'kassenwart' | 'strafenwart' | 'coach' | 'assistant_coach';
 
@@ -153,6 +153,16 @@ export interface TickerEvent {
   timestamp: string;
 }
 
+export interface MatchComment {
+  id: string;
+  eventId: string;
+  playerId: string;
+  playerName: string;
+  text: string;
+  timestamp: string;
+  expiresAt: string;
+}
+
 export interface AppSettings {
   beerPrice: number;
   cratePrice: number;
@@ -204,6 +214,7 @@ interface StoreContextType {
   absences: Absence[];
   tickers: Ticker[];
   tickerEvents: TickerEvent[];
+  matchComments: MatchComment[];
   currentUserProfile: Player | null;
   settings: AppSettings;
   loading: boolean;
@@ -241,6 +252,7 @@ interface StoreContextType {
   updateTickerScore: (eventId: string, home: number, away: number) => Promise<void>;
   addTickerEvent: (eventId: string, event: Omit<TickerEvent, 'id' | 'eventId' | 'timestamp'>) => Promise<void>;
   deleteTickerEvent: (eventId: string, event: TickerEvent) => Promise<void>;
+  addMatchComment: (eventId: string, text: string) => Promise<void>;
   addBezahlkiste: () => void;
   addPlayer: (name: string, email: string, roles: Role[], uid?: string, isFeeExempt?: boolean) => Promise<void>;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -299,6 +311,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const tickerEventsQuery = useMemo(() => db ? query(collection(db, 'tickerEvents'), orderBy('timestamp', 'desc')) as Query<Omit<TickerEvent, 'id'>> : null, [db]);
   const { data: tickerEventsData, loading: tickerEventsLoading } = useCollection<Omit<TickerEvent, 'id'>>(tickerEventsQuery);
 
+  const matchCommentsQuery = useMemo(() => db ? query(collection(db, 'matchComments'), orderBy('timestamp', 'desc')) as Query<Omit<MatchComment, 'id'>> : null, [db]);
+  const { data: matchCommentsData, loading: matchCommentsLoading } = useCollection<Omit<MatchComment, 'id'>>(matchCommentsQuery);
+
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') as DocumentReference<AppSettings> : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
@@ -315,6 +330,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const teamEvents = useMemo(() => teamEventsData?.map(d => ({ ...d.data, id: d.id })) || [], [teamEventsData]);
   const tickers = useMemo(() => tickersData?.map(d => ({ ...d.data, id: d.id })) || [], [tickersData]);
   const tickerEvents = useMemo(() => tickerEventsData?.map(d => ({ ...d.data, id: d.id })).filter(e => e.type !== 'goal' || activePlayerIds.has(e.playerId || '')) || [], [tickerEventsData, activePlayerIds]);
+  const matchComments = useMemo(() => matchCommentsData?.map(d => ({ ...d.data, id: d.id })) || [], [matchCommentsData]);
   
   const attendance = useMemo(() => attendanceData?.map(d => ({ ...d.data, id: d.id })).filter(a => activePlayerIds.has(a.playerId)) || [], [attendanceData, activePlayerIds]);
   const absences = useMemo(() => absencesData?.map(d => ({ ...d.data, id: d.id })).filter(a => activePlayerIds.has(a.playerId)) || [], [absencesData, activePlayerIds]);
@@ -597,6 +613,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     deleteDoc(doc(db, 'tickerEvents', event.id)).catch(handleMutationError(`tickerEvents/${event.id}`, 'delete'));
   };
 
+  const addMatchComment = async (eventId: string, text: string) => {
+    if (!db || !currentUserProfile) return;
+    const event = teamEvents.find(e => e.id === eventId);
+    if (!event) return;
+    
+    const expiresAt = addDays(startOfDay(parseISO(event.date)), 1).toISOString();
+    const commentData = {
+      eventId,
+      playerId: currentUserProfile.id,
+      playerName: currentUserProfile.name,
+      text,
+      timestamp: new Date().toISOString(),
+      expiresAt
+    };
+    addDoc(collection(db, 'matchComments'), commentData).catch(handleMutationError('matchComments', 'create', commentData));
+  };
+
   const addBezahlkiste = () => {
     if (!db) return;
     addDoc(collection(db, 'expenses'), { playerId: 'clubhouse', playerName: 'Bezahlkiste (Mannschaft)', itemType: 'crate', cost: settings.cratePrice, date: new Date().toISOString() }).catch(handleMutationError('expenses', 'create'));
@@ -653,9 +686,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, tickers, tickerEvents, currentUserProfile, settings, loading: loadingState, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity,
+      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, tickers, tickerEvents, matchComments, currentUserProfile, settings, loading: loadingState, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity,
       addExpense, deleteExpense, recordPayment, deletePayment, addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction, addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
-      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, finishTicker, updateTickerScore, addTickerEvent, deleteTickerEvent, addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
+      addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, finishTicker, updateTickerScore, addTickerEvent, deleteTickerEvent, addMatchComment, addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
     }}>{children}</StoreContext.Provider>
   );
 }

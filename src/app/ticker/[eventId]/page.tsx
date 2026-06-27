@@ -9,15 +9,42 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, ArrowLeft, Trophy, Users, MessageSquare, Clock, Plus, Trash2, ShieldCheck, Flag, Replace, CheckCircle2, Radio, Check, X, Send } from "lucide-react"
+import { 
+  Loader2, 
+  ArrowLeft, 
+  Trophy, 
+  Users, 
+  MessageSquare, 
+  Clock, 
+  Plus, 
+  Trash2, 
+  ShieldCheck, 
+  Flag, 
+  Replace, 
+  CheckCircle2, 
+  Radio, 
+  Check, 
+  X, 
+  Send 
+} from "lucide-react"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from "@/components/ui/alert-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 
 export default function TickerPage() {
   const params = useParams()
@@ -150,7 +177,7 @@ export default function TickerPage() {
       <MobileNavTrigger userRoles={currentUserProfile.roles} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex h-16 items-center justify-between px-4 md:px-8 bg-card border-b border-border sticky top-0 z-20">
+        <header className="flex h-16 items-center justify-between px-4 md:px-8 bg-card border-b border-border sticky top-0 z-20 shadow-sm">
           <div className="flex items-center gap-3">
              <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full"><ArrowLeft className="h-5 w-5" /></Button>
              <h1 className="text-lg font-bold text-primary font-headline truncate max-w-[150px] md:max-w-none">{event.title}</h1>
@@ -173,11 +200,11 @@ export default function TickerPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-4xl mx-auto w-full pb-24">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 max-w-7xl mx-auto w-full pb-24">
           {isOperator && !isFinished && (
-            <Card className="border-none shadow-lg rounded-2xl bg-card border-l-4 border-l-primary overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+            <Card className="border-none shadow-lg rounded-2xl bg-card border-l-4 border-l-primary overflow-hidden mb-6">
               <CardHeader className="bg-primary/5 pb-4 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Ticker-Konsole</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2 font-bold"><ShieldCheck className="h-4 w-4 text-primary" /> Ticker-Konsole</CardTitle>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-destructive hover:bg-destructive/10 uppercase tracking-widest"><X className="h-3 w-3 mr-1" /> Abpfiff</Button>
@@ -215,7 +242,7 @@ export default function TickerPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="space-y-4">
                   {newType === 'goal' && (
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-1.5">
@@ -277,21 +304,19 @@ export default function TickerPage() {
             </Card>
           )}
 
-          <Tabs defaultValue="ticker" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 h-12 rounded-2xl p-1 bg-muted">
-              <TabsTrigger value="ticker" className="rounded-xl gap-2">
-                <Flag className="h-4 w-4" /> Live-Ticker
-              </TabsTrigger>
-              <TabsTrigger value="chat" className="rounded-xl gap-2">
-                <MessageSquare className="h-4 w-4" /> Team-Chat
-              </TabsTrigger>
-            </TabsList>
+          <div className="grid lg:grid-cols-5 gap-8 items-start">
+            {/* LEFT COLUMN: TICKER (3/5) */}
+            <div className="lg:col-span-3 space-y-6">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Flag className="h-5 w-5 text-primary" /> Live-Verlauf
+                </h2>
+              </div>
 
-            <TabsContent value="ticker" className="space-y-4 animate-in fade-in duration-300">
               <div className="relative space-y-4">
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border z-0"></div>
                 {sortedEvents.map((e) => (
-                  <div key={e.id} className="relative z-10 flex gap-4 animate-in fade-in slide-in-from-left-2">
+                  <div key={e.id} className="relative z-10 flex gap-4 animate-in fade-in slide-in-from-left-2 duration-300">
                     <div className={cn(
                       "h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm border-2 border-background",
                       e.type === 'goal' ? 'bg-yellow-400 text-yellow-950' : 
@@ -300,7 +325,7 @@ export default function TickerPage() {
                     )}>
                       {getEventIcon(e.type)}
                     </div>
-                    <Card className="flex-1 border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                    <Card className="flex-1 border-none shadow-sm rounded-2xl bg-card overflow-hidden hover:shadow-md transition-shadow">
                       <CardContent className="p-4 flex items-start justify-between gap-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -319,9 +344,9 @@ export default function TickerPage() {
                             <p className="font-bold text-base text-destructive">Tor für den Gegner</p>
                           )}
                           {e.type === 'sub' && (
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <span className="text-destructive">OUT: {e.playerOutName}</span>
-                              <span className="text-emerald-600">IN: {e.playerInName}</span>
+                            <div className="flex flex-col gap-0.5 text-sm font-medium">
+                              <span className="text-destructive flex items-center gap-1"><X className="h-3 w-3" /> OUT: {e.playerOutName}</span>
+                              <span className="text-emerald-600 flex items-center gap-1"><Check className="h-3 w-3" /> IN: {e.playerInName}</span>
                             </div>
                           )}
                           {e.text && <p className="text-sm font-medium leading-relaxed">{e.text}</p>}
@@ -341,56 +366,68 @@ export default function TickerPage() {
                   </div>
                 )}
               </div>
-            </TabsContent>
+            </div>
 
-            <TabsContent value="chat" className="space-y-4 animate-in fade-in duration-300">
-               <Card className="border-none shadow-lg rounded-3xl bg-card overflow-hidden h-[500px] flex flex-col">
-                  <div className="flex-1 overflow-hidden">
-                    <ScrollArea className="h-full p-4" ref={scrollRef}>
-                       <div className="space-y-4">
-                          {filteredComments.map((c) => (
-                            <div key={c.id} className={cn(
-                              "flex flex-col max-w-[80%]",
-                              c.playerId === currentUserProfile.id ? "ml-auto items-end" : "items-start"
-                            )}>
-                               <span className="text-[10px] font-bold text-muted-foreground px-2 mb-1">
-                                 {c.playerName} • {format(new Date(c.timestamp), 'HH:mm')}
-                               </span>
-                               <div className={cn(
-                                 "px-4 py-2 rounded-2xl text-sm font-medium shadow-sm",
-                                 c.playerId === currentUserProfile.id ? "bg-primary text-white rounded-tr-none" : "bg-muted rounded-tl-none"
-                               )}>
-                                 {c.text}
-                               </div>
-                            </div>
-                          ))}
-                          {filteredComments.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2 py-20">
-                               <MessageSquare className="h-8 w-8 opacity-20" />
-                               <p className="text-sm italic">Noch keine Nachrichten. Schreib etwas!</p>
-                            </div>
-                          )}
-                       </div>
-                    </ScrollArea>
-                  </div>
-                  <div className="p-4 bg-muted/30 border-t border-border flex gap-2">
-                    <Input 
-                      placeholder="Nachricht schreiben..." 
-                      className="rounded-xl h-11" 
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                    />
-                    <Button size="icon" className="h-11 w-11 rounded-xl shrink-0" onClick={handleSendChat} disabled={!chatMessage.trim()}>
-                      <Send className="h-5 w-5" />
-                    </Button>
-                  </div>
-               </Card>
-               <p className="text-[10px] text-center text-muted-foreground px-4">
-                 Hinweis: Der Team-Chat ist nur temporär und wird am Tag nach dem Spiel automatisch gelöscht.
-               </p>
-            </TabsContent>
-          </Tabs>
+            {/* RIGHT COLUMN: TEAM CHAT (2/5) */}
+            <div className="lg:col-span-2 space-y-6 lg:sticky lg:top-24">
+              <div className="flex items-center justify-between px-1">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-blue-500" /> Team-Chat
+                </h2>
+                <Badge variant="outline" className="text-[8px] bg-muted/50 border-none font-bold">LIVE</Badge>
+              </div>
+
+              <Card className="border-none shadow-xl rounded-3xl bg-card overflow-hidden h-[500px] flex flex-col border border-border/50">
+                <div className="flex-1 overflow-hidden">
+                  <ScrollArea className="h-full p-4" ref={scrollRef}>
+                    <div className="space-y-4">
+                      {filteredComments.map((c) => (
+                        <div key={c.id} className={cn(
+                          "flex flex-col max-w-[85%]",
+                          c.playerId === currentUserProfile.id ? "ml-auto items-end" : "items-start"
+                        )}>
+                          <span className="text-[9px] font-bold text-muted-foreground px-2 mb-1">
+                            {c.playerName} • {format(new Date(c.timestamp), 'HH:mm')}
+                          </span>
+                          <div className={cn(
+                            "px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm",
+                            c.playerId === currentUserProfile.id 
+                              ? "bg-primary text-white rounded-tr-none" 
+                              : "bg-muted rounded-tl-none"
+                          )}>
+                            {c.text}
+                          </div>
+                        </div>
+                      ))}
+                      {filteredComments.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-3 py-20">
+                          <div className="p-4 bg-muted rounded-full">
+                            <MessageSquare className="h-8 w-8 opacity-20" />
+                          </div>
+                          <p className="text-sm italic">Schreib die erste Nachricht!</p>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+                <div className="p-4 bg-muted/30 border-t border-border flex gap-2">
+                  <Input 
+                    placeholder="Nachricht schreiben..." 
+                    className="rounded-xl h-11 border-none shadow-inner bg-card focus-visible:ring-1 focus-visible:ring-primary" 
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                  />
+                  <Button size="icon" className="h-11 w-11 rounded-xl shrink-0 red-glow shadow-md transition-transform active:scale-90" onClick={handleSendChat} disabled={!chatMessage.trim()}>
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
+              </Card>
+              <p className="text-[10px] text-center text-muted-foreground px-4 leading-relaxed">
+                Der Chat ist temporär und wird am Tag nach dem Spiel automatisch gelöscht.
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     </div>

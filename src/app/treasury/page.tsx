@@ -22,7 +22,9 @@ import {
   BadgeEuro,
   Info,
   RotateCcw,
-  UserCircle
+  UserCircle,
+  Clock,
+  CheckCircle2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -41,15 +43,16 @@ const MONTH_NAMES = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "S
 export default function TreasuryPage() {
   const { toast } = useToast()
   const { 
-    players, membershipTransactions, membershipFees, totalMannschaftskasse, settings,
+    players, membershipTransactions, membershipFees, totalMannschaftskasse, settings, reimbursements,
     addMembershipTransaction, deleteMembershipTransaction, addMembershipFee, deleteMembershipFee, closeSeason,
+    addReimbursement, confirmReimbursement, deleteReimbursement,
     currentUserProfile, loading: storeLoading } = useStore()
   
   const [mounted, setMounted] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [description, setDescription] = useState("")
   const [amount, setAmount] = useState("")
-  const [type, setType] = useState<'sponsor' | 'donation' | 'other' | 'expense'>('expense')
+  const [type, setType] = useState<'sponsor' | 'donation' | 'other' | 'expense' | 'reimbursement'>('expense')
   const [targetPlayerId, setTargetPlayerId] = useState<string>("none")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -64,6 +67,7 @@ export default function TreasuryPage() {
   useEffect(() => { setMounted(true) }, [])
 
   const filteredPlayers = useMemo(() => players.filter(p => p.email !== 'kasse@kickoff.de'), [players]);
+  const pendingReimbursements = useMemo(() => reimbursements.filter(r => r.status === 'pending'), [reimbursements]);
 
   if (storeLoading || !mounted) return <div className="flex h-svh items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
@@ -89,8 +93,18 @@ export default function TreasuryPage() {
     if (!description || isNaN(val) || val <= 0) { toast({ variant: "destructive", title: "Fehler" }); return; }
     setIsSubmitting(true);
     try {
-      addMembershipTransaction(description, val, type, targetPlayerId === "none" ? undefined : targetPlayerId);
-      toast({ title: "Buchung erfolgreich" }); setIsDialogOpen(false); setDescription(""); setAmount(""); setType("expense"); setTargetPlayerId("none");
+      if (type === 'reimbursement') {
+        if (targetPlayerId === "none") {
+          toast({ variant: "destructive", title: "Fehler", description: "Bitte wähle einen Spieler für die Auslage aus." });
+          return;
+        }
+        addReimbursement(targetPlayerId, description, val);
+        toast({ title: "Auslage erfasst", description: "Anstehende Rückzahlung wurde vorgemerkt." });
+      } else {
+        addMembershipTransaction(description, val, type, targetPlayerId === "none" ? undefined : targetPlayerId);
+        toast({ title: "Buchung erfolgreich" });
+      }
+      setIsDialogOpen(false); setDescription(""); setAmount(""); setType("expense"); setTargetPlayerId("none");
     } finally { setIsSubmitting(false) }
   }
 
@@ -102,7 +116,10 @@ export default function TreasuryPage() {
     } finally { setIsSubmitting(false) }
   };
 
-  const getIcon = (type: string) => type === 'expense' ? <ArrowDownCircle className="h-4 w-4 text-destructive" /> : <ArrowUpCircle className="h-4 w-4 text-emerald-600" />;
+  const getIcon = (type: string) => {
+    if (type === 'expense') return <ArrowDownCircle className="h-4 w-4 text-destructive" />;
+    return <ArrowUpCircle className="h-4 w-4 text-emerald-600" />;
+  };
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -122,6 +139,39 @@ export default function TreasuryPage() {
             </TabsList>
 
             <TabsContent value="transactions" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {pendingReimbursements.length > 0 && (
+                <Card className="border-none shadow-md bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900 rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-800 dark:text-amber-400">
+                      <Clock className="h-4 w-4" /> Offene Rückzahlungen (Auslagen)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {pendingReimbursements.map((rb) => (
+                      <div key={rb.id} className="flex items-center justify-between bg-card p-3 rounded-xl shadow-sm border border-amber-100 dark:border-amber-900/50">
+                        <div>
+                          <p className="text-sm font-bold">{rb.playerName}</p>
+                          <p className="text-xs text-muted-foreground">{rb.description}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-black text-amber-700 dark:text-amber-400">-{rb.amount.toFixed(2)} €</span>
+                          <Button 
+                            size="sm" 
+                            className="rounded-lg h-8 bg-amber-600 hover:bg-amber-700 text-xs font-bold"
+                            onClick={() => confirmReimbursement(rb.id)}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Auszahlen
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => deleteReimbursement(rb.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h3 className="text-base md:text-lg font-bold flex items-center gap-2"><ArrowUpCircle className="h-5 w-5 text-emerald-600" /> Umsätze</h3>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -144,12 +194,41 @@ export default function TreasuryPage() {
                     <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
                       <DialogHeader><DialogTitle>Einnahme / Ausgabe buchen</DialogTitle><DialogDescription>Erfasse Finanzen der Mannschaftskasse.</DialogDescription></DialogHeader>
                       <div className="grid gap-4 py-4">
-                        <div className="space-y-2"><Label>Beschreibung</Label><Input value={description} onChange={e => setDescription(e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Beschreibung</Label><Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Z.B. Trikotsatz, Sponsoring..." /></div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2"><Label>Betrag (€)</Label><Input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} /></div>
-                          <div className="space-y-2"><Label>Typ</Label><Select value={type} onValueChange={(v: any) => setType(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="expense">Ausgabe (-)</SelectItem><SelectItem value="sponsor">Sponsoring (+)</SelectItem><SelectItem value="donation">Spende (+)</SelectItem><SelectItem value="other">Sonstiges (+)</SelectItem></SelectContent></Select></div>
+                          <div className="space-y-2">
+                            <Label>Typ</Label>
+                            <Select value={type} onValueChange={(v: any) => setType(v)}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="expense">Reguläre Ausgabe (-)</SelectItem>
+                                <SelectItem value="reimbursement">Auslage (Rückzahlung an Spieler)</SelectItem>
+                                <SelectItem value="sponsor">Sponsoring (+)</SelectItem>
+                                <SelectItem value="donation">Spende (+)</SelectItem>
+                                <SelectItem value="other">Sonstiges (+)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div className="space-y-2"><Label>Zuordnung (Optional)</Label><Select value={targetPlayerId} onValueChange={setTargetPlayerId}><SelectTrigger><SelectValue placeholder="Spieler wählen" /></SelectTrigger><SelectContent><SelectItem value="none">Keine Person</SelectItem>{filteredPlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>
+                        <div className="space-y-2">
+                          <Label>Zuordnung {type === 'reimbursement' ? '(Pflicht)' : '(Optional)'}</Label>
+                          <Select value={targetPlayerId} onValueChange={setTargetPlayerId}>
+                            <SelectTrigger><SelectValue placeholder="Spieler wählen" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Keine Person</SelectItem>
+                              {filteredPlayers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {type === 'reimbursement' && (
+                          <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900 flex items-start gap-2">
+                            <Info className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                              Hinweis: Auslagen werden erst nach Bestätigung der Rückzahlung vom Kassenstand abgezogen.
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <DialogFooter><Button onClick={handleAddTransaction} disabled={isSubmitting} className="w-full h-12 rounded-xl font-bold">Speichern</Button></DialogFooter>
                     </DialogContent>
@@ -171,6 +250,9 @@ export default function TreasuryPage() {
                         </TableRow>
                       )
                     })}
+                    {membershipTransactions.length === 0 && (
+                      <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">Keine Buchungen vorhanden.</TableCell></TableRow>
+                    )}
                   </TableBody></Table>
                 </CardContent>
               </Card>

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -11,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { Search, Loader2, Beer, Package, Banknote, Trash2, ShoppingCart, TrendingUp, Scale, CreditCard } from "lucide-react"
+import { Search, Loader2, Beer, Package, Banknote, Trash2, ShoppingCart, TrendingUp, Scale, CreditCard, HandCoins } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
 import { 
@@ -41,6 +40,7 @@ export default function HistoryPage() {
     treasuryExpenses, 
     membershipTransactions, 
     membershipFees,
+    reimbursements,
     fines,
     currentUserProfile, 
     deleteExpense, 
@@ -49,11 +49,12 @@ export default function HistoryPage() {
     deleteMembershipTransaction,
     deleteMembershipFee,
     deleteFine,
+    deleteReimbursement,
     loading: storeLoading 
   } = useStore()
   
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' | 'treasury' | 'membershipTransaction' | 'membershipFee' | 'fine' } | null>(null)
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, category: 'expense' | 'payment' | 'treasury' | 'membershipTransaction' | 'membershipFee' | 'fine' | 'reimbursement' } | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -91,6 +92,10 @@ export default function HistoryPage() {
     const filteredMTransactions = isPrivileged 
       ? membershipTransactions 
       : membershipTransactions.filter(m => m.targetPlayerId === currentUserId);
+
+    const filteredReimbursements = isPrivileged
+      ? reimbursements
+      : reimbursements.filter(r => r.playerId === currentUserId);
 
     const formattedExpenses = filteredExpenses.map(e => ({
       id: e.id,
@@ -134,6 +139,18 @@ export default function HistoryPage() {
       category: 'membershipTransaction' as const
     }));
 
+    const formattedReimbursements = filteredReimbursements.map(r => ({
+      id: r.id,
+      playerId: r.playerId,
+      playerName: r.playerName,
+      type: 'reimbursement',
+      description: r.description + (r.status === 'pending' ? ' (Ausstehend)' : ' (Ausgezahlt)'),
+      amount: r.amount,
+      date: r.date,
+      category: 'reimbursement' as const,
+      status: r.status
+    }));
+
     const formattedFines = filteredFines.map(f => ({
       id: f.id,
       playerId: f.playerId,
@@ -165,12 +182,13 @@ export default function HistoryPage() {
       ...formattedPayments, 
       ...formattedTreasury, 
       ...formattedMembership,
+      ...formattedReimbursements,
       ...formattedFines,
       ...formattedFees
     ].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [expenses, payments, treasuryExpenses, membershipTransactions, fines, membershipFees, players, currentUserProfile]);
+  }, [expenses, payments, treasuryExpenses, membershipTransactions, reimbursements, fines, membershipFees, players, currentUserProfile]);
 
   if (!mounted || authLoading || storeLoading) {
     return (
@@ -205,6 +223,7 @@ export default function HistoryPage() {
       case 'treasury': return <ShoppingCart className="h-4 w-4" />;
       case 'fine': return <Scale className="h-4 w-4" />;
       case 'membershipFee': return <CreditCard className="h-4 w-4" />;
+      case 'reimbursement': return <HandCoins className="h-4 w-4" />;
       case 'membershipTransaction':
       case 'sponsor':
       case 'donation':
@@ -221,6 +240,7 @@ export default function HistoryPage() {
       case 'payment': return 'Zahlung';
       case 'fine': return item.description || 'Strafe';
       case 'membershipFee': return item.description || 'Beitrag';
+      case 'reimbursement': return 'Auslage (Rückzahlung)';
       case 'treasury': return item.description || 'Mannschaftskasse-Ausgabe';
       case 'sponsor': return 'Sponsor';
       case 'donation': return 'Spende';
@@ -249,6 +269,8 @@ export default function HistoryPage() {
       deleteMembershipFee(itemToDelete.id)
     } else if (itemToDelete.category === 'fine') {
       deleteFine(itemToDelete.id)
+    } else if (itemToDelete.category === 'reimbursement') {
+      deleteReimbursement(itemToDelete.id)
     }
     setDeleteConfirmOpen(false)
     setItemToDelete(null)
@@ -290,6 +312,7 @@ export default function HistoryPage() {
                   <SelectItem value="payment">Zahlungen</SelectItem>
                   <SelectItem value="membershipFee">Beiträge</SelectItem>
                   <SelectItem value="fine">Strafen</SelectItem>
+                  <SelectItem value="reimbursement">Auslagen</SelectItem>
                   <SelectItem value="treasury">Mannschaftskasse (Abrechnung)</SelectItem>
                   <SelectItem value="membershipTransaction">Mannschaftskasse (Sonstiges)</SelectItem>
                 </SelectContent>
@@ -305,7 +328,7 @@ export default function HistoryPage() {
                     <div className="min-w-0 flex items-center gap-3">
                       <div className={cn(
                         "p-2 rounded-full",
-                        item.amount > 0 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : 
+                        item.amount > 0 || (item.category === 'reimbursement' && (item as any).status === 'pending') ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : 
                         item.category === 'treasury' ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" : 
                         item.category === 'fine' ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" :
                         "bg-primary/10 text-primary"
@@ -317,6 +340,7 @@ export default function HistoryPage() {
                         <p className="text-xs text-muted-foreground">
                           {formatDate(item.date, 'dd.MM.yy HH:mm')} • {getTypeLabel(item)}
                         </p>
+                        {(item as any).description && <p className="text-[10px] text-muted-foreground italic truncate">{(item as any).description}</p>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -365,9 +389,7 @@ export default function HistoryPage() {
                         </TableCell>
                         <TableCell className="font-medium">
                           {item.playerName}
-                          {(item.category === 'treasury' || item.category === 'membershipTransaction' || item.category === 'fine' || item.category === 'membershipFee') && (
-                             <span className="block text-xs text-muted-foreground font-normal">{getTypeLabel(item)}</span>
-                          )}
+                          {(item as any).description && <span className="block text-[10px] text-muted-foreground italic font-normal">{(item as any).description}</span>}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

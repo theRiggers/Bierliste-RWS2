@@ -58,6 +58,18 @@ export interface MembershipTransaction {
   targetPlayerId?: string;
 }
 
+export interface Reimbursement {
+  id: string;
+  playerId: string;
+  playerName: string;
+  description: string;
+  amount: number;
+  date: string;
+  status: 'pending' | 'completed';
+  payoutDate?: string;
+  recordedBy: string;
+}
+
 export interface TreasuryExpense {
   id: string;
   description: string;
@@ -205,6 +217,7 @@ interface StoreContextType {
   payments: Payment[];
   membershipFees: MembershipFee[];
   membershipTransactions: MembershipTransaction[];
+  reimbursements: Reimbursement[];
   treasuryExpenses: TreasuryExpense[];
   fines: Fine[];
   fineCatalog: FineType[];
@@ -229,6 +242,9 @@ interface StoreContextType {
   deleteMembershipFee: (feeId: string) => void;
   addMembershipTransaction: (description: string, amount: number, type: 'sponsor' | 'donation' | 'other' | 'expense', targetPlayerId?: string) => void;
   deleteMembershipTransaction: (transactionId: string) => void;
+  addReimbursement: (playerId: string, description: string, amount: number) => void;
+  confirmReimbursement: (reimbursementId: string) => void;
+  deleteReimbursement: (reimbursementId: string) => void;
   addTreasuryExpense: (description: string, amount: number) => void;
   deleteTreasuryExpense: (expenseId: string) => void;
   recordClubhousePayment: (amount: number) => void;
@@ -284,6 +300,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const mTransactionsQuery = useMemo(() => db ? query(collection(db, 'membershipTransactions'), orderBy('date', 'desc')) as Query<Omit<MembershipTransaction, 'id'>> : null, [db]);
   const { data: mTransactionsData, loading: mTransactionsLoading } = useCollection<Omit<MembershipTransaction, 'id'>>(mTransactionsQuery);
 
+  const reimbursementsQuery = useMemo(() => db ? query(collection(db, 'reimbursements'), orderBy('date', 'desc')) as Query<Omit<Reimbursement, 'id'>> : null, [db]);
+  const { data: reimbursementsData, loading: reimbursementsLoading } = useCollection<Omit<Reimbursement, 'id'>>(reimbursementsQuery);
+
   const tExpensesQuery = useMemo(() => db ? query(collection(db, 'treasuryExpenses'), orderBy('date', 'desc'), limit(150)) as Query<Omit<TreasuryExpense, 'id'>> : null, [db]);
   const { data: tExpensesData, loading: tExpensesLoading } = useCollection<Omit<TreasuryExpense, 'id'>>(tExpensesQuery);
 
@@ -331,6 +350,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const payments = useMemo(() => paymentsData?.map(d => ({ ...d.data, id: d.id })) || [], [paymentsData]);
   const membershipFees = useMemo(() => feesData?.map(d => ({ ...d.data, id: d.id })) || [], [feesData]);
   const membershipTransactions = useMemo(() => mTransactionsData?.map(d => ({ ...d.data, id: d.id })) || [], [mTransactionsData]);
+  const reimbursements = useMemo(() => reimbursementsData?.map(d => ({ ...d.data, id: d.id })) || [], [reimbursementsData]);
   const treasuryExpenses = useMemo(() => tExpensesData?.map(d => ({ ...d.data, id: d.id })) || [], [tExpensesData]);
   const fines = useMemo(() => finesData?.map(d => ({ ...d.data, id: d.id })) || [], [finesData]);
   const fineCatalog = useMemo(() => fineCatalogData?.map(d => ({ ...d.data, id: d.id })) || [], [fineCatalogData]);
@@ -464,6 +484,60 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setDoc(doc(db, 'players', tx.targetPlayerId), { treasuryBalance: (player.treasuryBalance || 0) + adjustment }, { merge: true }).catch(handleMutationError(`players/${tx.targetPlayerId}`, 'update'));
       }
     }
+  };
+
+  const addReimbursement = (playerId: string, description: string, amount: number) => {
+    if (!db || !currentUserProfile) return;
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+    const data = {
+      playerId,
+      playerName: player.name,
+      description,
+      amount,
+      date: new Date().toISOString(),
+      status: 'pending',
+      recordedBy: currentUserProfile.id
+    };
+    addDoc(collection(db, 'reimbursements'), data).catch(handleMutationError('reimbursements', 'create', data));
+  };
+
+  const confirmReimbursement = (reimbursementId: string) => {
+    if (!db || !currentUserProfile) return;
+    const rb = reimbursements.find(r => r.id === reimbursementId);
+    if (!rb) return;
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'reimbursements', reimbursementId), { 
+      status: 'completed', 
+      payoutDate: new Date().toISOString() 
+    });
+    
+    // Buchung als normale Ausgabe in Mannschaftskasse
+    const txRef = doc(collection(db, 'membershipTransactions'));
+    batch.set(txRef, {
+      description: `Rückzahlung an ${rb.playerName}: ${rb.description}`,
+      amount: rb.amount,
+      type: 'expense',
+      date: new Date().toISOString(),
+      recordedBy: currentUserProfile.id,
+      targetPlayerId: rb.playerId
+    });
+
+    // Kontostand des Spielers anpassen (Reimbursement ist "Einnahme" für Spieler)
+    const player = players.find(p => p.id === rb.playerId);
+    if (player) {
+      batch.update(doc(db, 'players', rb.playerId), {
+        treasuryBalance: (player.treasuryBalance || 0) + rb.amount
+      });
+    }
+
+    batch.commit().catch(handleMutationError('reimbursements', 'update'));
+  };
+
+  const deleteReimbursement = (reimbursementId: string) => {
+    if (!db) return;
+    deleteDoc(doc(db, 'reimbursements', reimbursementId)).catch(handleMutationError('reimbursements', 'delete'));
   };
 
   const addTreasuryExpense = (description: string, amount: number) => {
@@ -693,8 +767,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider value={{ 
-      players, expenses, payments, membershipFees, membershipTransactions, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, tickers, tickerEvents, matchComments, currentUserProfile, settings, loading: loadingState, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity,
-      addExpense, deleteExpense, recordPayment, deletePayment, addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction, addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
+      players, expenses, payments, membershipFees, membershipTransactions, reimbursements, treasuryExpenses, fines, fineCatalog, teamEvents, attendance, absences, lineups, tickers, tickerEvents, matchComments, currentUserProfile, settings, loading: loadingState, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity,
+      addExpense, deleteExpense, recordPayment, deletePayment, addMembershipFee, deleteMembershipFee, addMembershipTransaction, deleteMembershipTransaction, addReimbursement, confirmReimbursement, deleteReimbursement, addTreasuryExpense, deleteTreasuryExpense, recordClubhousePayment, addFine, markFineAsPaid, deleteFine, updateFineType, addFineType, deleteFineType,
       addTeamEvent, updateTeamEvent, deleteTeamEvent, upsertAttendance, updatePlayerAttendance, addAbsence, deleteAbsence, upsertLineup, claimTicker, releaseTicker, finishTicker, updateTickerScore, addTickerEvent, deleteTickerEvent, addMatchComment, addBezahlkiste, addPlayer, updatePlayer, deletePlayer, updateSettings, resetClubhouseSeason, markIntroSeen, closeSeason
     }}>{children}</StoreContext.Provider>
   );

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -31,7 +30,8 @@ import {
   Calculator,
   Medal,
   Copy,
-  RotateCcw
+  RotateCcw,
+  HandCoins
 } from "lucide-react"
 import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from "date-fns"
 import { de } from "date-fns/locale"
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, expenses, membershipFees, fines, treasuryExpenses, teamEvents, attendance, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity, currentUserProfile, settings, addPlayer, recordPayment, recordClubhousePayment, addBezahlkiste, resetClubhouseSeason, upsertAttendance, loading: storeLoading } = useStore()
+  const { players, expenses, membershipFees, fines, treasuryExpenses, reimbursements, teamEvents, attendance, totalMannschaftskasse, totalBierkasse, bierkasseLiquidity, currentUserProfile, settings, addPlayer, recordPayment, recordClubhousePayment, addBezahlkiste, resetClubhouseSeason, upsertAttendance, loading: storeLoading } = useStore()
   const [onboardingName, setOnboardingName] = useState("")
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
@@ -101,6 +101,13 @@ export default function Dashboard() {
     }
     return null;
   }, [nextEvent, currentUserProfile, attendance]);
+
+  const pendingReimbursementAmount = useMemo(() => {
+    if (!currentUserProfile) return 0;
+    return reimbursements
+      .filter(r => r.playerId === currentUserProfile.id && r.status === 'pending')
+      .reduce((sum, r) => sum + r.amount, 0);
+  }, [currentUserProfile, reimbursements]);
 
   const clubhouseStats = useMemo(() => {
     const resetDate = settings.lastClubhouseResetDate ? new Date(settings.lastClubhouseResetDate) : new Date(0);
@@ -450,6 +457,16 @@ export default function Dashboard() {
                    </Button>
                 </div>
               </div>
+            </Alert>
+          )}
+
+          {pendingReimbursementAmount > 0 && (
+            <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-900 rounded-2xl">
+              <HandCoins className="h-5 w-5 text-emerald-600" />
+              <AlertTitle className="font-bold text-emerald-700 dark:text-emerald-400">Ausstehende Rückzahlung</AlertTitle>
+              <AlertDescription className="text-sm font-medium">
+                Du bekommst noch <strong className="text-emerald-700 dark:text-emerald-400">{pendingReimbursementAmount.toFixed(2)} €</strong> für deine Auslagen aus der Mannschaftskasse zurück.
+              </AlertDescription>
             </Alert>
           )}
 

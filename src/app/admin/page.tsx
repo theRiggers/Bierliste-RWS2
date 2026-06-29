@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -113,9 +112,9 @@ export default function AdminPage() {
     await updateFineType(id, name, val)
   }
 
-  const copyGitCommand = () => {
-    navigator.clipboard.writeText('git add . && git commit -m "Update" && git push')
-    toast({ title: "Befehl kopiert", description: "Füge ihn jetzt im Terminal ein." })
+  const copyToClipboard = (text: string, title: string, description: string) => {
+    navigator.clipboard.writeText(text)
+    toast({ title, description })
   }
 
   return (
@@ -220,18 +219,31 @@ export default function AdminPage() {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Github className="h-5 w-5" />
-                      Änderungen live schalten
+                      GitHub Synchronisation
                     </CardTitle>
-                    <CardDescription className="text-slate-400">Damit neue Features im Internet erscheinen, musst du sie pushen.</CardDescription>
+                    <CardDescription className="text-slate-400">Halte deine lokale Version aktuell oder schalte Änderungen live.</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-3 bg-slate-800 rounded-xl font-mono text-xs break-all border border-slate-700 flex items-center justify-between gap-4">
-                      <code className="text-slate-300">git add . && git commit -m "Update" && git push</code>
-                      <Button size="icon" variant="ghost" onClick={copyGitCommand} className="h-8 w-8 text-slate-400 hover:text-white">
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] uppercase font-bold text-slate-500">1. Neuesten Stand vom Server laden (Pull)</Label>
+                      <div className="p-3 bg-slate-800 rounded-xl font-mono text-xs break-all border border-slate-700 flex items-center justify-between gap-4">
+                        <code className="text-slate-300">git pull</code>
+                        <Button size="icon" variant="ghost" onClick={() => copyToClipboard('git pull', "Befehl kopiert", "Füge 'git pull' im Terminal ein.")} className="h-8 w-8 text-slate-400 hover:text-white">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-500">Kopiere den Befehl und füge ihn in das Terminal ein (F1 {"->"} "Terminal").</p>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] uppercase font-bold text-slate-500">2. Eigene Änderungen hochladen (Push)</Label>
+                      <div className="p-3 bg-slate-800 rounded-xl font-mono text-xs break-all border border-slate-700 flex items-center justify-between gap-4">
+                        <code className="text-slate-300">git add . && git commit -m "Update" && git push</code>
+                        <Button size="icon" variant="ghost" onClick={() => copyToClipboard('git add . && git commit -m "Update" && git push', "Befehl kopiert", "Füge den Befehl im Terminal ein.")} className="h-8 w-8 text-slate-400 hover:text-white">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic">Drücke F1 {"->"} "Terminal: Create New Terminal", um Befehle auszuführen.</p>
                   </CardContent>
                 </Card>
 

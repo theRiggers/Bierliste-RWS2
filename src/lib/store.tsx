@@ -391,24 +391,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [membershipFees, membershipTransactions, fines]);
 
   const { totalBierkasse, bierkasseLiquidity } = useMemo(() => {
+    // 1. Bestätigte Zahlungen von Spielern an die Bierkasse (Erhöhen den Stand)
     const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
+    
+    // 2. Eingetragene Bezahlkisten + Kisten auf einzelne Spieler (Verringern den Stand)
+    // Wir nehmen hier einfach die Summe ALLER Expenses (Bier und Kisten), da dies den Verbrauch am Vereinsheim widerspiegelt
+    const totalExpensesCost = expenses.reduce((sum, e) => sum + e.cost, 0);
+
+    // Liquidität (reines Bargeld im Topf abzüglich Auszahlungen an Wirt)
     const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
-    const liquidity = cashIn - cashOut;
-    
-    // Sum of all player balances (positive = credit, negative = debt)
-    const playerBalancesSum = players.reduce((sum, p) => sum + (p.balance || 0), 0);
-    
-    // Sum of all "Bezahlkisten" (expenses from the clubhouse pot)
-    const clubhouseCratesCost = expenses
-      .filter(e => e.playerId === 'clubhouse')
-      .reduce((sum, e) => sum + e.cost, 0);
-    
+
     return {
-      // The total balance is: Available Cash - Money that "belongs" to players - costs already incurred but not yet paid via cashOut
-      totalBierkasse: liquidity - playerBalancesSum - clubhouseCratesCost,
-      bierkasseLiquidity: liquidity
+      // Stand = Zahlungen - Alle Getränkekosten
+      totalBierkasse: cashIn - totalExpensesCost,
+      bierkasseLiquidity: cashIn - cashOut
     };
-  }, [payments, treasuryExpenses, players, expenses]);
+  }, [payments, expenses, treasuryExpenses]);
 
   const handleMutationError = (path: string, operation: SecurityRuleContext['operation'], data?: any) => (error: any) => {
     const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
@@ -419,10 +417,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const cost = itemType === 'beer' ? settings.beerPrice : settings.cratePrice;
     const player = players.find(p => p.id === playerId);
-    if (!player) return;
-    const expenseData = { playerId, playerName: player.name, itemType, cost, date: new Date().toISOString() };
+    if (!player && playerId !== 'clubhouse') return;
+    const playerName = playerId === 'clubhouse' ? 'Bezahlkiste (Mannschaft)' : (player?.name || 'Unbekannt');
+    const expenseData = { playerId, playerName, itemType, cost, date: new Date().toISOString() };
     addDoc(collection(db, 'expenses'), expenseData).catch(handleMutationError('expenses', 'create', expenseData));
-    setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) - cost }, { merge: true }).catch(handleMutationError(`players/${playerId}`, 'update'));
+    if (player) {
+      setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) - cost }, { merge: true }).catch(handleMutationError(`players/${playerId}`, 'update'));
+    }
   };
 
   const deleteExpense = (expenseId: string) => {
@@ -431,7 +432,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!expense) return;
     const player = players.find(p => p.id === expense.playerId);
     deleteDoc(doc(db, 'expenses', expenseId)).catch(handleMutationError(`expenses/${expenseId}`, 'delete'));
-    if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true }).catch(handleMutationError(`players/${player.id}`, 'update'));
+    if (player) {
+      setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true }).catch(handleMutationError(`players/${player.id}`, 'update'));
+    }
   };
 
   const recordPayment = (playerId: string, amount: number, account: 'drinks' | 'treasury' = 'drinks') => {

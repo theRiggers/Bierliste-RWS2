@@ -394,12 +394,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
     const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
     const liquidity = cashIn - cashOut;
-    const receivables = players.reduce((sum, p) => sum + (p.balance || 0), 0);
+    
+    // Sum of all player balances (positive = credit, negative = debt)
+    const playerBalancesSum = players.reduce((sum, p) => sum + (p.balance || 0), 0);
+    
+    // Sum of all "Bezahlkisten" (expenses from the clubhouse pot)
+    const clubhouseCratesCost = expenses
+      .filter(e => e.playerId === 'clubhouse')
+      .reduce((sum, e) => sum + e.cost, 0);
+    
     return {
-      totalBierkasse: liquidity - receivables,
+      // The total balance is: Available Cash - Money that "belongs" to players - costs already incurred but not yet paid via cashOut
+      totalBierkasse: liquidity - playerBalancesSum - clubhouseCratesCost,
       bierkasseLiquidity: liquidity
     };
-  }, [payments, treasuryExpenses, players]);
+  }, [payments, treasuryExpenses, players, expenses]);
 
   const handleMutationError = (path: string, operation: SecurityRuleContext['operation'], data?: any) => (error: any) => {
     const permissionError = new FirestorePermissionError({ path, operation, requestResourceData: data });
@@ -523,9 +532,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       recordedBy: currentUserProfile.id,
       targetPlayerId: rb.playerId
     });
-
-    // WICHTIG: Kein Update der player.treasuryBalance hier!
-    // Die Rückzahlung findet real außerhalb statt, daher wird sie nur als Buchung der Kasse erfasst.
 
     batch.commit().catch(handleMutationError('reimbursements', 'update'));
   };

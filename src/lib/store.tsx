@@ -385,7 +385,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const totalMannschaftskasse = useMemo(() => {
     const feeSum = membershipFees.reduce((sum, f) => sum + f.amount, 0);
-    const finesSum = fines.reduce((sum, f) => sum + f.amount, 0);
+    const finesSum = fines.filter(f => f.isPaid).reduce((sum, f) => sum + f.amount, 0);
     const transactionSum = membershipTransactions.reduce((sum, t) => t.type === 'expense' ? sum - t.amount : sum + t.amount, 0);
     return feeSum + finesSum + transactionSum;
   }, [membershipFees, membershipTransactions, fines]);
@@ -524,13 +524,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       targetPlayerId: rb.playerId
     });
 
-    // Kontostand des Spielers anpassen (Reimbursement ist "Einnahme" für Spieler)
-    const player = players.find(p => p.id === rb.playerId);
-    if (player) {
-      batch.update(doc(db, 'players', rb.playerId), {
-        treasuryBalance: (player.treasuryBalance || 0) + rb.amount
-      });
-    }
+    // WICHTIG: Kein Update der player.treasuryBalance hier!
+    // Die Rückzahlung findet real außerhalb statt, daher wird sie nur als Buchung der Kasse erfasst.
 
     batch.commit().catch(handleMutationError('reimbursements', 'update'));
   };

@@ -391,25 +391,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [membershipFees, membershipTransactions, fines]);
 
   const { totalBierkasse, bierkasseLiquidity } = useMemo(() => {
-    // Variable 1: Bestätigte Zahlungen von Spielern an die Bierkasse (Erhöhen den Stand)
+    // Variable 1: Bestätigte Zahlungen von Spielern an die Bierkasse
     const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
     
-    // Variable 2: Eingetragene Getränke pro Spieler (Erhöhen den Stand, da Forderung)
-    const playerExpenses = expenses
+    // Variable 2: Eingetragene Getränke pro Spieler (Erhöhen den Stand, da Forderung/Umsatz)
+    const playerSales = expenses
       .filter(e => e.playerId !== 'clubhouse')
       .reduce((sum, e) => sum + e.cost, 0);
 
-    // Variable 3: Eingetragene Bezahlkisten der Mannschaft (Verringern den Stand)
+    // Variable 3: Eingetragene Bezahlkisten der Mannschaft (Verringern den Stand, da Kosten)
     const bezahlkistenCosts = expenses
       .filter(e => e.playerId === 'clubhouse')
       .reduce((sum, e) => sum + e.cost, 0);
 
-    // Liquidität (reines Bargeld im Topf abzüglich Auszahlungen an Wirt)
+    // Auszahlungen an Wirt (Verringern die Liquitidät)
     const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
 
     return {
-      // Stand = Zahlungen + Spieler-Forderungen - Bezahlkisten
-      totalBierkasse: cashIn + playerExpenses - bezahlkistenCosts,
+      // Stand = Reiner Saldo aus Umsatz (Spieler) - Kosten (Mannschaft)
+      // Zahlungen erhöhen den Gesamtstand nicht, da sie nur Forderungen in Bargeld umwandeln
+      totalBierkasse: playerSales - bezahlkistenCosts,
+      // Liquidität = Reales Bargeld im Topf
       bierkasseLiquidity: cashIn - cashOut
     };
   }, [payments, expenses, treasuryExpenses]);

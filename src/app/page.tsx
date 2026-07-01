@@ -724,30 +724,6 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold mb-4 px-1">Getränk erfassen</h3>
             <ExpenseActions currentUserId={currentUserProfile.id} userRoles={currentUserProfile.roles} />
           </div>
-
-          <div>
-            <h3 className="text-lg font-semibold mb-4 px-1">Letzte Buchungen</h3>
-            <Card className="border-none shadow-lg rounded-2xl overflow-hidden bg-card">
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {expenses.slice(0, 5).map((e) => (
-                    <div key={e.id} className="p-4 flex items-center justify-between hover:bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("h-10 w-10 rounded-full flex items-center justify-center text-white", e.itemType === 'beer' ? 'bg-amber-400' : 'bg-primary')}>
-                          {e.itemType === 'beer' ? <Beer className="h-5 w-5" /> : <Package className="h-5 w-5" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold truncate">{e.playerName}</p>
-                          <p className="text-[10px] text-muted-foreground">{format(new Date(e.date), 'dd.MM. HH:mm')} • {e.itemType === 'beer' ? 'Bier' : 'Kasten'}</p>
-                        </div>
-                      </div>
-                      <span className="font-bold text-destructive">- {e.cost.toFixed(2)} €</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         <Dialog open={isQuickDeclineOpen} onOpenChange={setIsQuickDeclineOpen}>

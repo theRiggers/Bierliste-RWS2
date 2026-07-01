@@ -17,17 +17,16 @@ export default function StatsPage() {
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth()
-  const currentDay = now.getDate()
   
-  // Saisonwechsel am 15.06.
-  const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear
+  // Saisonwechsel am 01.06.
+  const currentSeasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
 
   useEffect(() => { setMounted(true) }, [])
 
   const stats = useMemo(() => {
-    const seasonStart = new Date(parseInt(selectedSeason), 5, 15)
-    const seasonEnd = new Date(parseInt(selectedSeason) + 1, 5, 14, 23, 59, 59)
+    const seasonStart = new Date(parseInt(selectedSeason), 5, 1)
+    const seasonEnd = new Date(parseInt(selectedSeason) + 1, 4, 31, 23, 59, 59)
     
     const goalMap = new Map<string, { id: string, name: string, count: number }>()
     const assistMap = new Map<string, { id: string, name: string, count: number }>()

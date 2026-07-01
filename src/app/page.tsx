@@ -148,6 +148,7 @@ export default function Dashboard() {
     
     // Saisonwechsel am 1. Juni
     const seasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
+    
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
     
@@ -380,8 +381,7 @@ export default function Dashboard() {
     }
   }
 
-  const isAdmin = currentUserProfile.roles?.includes('admin')
-  const isKassenwart = currentUserProfile.roles?.includes('kassenwart') || isAdmin
+  const isKassenwart = currentUserProfile.roles?.includes('kassenwart') || currentUserProfile.roles?.includes('admin')
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">

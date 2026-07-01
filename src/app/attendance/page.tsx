@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -21,10 +22,9 @@ export default function AttendancePage() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  const currentDay = now.getDate();
   
-  // Saisonwechsel am 15.06.
-  const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
+  // Saisonwechsel am 01.06.
+  const currentSeasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1];
   
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
@@ -34,8 +34,8 @@ export default function AttendancePage() {
   const filteredPlayers = useMemo(() => players.filter(p => p.email !== 'kasse@kickoff.de'), [players]);
 
   const seasonEvents = useMemo(() => {
-    const seasonStart = new Date(parseInt(selectedSeason), 5, 15); // 15. Juni
-    const seasonEnd = new Date(parseInt(selectedSeason) + 1, 5, 14, 23, 59, 59); // 14. Juni
+    const seasonStart = new Date(parseInt(selectedSeason), 5, 1); // 1. Juni
+    const seasonEnd = new Date(parseInt(selectedSeason) + 1, 4, 31, 23, 59, 59); // 31. Mai
     
     return teamEvents
       .filter(e => {

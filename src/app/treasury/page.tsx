@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -60,8 +61,8 @@ export default function TreasuryPage() {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
   
-  // Saisonwechsel für Finanzen am 1. August
-  const currentSeasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
+  // Saisonwechsel am 01.06.
+  const currentSeasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1, currentSeasonYear - 2];
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
 

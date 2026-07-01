@@ -146,9 +146,8 @@ export default function Dashboard() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    // Für die Beitragsabrechnung wechseln wir die Saison erst im August,
-    // damit im Juni/Juli noch die Abrechnung der Vorsaison sichtbar bleibt.
-    const seasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
+    // Saisonwechsel am 1. Juni
+    const seasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
     
@@ -162,10 +161,8 @@ export default function Dashboard() {
       if (currentMIdxInList !== -1) {
         isPastOrCurrent = mIdxInList <= currentMIdxInList;
       } else {
-        // Wenn wir in der Sommerpause (Juni/Juli) sind, betrachten wir die Abrechnung
-        // der abgelaufenen Saison, bei der alle 10 Monate bereits vergangen sind.
-        if (currentMonth === 5 || currentMonth === 6) isPastOrCurrent = true; 
-        else isPastOrCurrent = false;
+        // Falls wir im Juni/Juli sind (neue Saison), hat noch kein Monat begonnen
+        isPastOrCurrent = false;
       }
 
       return { month: m, name: MONTH_NAMES_SHORT[m], isPaid, isPastOrCurrent };
@@ -177,8 +174,8 @@ export default function Dashboard() {
     if (currentMIdxInList !== -1) {
       monthsToPay = currentMIdxInList + 1;
     } else {
-      if (currentMonth === 5 || currentMonth === 6) monthsToPay = 10;
-      else monthsToPay = 0;
+      // Beitragsfreie Monate oder vor Saisonstart
+      monthsToPay = 0;
     }
 
     const paidCount = userFees.filter(f => f.type === 'monthly').length;

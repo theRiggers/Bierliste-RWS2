@@ -78,6 +78,10 @@ export default function Dashboard() {
     if (mounted && !authLoading && !user) router.replace("/login")
   }, [mounted, authLoading, user, router])
 
+  const roles = useMemo(() => currentUserProfile?.roles || [], [currentUserProfile]);
+  const isAdmin = useMemo(() => roles.includes('admin'), [roles]);
+  const isKassenwart = useMemo(() => roles.includes('kassenwart') || roles.includes('admin'), [roles]);
+
   const nextEvent = useMemo(() => {
     const now = new Date();
     const futureEvents = teamEvents
@@ -281,11 +285,15 @@ export default function Dashboard() {
   }
 
   const handlePayInitiate = (type: 'drinks' | 'treasury' | 'fines') => {
-    const amount = type === 'drinks' ? Math.abs(currentUserProfile.balance) : type === 'treasury' ? feeStatus.totalDebt : fineStatus;
-    if (amount <= 0) {
-      toast({ title: "Alles erledigt!" });
-      return;
+    let amount = 0;
+    if (type === 'drinks') {
+      amount = currentUserProfile.balance < 0 ? Math.abs(currentUserProfile.balance) : 0;
+    } else if (type === 'treasury') {
+      amount = Math.max(0, feeStatus.totalDebt);
+    } else if (type === 'fines') {
+      amount = Math.max(0, fineStatus);
     }
+    
     setSelfPaymentType(type);
     setSelfPaymentAmount(amount.toFixed(2));
     setIsSelfPaymentDialogOpen(true);
@@ -378,10 +386,6 @@ export default function Dashboard() {
       setIsSubmitting(false);
     }
   }
-
-  const roles = currentUserProfile.roles || []
-  const isAdmin = roles.includes('admin')
-  const isKassenwart = roles.includes('kassenwart') || isAdmin
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -482,11 +486,9 @@ export default function Dashboard() {
                 </h2>
                 <div className="flex items-center justify-between mt-2">
                    <p className="text-[10px] text-muted-foreground">{currentUserProfile.balance < 0 ? 'Offen' : 'Guthaben'}</p>
-                   {currentUserProfile.balance < 0 && (
-                     <Button size="sm" variant="link" onClick={() => handlePayInitiate('drinks')} className="h-6 p-0 text-xs font-bold text-primary flex items-center gap-1">
-                        Bezahlen <ExternalLink className="h-3 w-3" />
-                     </Button>
-                   )}
+                   <Button size="sm" variant="link" onClick={() => handlePayInitiate('drinks')} className="h-6 p-0 text-xs font-bold text-primary flex items-center gap-1">
+                      Bezahlen <ExternalLink className="h-3 w-3" />
+                   </Button>
                 </div>
               </CardContent>
             </Card>
@@ -508,11 +510,9 @@ export default function Dashboard() {
                       <h2 className={cn("text-2xl font-bold", feeStatus.totalDebt > 0 ? 'text-destructive' : 'text-emerald-600')}>
                         {feeStatus.totalDebt > 0 ? `-${feeStatus.totalDebt.toFixed(2)}` : '0.00'} €
                       </h2>
-                      {feeStatus.totalDebt > 0 && (
-                        <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                          Bezahlen <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button size="sm" variant="link" onClick={() => handlePayInitiate('treasury')} className="h-6 p-0 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        Bezahlen <ExternalLink className="h-3 w-3" />
+                      </Button>
                     </div>
                     <div className="mt-4 grid grid-cols-5 gap-1 pt-4 border-t border-border">
                       {feeStatus.monthsStatus.map((m) => (
@@ -539,11 +539,9 @@ export default function Dashboard() {
                   <h2 className={cn("text-2xl font-bold", fineStatus > 0 ? 'text-destructive' : 'text-emerald-600')}>
                     {fineStatus > 0 ? `-${fineStatus.toFixed(2)}` : '0.00'} €
                   </h2>
-                  {fineStatus > 0 && (
-                    <Button size="sm" variant="link" onClick={() => handlePayInitiate('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 dark:text-blue-400 flex items-center gap-1">
-                      Bezahlen <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  )}
+                  <Button size="sm" variant="link" onClick={() => handlePayInitiate('fines')} className="h-6 p-0 text-xs font-bold text-amber-600 dark:text-blue-400 flex items-center gap-1">
+                    Bezahlen <ExternalLink className="h-3 w-3" />
+                  </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-2">
                   {fineStatus > 0 ? 'Offene Vergehen aus dem Katalog' : 'Keine offenen Strafen'}

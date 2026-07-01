@@ -391,27 +391,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [membershipFees, membershipTransactions, fines]);
 
   const { totalBierkasse, bierkasseLiquidity } = useMemo(() => {
-    // Variable 1: Bestätigte Zahlungen von Spielern an die Bierkasse
     const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
     
-    // Variable 2: Eingetragene Getränke pro Spieler (Erhöhen den Stand, da Forderung/Umsatz)
+    // Variable: Eingetragene Getränke pro Spieler (Erhöhen den Stand, da Forderung/Umsatz)
     const playerSales = expenses
       .filter(e => e.playerId !== 'clubhouse')
       .reduce((sum, e) => sum + e.cost, 0);
 
-    // Variable 3: Eingetragene Bezahlkisten der Mannschaft (Verringern den Stand, da Kosten)
+    // Variable: Eingetragene Bezahlkisten der Mannschaft (Verringern den Stand, da Kosten)
     const bezahlkistenCosts = expenses
       .filter(e => e.playerId === 'clubhouse')
       .reduce((sum, e) => sum + e.cost, 0);
 
-    // Auszahlungen an Wirt (Verringern die Liquitidät)
     const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
 
     return {
-      // Stand = Reiner Saldo aus Umsatz (Spieler) - Kosten (Mannschaft)
-      // Zahlungen erhöhen den Gesamtstand nicht, da sie nur Forderungen in Bargeld umwandeln
-      totalBierkasse: playerSales - bezahlkistenCosts,
-      // Liquidität = Reales Bargeld im Topf
+      // Stand = Umsatz (Spieler) - Kosten (Mannschaft) + Einmalige Korrektur
+      totalBierkasse: playerSales - bezahlkistenCosts + 32.50,
       bierkasseLiquidity: cashIn - cashOut
     };
   }, [payments, expenses, treasuryExpenses]);
@@ -533,7 +529,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       payoutDate: new Date().toISOString() 
     });
     
-    // Buchung als normale Ausgabe in Mannschaftskasse
     const txRef = doc(collection(db, 'membershipTransactions'));
     batch.set(txRef, {
       description: `Rückzahlung an ${rb.playerName}: ${rb.description}`,

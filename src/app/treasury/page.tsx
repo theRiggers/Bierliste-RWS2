@@ -59,8 +59,9 @@ export default function TreasuryPage() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  const currentDay = now.getDate();
-  const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
+  
+  // Saisonwechsel für Finanzen am 1. August
+  const currentSeasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1, currentSeasonYear - 2];
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())
 

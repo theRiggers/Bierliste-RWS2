@@ -145,22 +145,26 @@ export default function Dashboard() {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
-    const currentDay = now.getDate();
     
-    const seasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
+    // Für die Beitragsabrechnung wechseln wir die Saison erst im August,
+    // damit im Juni/Juli noch die Abrechnung der Vorsaison sichtbar bleibt.
+    const seasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
     const isAnnual = userFees.some(f => f.type === 'annual');
     
+    const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
+
     const monthsStatus = FEE_MONTHS.map(m => {
       const isPaid = isAnnual || userFees.some(f => f.type === 'monthly' && f.month === m);
       const mIdxInList = FEE_MONTHS.indexOf(m);
-      const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
       
       let isPastOrCurrent = false;
       if (currentMIdxInList !== -1) {
         isPastOrCurrent = mIdxInList <= currentMIdxInList;
       } else {
-        if (currentMonth === 5) isPastOrCurrent = true; 
+        // Wenn wir in der Sommerpause (Juni/Juli) sind, betrachten wir die Abrechnung
+        // der abgelaufenen Saison, bei der alle 10 Monate bereits vergangen sind.
+        if (currentMonth === 5 || currentMonth === 6) isPastOrCurrent = true; 
         else isPastOrCurrent = false;
       }
 
@@ -169,12 +173,11 @@ export default function Dashboard() {
 
     if (isAnnual) return { open: 0, paidMonths: 10, isAnnual: true, monthsStatus, totalDebt: personalTreasuryDebt };
     
-    const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
     let monthsToPay = 0;
     if (currentMIdxInList !== -1) {
       monthsToPay = currentMIdxInList + 1;
     } else {
-      if (currentMonth === 5) monthsToPay = 10;
+      if (currentMonth === 5 || currentMonth === 6) monthsToPay = 10;
       else monthsToPay = 0;
     }
 

@@ -65,14 +65,23 @@ export default function PlayersPage() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
-    const currentDay = now.getDate();
-    const seasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
+    
+    // Konsistenter Saisonwechsel für Finanzen am 1. August
+    const seasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
     
     const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === seasonYear);
     if (playerFees.some(f => f.type === 'annual')) return baseBalance;
 
     const currentMIdxInList = FEE_MONTHS.indexOf(currentMonth);
-    let monthsToPay = currentMIdxInList !== -1 ? currentMIdxInList + 1 : (currentMonth === 5 ? 10 : 0);
+    let monthsToPay = 0;
+    if (currentMIdxInList !== -1) {
+      monthsToPay = currentMIdxInList + 1;
+    } else {
+      // Während der Sommerpause (Juni/Juli) sind für die alte Saison alle 10 Monate fällig
+      if (currentMonth === 5 || currentMonth === 6) monthsToPay = 10;
+      else monthsToPay = 0;
+    }
+
     const paidCount = playerFees.filter(f => f.type === 'monthly').length;
     const unpaidFees = Math.max(0, monthsToPay - paidCount) * settings.monthlyFee;
     return baseBalance - unpaidFees;

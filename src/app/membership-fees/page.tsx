@@ -23,10 +23,9 @@ export default function MembershipFeesPage() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  const currentDay = now.getDate();
   
-  // Saisonwechsel am 15.06. (Monat 5, Tag 15)
-  const currentSeasonYear = (currentMonth < 5 || (currentMonth === 5 && currentDay < 15)) ? currentYear - 1 : currentYear;
+  // Saisonwechsel für Beiträge am 1. August
+  const currentSeasonYear = currentMonth < 7 ? currentYear - 1 : currentYear;
   const visibleSeasons = [currentSeasonYear, currentSeasonYear - 1, currentSeasonYear - 2];
   
   const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear.toString())

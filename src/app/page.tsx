@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { ExpenseActions } from "@/components/dashboard/expense-actions"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { useStore, FEE_MONTHS, Role } from "@/lib/store"
+import { useStore, FEE_MONTHS, Role, Player } from "@/lib/store"
 import { 
-   Wallet, 
+  Wallet, 
   Beer, 
   Clock, 
   Loader2, 
@@ -162,7 +162,6 @@ export default function Dashboard() {
       if (currentMIdxInList !== -1) {
         isPastOrCurrent = mIdxInList <= currentMIdxInList;
       } else {
-        // Falls wir im Juni/Juli sind (neue Saison), hat noch kein Monat begonnen
         isPastOrCurrent = false;
       }
 
@@ -175,7 +174,6 @@ export default function Dashboard() {
     if (currentMIdxInList !== -1) {
       monthsToPay = currentMIdxInList + 1;
     } else {
-      // Beitragsfreie Monate oder vor Saisonstart
       monthsToPay = 0;
     }
 
@@ -381,7 +379,9 @@ export default function Dashboard() {
     }
   }
 
-  const isKassenwart = currentUserProfile.roles?.includes('kassenwart') || currentUserProfile.roles?.includes('admin')
+  const roles = currentUserProfile.roles || []
+  const isAdmin = roles.includes('admin')
+  const isKassenwart = roles.includes('kassenwart') || isAdmin
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">

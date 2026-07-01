@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
@@ -408,7 +407,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     return {
       // Stand = Umsatz (Spieler) - Kosten (Mannschaft) + Einmalige Korrektur
-      totalBierkasse: playerSales - bezahlkistenCosts + 32.50,
+      totalBierkasse: playerSales - bezahlkistenCosts + 70.00,
       bierkasseLiquidity: cashIn - cashOut
     };
   }, [payments, expenses, treasuryExpenses]);

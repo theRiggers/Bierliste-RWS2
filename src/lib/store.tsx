@@ -391,19 +391,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [membershipFees, membershipTransactions, fines]);
 
   const { totalBierkasse, bierkasseLiquidity } = useMemo(() => {
-    // 1. Bestätigte Zahlungen von Spielern an die Bierkasse (Erhöhen den Stand)
+    // Variable 1: Bestätigte Zahlungen von Spielern an die Bierkasse (Erhöhen den Stand)
     const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
     
-    // 2. Eingetragene Bezahlkisten + Kisten auf einzelne Spieler (Verringern den Stand)
-    // Wir nehmen hier einfach die Summe ALLER Expenses (Bier und Kisten), da dies den Verbrauch am Vereinsheim widerspiegelt
-    const totalExpensesCost = expenses.reduce((sum, e) => sum + e.cost, 0);
+    // Variable 2: Eingetragene Getränke pro Spieler (Erhöhen den Stand, da Forderung)
+    const playerExpenses = expenses
+      .filter(e => e.playerId !== 'clubhouse')
+      .reduce((sum, e) => sum + e.cost, 0);
+
+    // Variable 3: Eingetragene Bezahlkisten der Mannschaft (Verringern den Stand)
+    const bezahlkistenCosts = expenses
+      .filter(e => e.playerId === 'clubhouse')
+      .reduce((sum, e) => sum + e.cost, 0);
 
     // Liquidität (reines Bargeld im Topf abzüglich Auszahlungen an Wirt)
     const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
 
     return {
-      // Stand = Zahlungen - Alle Getränkekosten
-      totalBierkasse: cashIn - totalExpensesCost,
+      // Stand = Zahlungen + Spieler-Forderungen - Bezahlkisten
+      totalBierkasse: cashIn + playerExpenses - bezahlkistenCosts,
       bierkasseLiquidity: cashIn - cashOut
     };
   }, [payments, expenses, treasuryExpenses]);

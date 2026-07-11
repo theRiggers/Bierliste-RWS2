@@ -398,16 +398,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .filter(e => e.playerId !== 'clubhouse')
       .reduce((sum, e) => sum + e.cost, 0);
 
-    // Variable: Eingetragene Bezahlkisten der Mannschaft (Verringern den Stand, da Kosten)
-    const bezahlkistenCosts = expenses
-      .filter(e => e.playerId === 'clubhouse')
-      .reduce((sum, e) => sum + e.cost, 0);
+    // NEU: Nur tatsächliche Zahlungen an das Vereinsheim verringern den Stand der Bierkasse
+    const clubhousePayments = treasuryExpenses
+      .filter(t => t.description.includes("Vereinsheim"))
+      .reduce((sum, t) => sum + t.amount, 0);
 
     const cashOut = treasuryExpenses.reduce((sum, t) => sum + t.amount, 0);
 
     return {
-      // Stand = Umsatz (Spieler) - Kosten (Mannschaft) + Einmalige Korrektur
-      totalBierkasse: playerSales - bezahlkistenCosts + 70.00,
+      // Stand = Umsatz (Spieler) - Tatsächliche Ausgaben (Vereinsheim) + Einmalige Korrektur
+      totalBierkasse: playerSales - clubhousePayments + 70.00,
       bierkasseLiquidity: cashIn - cashOut
     };
   }, [payments, expenses, treasuryExpenses]);

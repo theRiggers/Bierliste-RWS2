@@ -149,7 +149,6 @@ export default function CalendarPage() {
   }
 
   const openDetailsDialog = (event: TeamEvent) => {
-    if (!isEditor) return;
     setDetailsEvent(event);
     setIsDetailsOpen(true);
   }

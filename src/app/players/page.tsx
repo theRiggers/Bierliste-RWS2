@@ -1,11 +1,12 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { useStore, Role, Player, FEE_MONTHS } from "@/lib/store"
+import { useStore, Role, Player, FEE_MONTHS, Fine } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Loader2, Trash2, Banknote, Share2, TrendingUp, Beer, ChevronDown } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Loader2, Trash2, Banknote, Share2, TrendingUp, Beer, ChevronDown, Scale } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -32,7 +33,7 @@ const AVAILABLE_ROLES: { id: Role, label: string }[] = [
 export default function PlayersPage() {
   const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const { players, membershipFees, settings, addPlayer, updatePlayer, deletePlayer, recordPayment, loading, currentUserProfile } = useStore()
+  const { players, membershipFees, settings, fines, addPlayer, updatePlayer, deletePlayer, recordPayment, loading, currentUserProfile } = useStore()
   
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newName, setNewName] = useState("")
@@ -58,6 +59,13 @@ export default function PlayersPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  // Alphabetical sorting of players
+  const displayPlayers = useMemo(() => 
+    players.filter(p => p.email !== 'kasse@kickoff.de')
+      .sort((a, b) => a.name.localeCompare(b.name, 'de')), 
+    [players]
+  );
+
   const getFullTreasuryBalance = (player: Player) => {
     const baseBalance = player.treasuryBalance || 0;
     if (player.isFeeExempt) return baseBalance;
@@ -77,7 +85,6 @@ export default function PlayersPage() {
     if (currentMIdxInList !== -1) {
       monthsToPay = currentMIdxInList + 1;
     } else {
-      // In der Sommerpause (Juni/Juli) wird für die NEUE Saison noch kein Beitrag fällig
       monthsToPay = 0;
     }
 
@@ -91,10 +98,10 @@ export default function PlayersPage() {
 
   const isAdmin = currentUserProfile.roles?.includes('admin')
   const isKassenwart = currentUserProfile.roles?.includes('kassenwart') || isAdmin
+  const isStrafenwart = currentUserProfile.roles?.includes('strafenwart') || isAdmin
 
-  if (!isAdmin && !isKassenwart) return <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center"><h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2><Button onClick={() => window.location.href = "/"} className="mt-4">Zurück</Button></div>
-
-  const displayPlayers = players.filter(p => p.email !== 'kasse@kickoff.de')
+  // Extended access to include Strafenwarte
+  if (!isAdmin && !isKassenwart && !isStrafenwart) return <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center"><h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2><Button onClick={() => window.location.href = "/"} className="mt-4">Zurück</Button></div>
 
   const handleAddPlayer = async () => {
     if (!newName || !newEmail || newRoles.length === 0) return
@@ -144,7 +151,7 @@ export default function PlayersPage() {
     const title = type === 'drinks' ? 'Bierliste' : type === 'treasury' ? 'Mannschaftskasse' : 'Offene Schulden';
     let text = `🍻 *${title} - RWS2*\n(Stand: ${dateStr})\n\n`;
 
-    debtors.sort((a, b) => ((a.balance || 0) + getFullTreasuryBalance(a)) - ((b.balance || 0) + getFullTreasuryBalance(b))).forEach(p => {
+    debtors.sort((a, b) => a.name.localeCompare(b.name, 'de')).forEach(p => {
       const tb = getFullTreasuryBalance(p);
       text += `• ${p.name}:\n`;
       if ((type === 'all' || type === 'drinks') && (p.balance || 0) < 0) text += `  - Bierliste: ${(p.balance || 0).toFixed(2).replace('.', ',')} €\n`;
@@ -152,6 +159,38 @@ export default function PlayersPage() {
       text += `\n`;
     });
     navigator.clipboard.writeText(text); toast({ title: "Liste kopiert" });
+  };
+
+  const exportFinesList = () => {
+    const unpaidFines = fines.filter(f => !f.isPaid);
+    if (unpaidFines.length === 0) { 
+      toast({ title: "Keine offenen Strafen" }); 
+      return; 
+    }
+    
+    const dateStr = format(new Date(), 'dd.MM.yyyy', { locale: de });
+    let text = `⚖️ *Offene Strafen - RWS2*\n(Stand: ${dateStr})\n\n`;
+    
+    const playerFines: Record<string, Fine[]> = {};
+    unpaidFines.forEach(f => {
+      if (!playerFines[f.playerName]) playerFines[f.playerName] = [];
+      playerFines[f.playerName].push(f);
+    });
+
+    Object.entries(playerFines).sort((a, b) => a[0].localeCompare(b[0], 'de')).forEach(([playerName, items]) => {
+      const total = items.reduce((sum, i) => sum + i.amount, 0);
+      text += `• *${playerName}: ${total.toFixed(2).replace('.', ',')} €*\n`;
+      items.forEach(i => {
+        text += `  - ${i.reason} (${i.amount.toFixed(2).replace('.', ',')} €)\n`;
+      });
+      text += `\n`;
+    });
+
+    navigator.clipboard.writeText(text);
+    toast({ 
+      title: "Strafenliste kopiert", 
+      description: "Die Liste wurde in die Zwischenablage kopiert." 
+    });
   };
 
   const toggleRole = (role: Role, list: Role[], setter: (roles: Role[]) => void) => {
@@ -170,13 +209,19 @@ export default function PlayersPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="rounded-xl border-emerald-600 text-emerald-700 hover:bg-emerald-50">
-                  <Share2 className="h-4 w-4 mr-2" /> Schuldenliste exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" />
+                  <Share2 className="h-4 w-4 mr-2" /> Listen exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="rounded-xl w-56">
-                <DropdownMenuItem onClick={() => exportDebtList('all')} className="gap-2"><TrendingUp className="h-4 w-4" /> Alles zusammen</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportDebtList('all')} className="gap-2"><TrendingUp className="h-4 w-4" /> Schulden (Gesamt)</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportDebtList('drinks')} className="gap-2"><Beer className="h-4 w-4" /> Nur Bierliste</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="gap-2"><Banknote className="h-4 w-4" /> Nur Mannschaftskasse</DropdownMenuItem>
+                {isStrafenwart && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <DropdownMenuItem onClick={exportFinesList} className="gap-2 text-amber-600 font-bold"><Scale className="h-4 w-4" /> Strafen-Übersicht</DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             {isAdmin && (
@@ -211,11 +256,12 @@ export default function PlayersPage() {
           <div className="md:hidden flex flex-col gap-4 mb-4">
             <div className="flex justify-between items-center"><h1 className="text-2xl font-bold text-primary font-headline">Spieler</h1>{isAdmin && <Button size="sm" className="red-glow rounded-xl" onClick={() => setIsAddOpen(true)}><UserPlus className="h-4 w-4 mr-1" /> Neu</Button>}</div>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="outline" className="w-full rounded-xl border-emerald-600 text-emerald-700 h-10 text-xs"><Share2 className="h-3 w-3 mr-2" /> Schuldenliste exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" /></Button></DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild><Button variant="outline" className="w-full rounded-xl border-emerald-600 text-emerald-700 h-10 text-xs"><Share2 className="h-3 w-3 mr-2" /> Listen exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent className="rounded-xl w-[calc(100vw-2rem)]">
-                <DropdownMenuItem onClick={() => exportDebtList('all')} className="py-3">Alles zusammen</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportDebtList('all')} className="py-3">Schulden (Gesamt)</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportDebtList('drinks')} className="py-3">Nur Bierliste</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="py-3">Nur Mannschaftskasse</DropdownMenuItem>
+                {isStrafenwart && <DropdownMenuItem onClick={exportFinesList} className="py-3 text-amber-600 font-bold">Strafen-Übersicht</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

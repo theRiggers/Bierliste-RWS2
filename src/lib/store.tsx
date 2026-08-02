@@ -336,13 +336,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const settingsRef = useMemo(() => db ? doc(db, 'settings', 'global') as DocumentReference<AppSettings> : null, [db]);
   const { data: settingsData, loading: settingsLoading } = useDoc<AppSettings>(settingsRef);
 
-  const players = useMemo(() => playersData?.map(d => ({ 
-    ...d.data, 
-    id: d.id,
-    balance: d.data.balance ?? 0,
-    treasuryBalance: d.data.treasuryBalance ?? 0,
-    roles: d.data.roles || ['player']
-  })) || [], [playersData]);
+  const players = useMemo(() => {
+    const list = playersData?.map(d => ({ 
+      ...d.data, 
+      id: d.id,
+      balance: d.data.balance ?? 0,
+      treasuryBalance: d.data.treasuryBalance ?? 0,
+      roles: d.data.roles || ['player']
+    })) || [];
+
+    // Add virtual player for team crate bookings
+    list.push({
+      id: 'team_treasury',
+      name: 'Mannschaftskasse (Team)',
+      email: 'team@rws2.internal',
+      roles: ['player'],
+      balance: 0,
+      treasuryBalance: 0
+    });
+
+    return list;
+  }, [playersData]);
 
   const activePlayerIds = useMemo(() => new Set(players.map(p => p.id)), [players]);
 
@@ -394,11 +408,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const cashIn = payments.reduce((sum, p) => sum + p.amount, 0);
     
     // Variable: Eingetragene Getränke pro Spieler (Erhöhen den Stand, da Forderung/Umsatz)
+    // Bezahlkisten und Mannschaftskisten (team_treasury) zählen nicht zum Stand-Gewinn
     const playerSales = expenses
-      .filter(e => e.playerId !== 'clubhouse')
+      .filter(e => e.playerId !== 'clubhouse' && e.playerId !== 'team_treasury')
       .reduce((sum, e) => sum + e.cost, 0);
 
-    // NEU: Nur tatsächliche Zahlungen an das Vereinsheim verringern den Stand der Bierkasse
+    // Nur tatsächliche Zahlungen an das Vereinsheim verringern den Stand der Bierkasse
     const clubhousePayments = treasuryExpenses
       .filter(t => t.description.includes("Vereinsheim"))
       .reduce((sum, t) => sum + t.amount, 0);
@@ -421,11 +436,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db) return;
     const cost = itemType === 'beer' ? settings.beerPrice : settings.cratePrice;
     const player = players.find(p => p.id === playerId);
+    
+    // Check for dummy players/IDs
     if (!player && playerId !== 'clubhouse') return;
-    const playerName = playerId === 'clubhouse' ? 'Bezahlkiste (Mannschaft)' : (player?.name || 'Unbekannt');
+    
+    const playerName = player?.name || (playerId === 'clubhouse' ? 'Bezahlkiste (Mannschaft)' : 'Unbekannt');
+    
     const expenseData = { playerId, playerName, itemType, cost, date: new Date().toISOString() };
     addDoc(collection(db, 'expenses'), expenseData).catch(handleMutationError('expenses', 'create', expenseData));
-    if (player) {
+    
+    // Only update balance for real players (not virtual team treasury or clubhouse dummy)
+    if (player && playerId !== 'team_treasury') {
       setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) - cost }, { merge: true }).catch(handleMutationError(`players/${playerId}`, 'update'));
     }
   };
@@ -436,7 +457,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!expense) return;
     const player = players.find(p => p.id === expense.playerId);
     deleteDoc(doc(db, 'expenses', expenseId)).catch(handleMutationError(`expenses/${expenseId}`, 'delete'));
-    if (player) {
+    
+    if (player && player.id !== 'team_treasury') {
       setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) + expense.cost }, { merge: true }).catch(handleMutationError(`players/${player.id}`, 'update'));
     }
   };
@@ -448,7 +470,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (account === 'drinks') {
       const paymentData = { playerId, playerName: player.name, amount, date: new Date().toISOString(), recordedBy: currentUserProfile.id };
       addDoc(collection(db, 'payments'), paymentData).catch(handleMutationError('payments', 'create', paymentData));
-      setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) + amount }, { merge: true }).catch(handleMutationError(`players/${playerId}`, 'update'));
+      
+      if (playerId !== 'team_treasury') {
+        setDoc(doc(db, 'players', playerId), { balance: (player.balance || 0) + amount }, { merge: true }).catch(handleMutationError(`players/${playerId}`, 'update'));
+      }
     } else {
       addMembershipTransaction(`Zahlung: ${player.name}`, amount, 'other', playerId);
     }
@@ -460,7 +485,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!payment) return;
     const player = players.find(p => p.id === payment.playerId);
     deleteDoc(doc(db, 'payments', paymentId)).catch(handleMutationError('payments', 'delete'));
-    if (player) setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) - payment.amount }, { merge: true }).catch(handleMutationError(`players/${player.id}`, 'update'));
+    
+    if (player && player.id !== 'team_treasury') {
+      setDoc(doc(db, 'players', player.id), { balance: (player.balance || 0) - payment.amount }, { merge: true }).catch(handleMutationError(`players/${player.id}`, 'update'));
+    }
   };
 
   const addMembershipFee = (playerId: string, type: 'monthly' | 'annual', year: number, month?: number) => {
@@ -479,7 +507,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db || !currentUserProfile) return;
     const txData = cleanData({ description, amount, type, date: new Date().toISOString(), recordedBy: currentUserProfile.id, targetPlayerId });
     addDoc(collection(db, 'membershipTransactions'), txData).catch(handleMutationError('membershipTransactions', 'create', txData));
-    if (targetPlayerId) {
+    
+    if (targetPlayerId && targetPlayerId !== 'team_treasury') {
       const player = players.find(p => p.id === targetPlayerId);
       if (player) {
         const adjustment = type === 'expense' ? -amount : amount;
@@ -493,7 +522,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const tx = membershipTransactions.find(t => t.id === transactionId);
     if (!tx) return;
     deleteDoc(doc(db, 'membershipTransactions', transactionId)).catch(handleMutationError('membershipTransactions', 'delete'));
-    if (tx.targetPlayerId) {
+    
+    if (tx.targetPlayerId && tx.targetPlayerId !== 'team_treasury') {
       const player = players.find(p => p.id === tx.targetPlayerId);
       if (player) {
         const adjustment = tx.type === 'expense' ? tx.amount : -tx.amount;
@@ -732,11 +762,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
     if (!db) return;
+    // Don't update virtual player
+    if (id === 'team_treasury') return;
     setDoc(doc(db, 'players', id), cleanData(updates), { merge: true }).catch(handleMutationError(`players/${id}`, 'update'));
   };
 
   const deletePlayer = async (id: string) => {
     if (!db) return;
+    // Don't delete virtual player
+    if (id === 'team_treasury') return;
     deleteDoc(doc(db, 'players', id)).catch(handleMutationError(`players/${id}`, 'delete'));
   };
 
@@ -759,7 +793,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!db || !currentUserProfile) return;
     const batch = writeBatch(db);
     players.forEach(p => {
-      if (p.isFeeExempt || p.email === 'kasse@kickoff.de') return;
+      if (p.isFeeExempt || p.email === 'kasse@kickoff.de' || p.id === 'team_treasury') return;
       const pFees = membershipFees.filter(f => f.playerId === p.id && f.year === year);
       if (!pFees.some(f => f.type === 'annual')) {
         const unpaid = Math.max(0, 10 - pFees.filter(f => f.type === 'monthly').length);

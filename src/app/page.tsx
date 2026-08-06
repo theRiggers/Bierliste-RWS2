@@ -191,7 +191,7 @@ export default function Dashboard() {
   if (!user) return null
 
   if (!currentUserProfile) {
-    return null; // Should handle onboarding but skipping for brevity as focus is on removing beer list
+    return null;
   }
 
   const handleQuickRSVP = async (eventId: string, status: 'going' | 'declined') => {
@@ -352,25 +352,7 @@ export default function Dashboard() {
             </Alert>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-none shadow-md bg-card rounded-2xl">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-muted-foreground">Mein Getränkekonto</p>
-                  <div className="p-2 bg-primary/10 rounded-full text-primary"><Wallet className="h-4 w-4" /></div>
-                </div>
-                <h2 className={cn("text-2xl font-bold", currentUserProfile.balance < 0 ? 'text-destructive' : 'text-emerald-600')}>
-                  {currentUserProfile.balance.toFixed(2)} €
-                </h2>
-                <div className="flex items-center justify-between mt-2">
-                   <p className="text-[10px] text-muted-foreground">{currentUserProfile.balance < 0 ? 'Offen' : 'Guthaben'}</p>
-                   <Button size="sm" variant="link" onClick={() => handlePayInitiate('drinks')} className="h-6 p-0 text-xs font-bold text-primary flex items-center gap-1">
-                      Bezahlen <ExternalLink className="h-3 w-3" />
-                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-
+          <div className="grid gap-4 md:grid-cols-2">
             <Card className="border-none shadow-md bg-card rounded-2xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
@@ -426,19 +408,6 @@ export default function Dashboard() {
                 </p>
               </CardContent>
             </Card>
-
-            {isKassenwart && (
-              <Card className="border-none shadow-md bg-card rounded-2xl">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-muted-foreground">Mannschaftskasse (Gesamt)</p>
-                    <div className="p-2 bg-emerald-100 dark:bg-amber-900/30 rounded-full text-emerald-600 dark:text-emerald-400"><TrendingUp className="h-4 w-4" /></div>
-                  </div>
-                  <h2 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalMannschaftskasse.toFixed(2)} €</h2>
-                  <p className="text-[10px] text-muted-foreground mt-1">Beiträge & Strafen</p>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">

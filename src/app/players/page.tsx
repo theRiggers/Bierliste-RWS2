@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -59,7 +58,6 @@ export default function PlayersPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Alphabetical sorting of players
   const displayPlayers = useMemo(() => 
     players.filter(p => p.email !== 'kasse@kickoff.de')
       .sort((a, b) => a.name.localeCompare(b.name, 'de')), 
@@ -72,9 +70,9 @@ export default function PlayersPage() {
     
     const now = new Date();
     const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
     
     // Saisonwechsel am 1. Juni
+    const currentYear = now.getFullYear();
     const seasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
     
     const playerFees = membershipFees.filter(f => f.playerId === player.id && f.year === seasonYear);
@@ -84,8 +82,6 @@ export default function PlayersPage() {
     let monthsToPay = 0;
     if (currentMIdxInList !== -1) {
       monthsToPay = currentMIdxInList + 1;
-    } else {
-      monthsToPay = 0;
     }
 
     const paidCount = playerFees.filter(f => f.type === 'monthly').length;
@@ -100,7 +96,6 @@ export default function PlayersPage() {
   const isKassenwart = currentUserProfile.roles?.includes('kassenwart') || isAdmin
   const isStrafenwart = currentUserProfile.roles?.includes('strafenwart') || isAdmin
 
-  // Extended access to include Strafenwarte
   if (!isAdmin && !isKassenwart && !isStrafenwart) return <div className="flex flex-col items-center justify-center min-h-svh p-4 text-center"><h2 className="text-xl font-bold mb-2">Zugriff verweigert</h2><Button onClick={() => window.location.href = "/"} className="mt-4">Zurück</Button></div>
 
   const handleAddPlayer = async () => {
@@ -136,11 +131,10 @@ export default function PlayersPage() {
     } finally { setIsSubmitting(false) }
   }
 
-  const exportDebtList = (type: 'all' | 'drinks' | 'treasury') => {
+  const exportDebtList = (type: 'all' | 'treasury') => {
     const debtors = players.filter(p => {
       const tb = getFullTreasuryBalance(p);
       if (type === 'all') return ((p.balance || 0) < 0 || tb < 0);
-      if (type === 'drinks') return (p.balance || 0) < 0;
       if (type === 'treasury') return tb < 0;
       return false;
     }).filter(p => p.email !== 'kasse@kickoff.de');
@@ -148,14 +142,14 @@ export default function PlayersPage() {
     if (debtors.length === 0) { toast({ title: "Keine Schulden" }); return; }
 
     const dateStr = format(new Date(), 'dd.MM.yyyy', { locale: de });
-    const title = type === 'drinks' ? 'Bierliste' : type === 'treasury' ? 'Mannschaftskasse' : 'Offene Schulden';
-    let text = `🍻 *${title} - RWS2*\n(Stand: ${dateStr})\n\n`;
+    const title = type === 'treasury' ? 'Mannschaftskasse' : 'Offene Schulden';
+    let text = `📋 *${title} - RWS2*\n(Stand: ${dateStr})\n\n`;
 
     debtors.sort((a, b) => a.name.localeCompare(b.name, 'de')).forEach(p => {
       const tb = getFullTreasuryBalance(p);
       text += `• ${p.name}:\n`;
-      if ((type === 'all' || type === 'drinks') && (p.balance || 0) < 0) text += `  - Bierliste: ${(p.balance || 0).toFixed(2).replace('.', ',')} €\n`;
-      if ((type === 'all' || type === 'treasury') && tb < 0) text += `  - Mannschaftskasse: ${tb.toFixed(2).replace('.', ',')} €\n`;
+      if (type === 'all' && (p.balance || 0) < 0) text += `  - Getränkekonto: ${(p.balance || 0).toFixed(2).replace('.', ',')} €\n`;
+      if (tb < 0) text += `  - Mannschaftskasse: ${tb.toFixed(2).replace('.', ',')} €\n`;
       text += `\n`;
     });
     navigator.clipboard.writeText(text); toast({ title: "Liste kopiert" });
@@ -187,10 +181,7 @@ export default function PlayersPage() {
     });
 
     navigator.clipboard.writeText(text);
-    toast({ 
-      title: "Strafenliste kopiert", 
-      description: "Die Liste wurde in die Zwischenablage kopiert." 
-    });
+    toast({ title: "Strafenliste kopiert" });
   };
 
   const toggleRole = (role: Role, list: Role[], setter: (roles: Role[]) => void) => {
@@ -214,7 +205,6 @@ export default function PlayersPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="rounded-xl w-56">
                 <DropdownMenuItem onClick={() => exportDebtList('all')} className="gap-2"><TrendingUp className="h-4 w-4" /> Schulden (Gesamt)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportDebtList('drinks')} className="gap-2"><Beer className="h-4 w-4" /> Nur Bierliste</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="gap-2"><Banknote className="h-4 w-4" /> Nur Mannschaftskasse</DropdownMenuItem>
                 {isStrafenwart && (
                   <>
@@ -259,7 +249,6 @@ export default function PlayersPage() {
               <DropdownMenuTrigger asChild><Button variant="outline" className="w-full rounded-xl border-emerald-600 text-emerald-700 h-10 text-xs"><Share2 className="h-3 w-3 mr-2" /> Listen exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent className="rounded-xl w-[calc(100vw-2rem)]">
                 <DropdownMenuItem onClick={() => exportDebtList('all')} className="py-3">Schulden (Gesamt)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportDebtList('drinks')} className="py-3">Nur Bierliste</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="py-3">Nur Mannschaftskasse</DropdownMenuItem>
                 {isStrafenwart && <DropdownMenuItem onClick={exportFinesList} className="py-3 text-amber-600 font-bold">Strafen-Übersicht</DropdownMenuItem>}
               </DropdownMenuContent>
@@ -277,7 +266,7 @@ export default function PlayersPage() {
                     </div>
                     <h3 className="text-xl font-bold mb-4">{player.name}</h3>
                     <div className="grid grid-cols-2 gap-4 py-3 border-t">
-                      <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><Beer className="h-2.5 w-2.5" /> Bierkasse</p><p className={cn("text-base font-bold", (player.balance || 0) < 0 ? 'text-destructive' : 'text-emerald-600')}>{(player.balance || 0).toFixed(2)} €</p></div>
+                      <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><Wallet className="h-2.5 w-2.5" /> Getränkekonto</p><p className={cn("text-base font-bold", (player.balance || 0) < 0 ? 'text-destructive' : 'text-emerald-600')}>{(player.balance || 0).toFixed(2)} €</p></div>
                       <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> Mannschaftskasse</p><p className={cn("text-base font-bold", tb < 0 ? 'text-destructive' : 'text-blue-600')}>{tb.toFixed(2)} €</p></div>
                     </div>
                     <div className="flex items-center justify-end pt-3 border-t gap-1">
@@ -311,7 +300,7 @@ export default function PlayersPage() {
               <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">
-              <div className="space-y-3"><Label>Buchen auf Konto:</Label><RadioGroup value={paymentAccount} onValueChange={(v: any) => setPaymentAccount(v)} className="grid grid-cols-2 gap-4"><div><RadioGroupItem value="drinks" id="acc-drinks" className="peer sr-only" /><Label htmlFor="acc-drinks" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><Beer className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Bierkasse</span></Label></div><div><RadioGroupItem value="treasury" id="acc-treasury" className="peer sr-only" /><Label htmlFor="acc-treasury" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><TrendingUp className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Mannschaftskasse</span></Label></div></RadioGroup></div>
+              <div className="space-y-3"><Label>Buchen auf Konto:</Label><RadioGroup value={paymentAccount} onValueChange={(v: any) => setPaymentAccount(v)} className="grid grid-cols-2 gap-4"><div><RadioGroupItem value="drinks" id="acc-drinks" className="peer sr-only" /><Label htmlFor="acc-drinks" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><Banknote className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Getränkekonto</span></Label></div><div><RadioGroupItem value="treasury" id="acc-treasury" className="peer sr-only" /><Label htmlFor="acc-treasury" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><TrendingUp className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Mannschaftskasse</span></Label></div></RadioGroup></div>
               <div className="space-y-2"><Label>Betrag (€)</Label><Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>
             </div>
             <DialogFooter><Button onClick={handleRecordPayment} disabled={isSubmitting || !paymentAmount} className="w-full rounded-xl h-11 bg-emerald-600 text-white">{isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Verbuchen"}</Button></DialogFooter>

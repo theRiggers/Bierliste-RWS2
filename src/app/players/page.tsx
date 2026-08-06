@@ -5,7 +5,7 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { useStore, Role, Player, FEE_MONTHS, Fine } from "@/lib/store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCircle, ChevronRight, Loader2, Trash2, Banknote, Share2, TrendingUp, Beer, ChevronDown, Scale } from "lucide-react"
+import { UserPlus, UserCircle, ChevronRight, Loader2, Trash2, Banknote, Share2, TrendingUp, ChevronDown, Scale } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -17,7 +17,6 @@ import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { de } from "date-fns/locale"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 const AVAILABLE_ROLES: { id: Role, label: string }[] = [
@@ -53,7 +52,6 @@ export default function PlayersPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentPlayer, setPaymentPlayer] = useState<Player | null>(null)
-  const [paymentAccount, setPaymentAccount] = useState<'drinks' | 'treasury'>('drinks')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -71,7 +69,6 @@ export default function PlayersPage() {
     const now = new Date();
     const currentMonth = now.getMonth();
     
-    // Saisonwechsel am 1. Juni
     const currentYear = now.getFullYear();
     const seasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
     
@@ -125,32 +122,22 @@ export default function PlayersPage() {
     if (!paymentPlayer || isNaN(amount) || amount <= 0) return;
     setIsSubmitting(true);
     try {
-      await recordPayment(paymentPlayer.id, amount, paymentAccount);
-      setIsPaymentOpen(false); setPaymentAmount(""); setPaymentPlayer(null); setPaymentAccount('drinks');
+      await recordPayment(paymentPlayer.id, amount, 'treasury');
+      setIsPaymentOpen(false); setPaymentAmount(""); setPaymentPlayer(null);
       toast({ title: "Zahlung verbucht" });
     } finally { setIsSubmitting(false) }
   }
 
-  const exportDebtList = (type: 'all' | 'treasury') => {
-    const debtors = players.filter(p => {
-      const tb = getFullTreasuryBalance(p);
-      if (type === 'all') return ((p.balance || 0) < 0 || tb < 0);
-      if (type === 'treasury') return tb < 0;
-      return false;
-    }).filter(p => p.email !== 'kasse@kickoff.de');
-
+  const exportTreasuryList = () => {
+    const debtors = players.filter(p => getFullTreasuryBalance(p) < 0).filter(p => p.email !== 'kasse@kickoff.de');
     if (debtors.length === 0) { toast({ title: "Keine Schulden" }); return; }
 
     const dateStr = format(new Date(), 'dd.MM.yyyy', { locale: de });
-    const title = type === 'treasury' ? 'Mannschaftskasse' : 'Offene Schulden';
-    let text = `📋 *${title} - RWS2*\n(Stand: ${dateStr})\n\n`;
+    let text = `📋 *Mannschaftskasse - RWS2*\n(Stand: ${dateStr})\n\n`;
 
     debtors.sort((a, b) => a.name.localeCompare(b.name, 'de')).forEach(p => {
       const tb = getFullTreasuryBalance(p);
-      text += `• ${p.name}:\n`;
-      if (type === 'all' && (p.balance || 0) < 0) text += `  - Getränkekonto: ${(p.balance || 0).toFixed(2).replace('.', ',')} €\n`;
-      if (tb < 0) text += `  - Mannschaftskasse: ${tb.toFixed(2).replace('.', ',')} €\n`;
-      text += `\n`;
+      text += `• ${p.name}: ${tb.toFixed(2).replace('.', ',')} €\n`;
     });
     navigator.clipboard.writeText(text); toast({ title: "Liste kopiert" });
   };
@@ -204,8 +191,7 @@ export default function PlayersPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="rounded-xl w-56">
-                <DropdownMenuItem onClick={() => exportDebtList('all')} className="gap-2"><TrendingUp className="h-4 w-4" /> Schulden (Gesamt)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="gap-2"><Banknote className="h-4 w-4" /> Nur Mannschaftskasse</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportTreasuryList} className="gap-2"><Banknote className="h-4 w-4" /> Mannschaftskasse</DropdownMenuItem>
                 {isStrafenwart && (
                   <>
                     <div className="h-px bg-border my-1" />
@@ -248,8 +234,7 @@ export default function PlayersPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button variant="outline" className="w-full rounded-xl border-emerald-600 text-emerald-700 h-10 text-xs"><Share2 className="h-3 w-3 mr-2" /> Listen exportieren <ChevronDown className="h-3 w-3 ml-2 opacity-50" /></Button></DropdownMenuTrigger>
               <DropdownMenuContent className="rounded-xl w-[calc(100vw-2rem)]">
-                <DropdownMenuItem onClick={() => exportDebtList('all')} className="py-3">Schulden (Gesamt)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportDebtList('treasury')} className="py-3">Nur Mannschaftskasse</DropdownMenuItem>
+                <DropdownMenuItem onClick={exportTreasuryList} className="py-3">Mannschaftskasse</DropdownMenuItem>
                 {isStrafenwart && <DropdownMenuItem onClick={exportFinesList} className="py-3 text-amber-600 font-bold">Strafen-Übersicht</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -265,12 +250,12 @@ export default function PlayersPage() {
                       <div className="flex flex-wrap justify-end gap-1 max-w-[150px]">{ (player.roles || []).map(r => (<Badge key={r} variant={r === 'admin' ? 'default' : 'secondary'} className="text-[9px] uppercase px-1.5 py-0">{AVAILABLE_ROLES.find(ar => ar.id === r)?.label || r}</Badge>))}</div>
                     </div>
                     <h3 className="text-xl font-bold mb-4">{player.name}</h3>
-                    <div className="grid grid-cols-2 gap-4 py-3 border-t">
-                      <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><Wallet className="h-2.5 w-2.5" /> Getränkekonto</p><p className={cn("text-base font-bold", (player.balance || 0) < 0 ? 'text-destructive' : 'text-emerald-600')}>{(player.balance || 0).toFixed(2)} €</p></div>
-                      <div><p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> Mannschaftskasse</p><p className={cn("text-base font-bold", tb < 0 ? 'text-destructive' : 'text-blue-600')}>{tb.toFixed(2)} €</p></div>
+                    <div className="py-3 border-t">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> Mannschaftskasse</p>
+                      <p className={cn("text-base font-bold", tb < 0 ? 'text-destructive' : 'text-blue-600')}>{tb.toFixed(2)} €</p>
                     </div>
                     <div className="flex items-center justify-end pt-3 border-t gap-1">
-                      {isKassenwart && ((player.balance || 0) < 0 || tb < 0) && (<Button size="icon" variant="ghost" className="text-emerald-600 hover:text-emerald-700" onClick={() => { setPaymentPlayer(player); setPaymentAmount(""); setPaymentAccount('drinks'); setIsPaymentOpen(true); }}><Banknote className="h-4 w-4" /></Button>)}
+                      {isKassenwart && tb < 0 && (<Button size="icon" variant="ghost" className="text-emerald-600 hover:text-emerald-700" onClick={() => { setPaymentPlayer(player); setPaymentAmount(""); setIsPaymentOpen(true); }}><Banknote className="h-4 w-4" /></Button>)}
                       {isAdmin && (<><Button size="icon" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => { setPlayerToDelete(player); setIsDeleteConfirmOpen(true); }}><Trash2 className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => { setEditingPlayer(player); setEditName(player.name); setEditEmail(player.email); setEditRoles(player.roles); setEditIsExempt(player.isFeeExempt || false); setIsEditOpen(true); }}><ChevronRight className="h-4 w-4" /></Button></>)}
                     </div>
                   </CardContent>
@@ -297,10 +282,9 @@ export default function PlayersPage() {
           <DialogContent className="max-w-[90vw] md:max-w-md rounded-2xl bg-card">
             <DialogHeader>
               <DialogTitle>Zahlung erfassen</DialogTitle>
-              <DialogDescription>Zahlung für {paymentPlayer?.name} erfassen.</DialogDescription>
+              <DialogDescription>Zahlung für {paymentPlayer?.name} zur Mannschaftskasse erfassen.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">
-              <div className="space-y-3"><Label>Buchen auf Konto:</Label><RadioGroup value={paymentAccount} onValueChange={(v: any) => setPaymentAccount(v)} className="grid grid-cols-2 gap-4"><div><RadioGroupItem value="drinks" id="acc-drinks" className="peer sr-only" /><Label htmlFor="acc-drinks" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><Banknote className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Getränkekonto</span></Label></div><div><RadioGroupItem value="treasury" id="acc-treasury" className="peer sr-only" /><Label htmlFor="acc-treasury" className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent peer-data-[state=checked]:border-primary"><TrendingUp className="mb-2 h-6 w-6" /><span className="text-xs font-bold">Mannschaftskasse</span></Label></div></RadioGroup></div>
               <div className="space-y-2"><Label>Betrag (€)</Label><Input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>
             </div>
             <DialogFooter><Button onClick={handleRecordPayment} disabled={isSubmitting || !paymentAmount} className="w-full rounded-xl h-11 bg-emerald-600 text-white">{isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Verbuchen"}</Button></DialogFooter>

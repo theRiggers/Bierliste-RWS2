@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useStore, FEE_MONTHS, Role, Player } from "@/lib/store"
 import { 
   Wallet, 
-  Beer, 
   Clock, 
   Loader2, 
   UserCircle, 
@@ -41,6 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { IntroDialog } from "@/components/layout/intro-dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -50,8 +50,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, currentUserProfile, settings, recordPayment, upsertAttendance, loading: storeLoading } = useStore()
-  const [onboardingName, setOnboardingName] = useState("")
+  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, currentUserProfile, settings, recordPayment, upsertAttendance, resetClubhouseSeason, recordClubhousePayment, loading: storeLoading, expenses } = useStore()
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentPlayerId, setPaymentPlayerId] = useState("")
@@ -59,7 +58,7 @@ export default function Dashboard() {
 
   const [isSelfPaymentDialogOpen, setIsSelfPaymentDialogOpen] = useState(false)
   const [selfPaymentAmount, setSelfPaymentAmount] = useState("")
-  const [selfPaymentType, setSelfPaymentType] = useState<'drinks' | 'treasury' | 'fines'>('drinks')
+  const [selfPaymentType, setSelfPaymentType] = useState<'treasury' | 'fines'>('treasury')
 
   const [isQuickDeclineOpen, setIsQuickDeclineOpen] = useState(false)
   const [quickDeclineEventId, setQuickDeclineEventId] = useState<string | null>(null)
@@ -99,12 +98,6 @@ export default function Dashboard() {
     return null;
   }, [nextEvent, currentUserProfile, attendance]);
 
-  const pendingReimbursementAmount = useMemo(() => {
-    if (!currentUserProfile || !currentUserProfile.id) return 0;
-    // Reimbursements logic can stay but drink management is gone
-    return 0; 
-  }, [currentUserProfile]);
-
   const feeStatus = useMemo(() => {
     if (!currentUserProfile) return { open: 0, paidMonths: 0, monthsStatus: [], totalDebt: 0 };
     
@@ -116,7 +109,6 @@ export default function Dashboard() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    // Saisonwechsel am 1. Juni
     const seasonYear = currentMonth < 5 ? currentYear - 1 : currentYear;
     
     const userFees = membershipFees.filter(f => f.playerId === currentUserProfile.id && f.year === seasonYear);
@@ -180,6 +172,16 @@ export default function Dashboard() {
       .slice(0, 10);
   }, [players, fines]);
 
+  const clubhouseStats = useMemo(() => {
+    const lastReset = settings.lastClubhouseResetDate ? parseISO(settings.lastClubhouseResetDate) : new Date(0);
+    const relevantExpenses = expenses.filter(e => e.playerId === 'clubhouse' || e.playerId === 'team_treasury');
+    const filtered = relevantExpenses.filter(e => isAfter(parseISO(e.date), lastReset));
+    
+    const count = filtered.length;
+    const totalCost = filtered.reduce((sum, e) => sum + e.cost, 0);
+    return { count, totalCost };
+  }, [expenses, settings.lastClubhouseResetDate]);
+
   if (!mounted || authLoading || storeLoading) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
@@ -188,11 +190,7 @@ export default function Dashboard() {
     )
   }
 
-  if (!user) return null
-
-  if (!currentUserProfile) {
-    return null;
-  }
+  if (!user || !currentUserProfile) return null
 
   const handleQuickRSVP = async (eventId: string, status: 'going' | 'declined') => {
     if (status === 'going') {
@@ -212,11 +210,9 @@ export default function Dashboard() {
     toast({ title: "Absage gespeichert" });
   }
 
-  const handlePayInitiate = (type: 'drinks' | 'treasury' | 'fines') => {
+  const handlePayInitiate = (type: 'treasury' | 'fines') => {
     let amount = 0;
-    if (type === 'drinks') {
-      amount = currentUserProfile.balance < 0 ? Math.abs(currentUserProfile.balance) : 0;
-    } else if (type === 'treasury') {
+    if (type === 'treasury') {
       amount = Math.max(0, feeStatus.totalDebt);
     } else if (type === 'fines') {
       amount = Math.max(0, fineStatus);
@@ -234,7 +230,7 @@ export default function Dashboard() {
       return;
     }
 
-    const typeLabel = selfPaymentType === 'drinks' ? 'Getränke' : selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen';
+    const typeLabel = selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen';
     const reference = `2. Herren RWS - ${typeLabel}: ${currentUserProfile.name}`;
     
     const emailOrLink = settings.treasuryPaypalEmail || settings.paypalMeLink;
@@ -273,6 +269,12 @@ export default function Dashboard() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  const handleClubhousePaid = async () => {
+    await recordClubhousePayment(clubhouseStats.totalCost);
+    await resetClubhouseSeason();
+    toast({ title: "Abrechnung archiviert", description: "Der Betrag wurde als Ausgabe erfasst." });
   }
 
   return (
@@ -347,6 +349,48 @@ export default function Dashboard() {
                    >
                      <X className="h-4 w-4 mr-1.5" /> Absagen
                    </Button>
+                </div>
+              </div>
+            </Alert>
+          )}
+
+          {isKassenwart && clubhouseStats.count > 0 && (
+            <Alert className="bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900 rounded-2xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-xl text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <AlertTitle className="font-black text-amber-800 dark:text-amber-400 uppercase text-xs tracking-wider">Abrechnung Vereinsheim</AlertTitle>
+                    <AlertDescription className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                      Es sind <strong className="text-amber-700 dark:text-amber-400">{clubhouseStats.count} Kisten</strong> offen ({clubhouseStats.totalCost.toFixed(2)}€).
+                    </AlertDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                   <Badge variant="outline" className="h-8 md:h-10 px-4 rounded-xl border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 font-bold hidden sm:flex">
+                     Diese Saison versoffen: {clubhouseStats.totalCost.toFixed(2)}€
+                   </Badge>
+                   {isAdmin && (
+                     <AlertDialog>
+                       <AlertDialogTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive">
+                           <X className="h-4 w-4" />
+                         </Button>
+                       </AlertDialogTrigger>
+                       <AlertDialogContent className="bg-card">
+                         <AlertDialogHeader>
+                           <AlertDialogTitle>Offene Kisten bezahlen?</AlertDialogTitle>
+                           <AlertDialogDescription>Dies verbucht den Betrag von {clubhouseStats.totalCost.toFixed(2)}€ als bezahlt und setzt den Zähler für die neue Abrechnung zurück.</AlertDialogDescription>
+                         </AlertDialogHeader>
+                         <AlertDialogFooter>
+                           <AlertDialogCancel className="rounded-xl">Abbrechen</AlertDialogCancel>
+                           <AlertDialogAction onClick={handleClubhousePaid} className="bg-emerald-600 text-white rounded-xl">Als bezahlt markieren</AlertDialogAction>
+                         </AlertDialogFooter>
+                       </AlertDialogContent>
+                     </AlertDialog>
+                   )}
                 </div>
               </div>
             </Alert>
@@ -548,7 +592,7 @@ export default function Dashboard() {
             <DialogHeader>
               <DialogTitle>Zahlung vorbereiten</DialogTitle>
               <DialogDescription>
-                Wie viel möchtest du für dein {selfPaymentType === 'drinks' ? 'Getränkekonto' : selfPaymentType === 'treasury' ? 'Beitragskonto' : 'Strafenkonto'} bezahlen?
+                Wie viel möchtest du für dein {selfPaymentType === 'treasury' ? 'Beitragskonto' : 'Strafenkonto'} bezahlen?
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -572,13 +616,13 @@ export default function Dashboard() {
                    <Copy className="h-3 w-3 text-muted-foreground" />
                 </div>
                 <p className="text-xs font-medium break-all">
-                  2. Herren RWS - {selfPaymentType === 'drinks' ? 'Getränke' : selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen'}: {currentUserProfile.name}
+                  2. Herren RWS - {selfPaymentType === 'treasury' ? 'Beitrag' : 'Strafen'}: {currentUserProfile.name}
                 </p>
                 <p className="text-[10px] text-emerald-600 font-medium">Wird automatisch kopiert beim Klick auf "Weiter".</p>
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handlePayConfirm} className="w-full h-12 rounded-xl font-bold red-glow">
+              <Button onClick={handlePayConfirm} className="w-full h-12 rounded-2xl font-bold red-glow">
                 Weiter zu PayPal
               </Button>
             </DialogFooter>

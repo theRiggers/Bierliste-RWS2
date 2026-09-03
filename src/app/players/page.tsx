@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -57,7 +58,7 @@ export default function PlayersPage() {
   useEffect(() => { setMounted(true) }, [])
 
   const displayPlayers = useMemo(() => 
-    players.filter(p => p.email !== 'kasse@kickoff.de')
+    players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury')
       .sort((a, b) => a.name.localeCompare(b.name, 'de')), 
     [players]
   );

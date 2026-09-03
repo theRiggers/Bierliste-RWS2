@@ -27,7 +27,8 @@ import {
   X, 
   HandCoins,
   AlertCircle,
-  UserX
+  UserX,
+  Sparkles
 } from "lucide-react"
 import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from "date-fns"
 import { de } from "date-fns/locale"
@@ -53,7 +54,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, totalBierkasse, currentUserProfile, settings, recordPayment, upsertAttendance, resetClubhouseSeason, recordClubhousePayment, loading: storeLoading, expenses } = useStore()
+  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, currentUserProfile, settings, recordPayment, upsertAttendance, resetClubhouseSeason, recordClubhousePayment, loading: storeLoading, expenses, addPlayer } = useStore()
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentPlayerId, setPaymentPlayerId] = useState("")
@@ -66,6 +67,10 @@ export default function Dashboard() {
   const [isQuickDeclineOpen, setIsQuickDeclineOpen] = useState(false)
   const [quickDeclineEventId, setQuickDeclineEventId] = useState<string | null>(null)
   const [quickDeclineReason, setQuickDeclineReason] = useState("")
+
+  // Onboarding state
+  const [setupName, setSetupName] = useState("")
+  const [isSettingUp, setIsSettingUp] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -193,28 +198,58 @@ export default function Dashboard() {
     )
   }
 
+  const handleSetupProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!setupName.trim() || !user) return
+    setIsSettingUp(true)
+    try {
+      await addPlayer(setupName.trim(), user.email || "", ['player'], user.uid)
+      toast({ title: "Profil erstellt", description: `Willkommen im Team, ${setupName}!` })
+    } catch (err) {
+      toast({ variant: "destructive", title: "Fehler", description: "Profil konnte nicht erstellt werden." })
+    } finally {
+      setIsSettingUp(false)
+    }
+  }
+
   // Handle users who are logged in but have no profile in the 'players' collection
   if (user && !currentUserProfile) {
     return (
       <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
         <Sidebar userRoles={[]} />
         <MobileNavTrigger userRoles={[]} />
-        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6">
-          <div className="p-6 bg-amber-100 dark:bg-amber-900/30 rounded-full text-amber-600">
-            <UserX className="h-16 w-16" />
-          </div>
-          <div className="max-w-md space-y-2">
-            <h1 className="text-2xl font-bold font-headline">Profil nicht gefunden</h1>
-            <p className="text-muted-foreground">
-              Dein Account wurde authentifiziert, aber es wurde kein Spieler-Profil für deine E-Mail (<strong>{user.email}</strong>) gefunden.
-            </p>
-            <p className="text-sm text-muted-foreground pt-4">
-              Bitte wende dich an einen Administrator, um deinen Account freizuschalten.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl">
-            Seite neu laden
-          </Button>
+        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <Card className="max-w-md w-full border-none shadow-2xl rounded-3xl overflow-hidden bg-white">
+            <CardHeader className="bg-primary pb-8 pt-10 text-white">
+              <div className="mx-auto bg-white/20 p-3 rounded-full w-20 h-20 mb-4 flex items-center justify-center">
+                <UserPlus className="h-10 w-10" />
+              </div>
+              <CardTitle className="text-2xl font-bold font-headline">Profil anlegen</CardTitle>
+              <CardDescription className="text-white/80">Willkommen im Headquarter RWS2! Wie sollen wir dich nennen?</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-8 space-y-6">
+              <form onSubmit={handleSetupProfile} className="space-y-4">
+                <div className="space-y-2 text-left">
+                  <Label htmlFor="setup-name" className="ml-1 text-xs font-bold uppercase text-muted-foreground">Dein Name</Label>
+                  <Input 
+                    id="setup-name"
+                    placeholder="Vorname Nachname" 
+                    className="h-12 rounded-xl text-lg" 
+                    value={setupName}
+                    onChange={(e) => setSetupName(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                <Button type="submit" className="w-full h-12 rounded-xl font-bold red-glow" disabled={isSettingUp || !setupName.trim()}>
+                  {isSettingUp ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Sparkles className="h-5 w-5 mr-2" /> Profil jetzt erstellen</>}
+                </Button>
+              </form>
+              <p className="text-[10px] text-muted-foreground italic">
+                Deine E-Mail Adresse ({user.email}) wird automatisch verknüpft.
+              </p>
+            </CardContent>
+          </Card>
         </main>
       </div>
     )

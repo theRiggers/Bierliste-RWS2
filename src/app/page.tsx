@@ -7,7 +7,6 @@ import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { useStore, FEE_MONTHS, Role, Player } from "@/lib/store"
 import { 
-  Wallet, 
   Clock, 
   Loader2, 
   UserCircle, 
@@ -28,7 +27,8 @@ import {
   HandCoins,
   AlertCircle,
   UserX,
-  Sparkles
+  Sparkles,
+  UserPlus
 } from "lucide-react"
 import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from "date-fns"
 import { de } from "date-fns/locale"
@@ -180,16 +180,6 @@ export default function Dashboard() {
       .slice(0, 10);
   }, [players, fines]);
 
-  const clubhouseStats = useMemo(() => {
-    const lastReset = settings.lastClubhouseResetDate ? parseISO(settings.lastClubhouseResetDate) : new Date(0);
-    const relevantExpenses = expenses.filter(e => e.playerId === 'clubhouse' || e.playerId === 'team_treasury');
-    const filtered = relevantExpenses.filter(e => isAfter(parseISO(e.date), lastReset));
-    
-    const count = filtered.length;
-    const totalCost = filtered.reduce((sum, e) => sum + e.cost, 0);
-    return { count, totalCost };
-  }, [expenses, settings.lastClubhouseResetDate]);
-
   if (!mounted || authLoading || storeLoading) {
     return (
       <div className="flex h-svh items-center justify-center bg-background">
@@ -212,7 +202,6 @@ export default function Dashboard() {
     }
   }
 
-  // Handle users who are logged in but have no profile in the 'players' collection
   if (user && !currentUserProfile) {
     return (
       <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
@@ -336,12 +325,6 @@ export default function Dashboard() {
     }
   }
 
-  const handleClubhousePaid = async () => {
-    await recordClubhousePayment(clubhouseStats.totalCost);
-    await resetClubhouseSeason();
-    toast({ title: "Abrechnung archiviert", description: "Der Betrag wurde als Ausgabe erfasst." });
-  }
-
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
       <Sidebar userRoles={roles} />
@@ -414,48 +397,6 @@ export default function Dashboard() {
                    >
                      <X className="h-4 w-4 mr-1.5" /> Absagen
                    </Button>
-                </div>
-              </div>
-            </Alert>
-          )}
-
-          {isKassenwart && clubhouseStats.count > 0 && (
-            <Alert className="bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900 rounded-2xl">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-xl text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                    <TrendingUp className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <AlertTitle className="font-black text-amber-800 dark:text-amber-400 uppercase text-xs tracking-wider">Abrechnung Vereinsheim</AlertTitle>
-                    <AlertDescription className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                      Es sind <strong className="text-amber-700 dark:text-amber-400">{clubhouseStats.count} Kisten</strong> offen ({clubhouseStats.totalCost.toFixed(2)}€).
-                    </AlertDescription>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                   <Badge variant="outline" className="h-8 md:h-10 px-4 rounded-xl border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 font-bold hidden sm:flex">
-                     Diese Saison versoffen: {clubhouseStats.totalCost.toFixed(2)}€
-                   </Badge>
-                   {isAdmin && (
-                     <AlertDialog>
-                       <AlertDialogTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive">
-                           <X className="h-4 w-4" />
-                         </Button>
-                       </AlertDialogTrigger>
-                       <AlertDialogContent className="bg-card">
-                         <AlertDialogHeader>
-                           <AlertDialogTitle>Offene Kisten bezahlen?</AlertDialogTitle>
-                           <AlertDialogDescription>Dies verbucht den Betrag von {clubhouseStats.totalCost.toFixed(2)}€ als bezahlt und setzt den Zähler für die neue Abrechnung zurück.</AlertDialogDescription>
-                         </AlertDialogHeader>
-                         <AlertDialogFooter>
-                           <AlertDialogCancel className="rounded-xl">Abbrechen</AlertDialogCancel>
-                           <AlertDialogAction onClick={handleClubhousePaid} className="bg-emerald-600 text-white rounded-xl">Als bezahlt markieren</AlertDialogAction>
-                         </AlertDialogFooter>
-                       </AlertDialogContent>
-                     </AlertDialog>
-                   )}
                 </div>
               </div>
             </Alert>

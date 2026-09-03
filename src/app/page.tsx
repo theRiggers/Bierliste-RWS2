@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -24,7 +25,9 @@ import {
   Copy,
   Check, 
   X, 
-  HandCoins
+  HandCoins,
+  AlertCircle,
+  UserX
 } from "lucide-react"
 import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from "date-fns"
 import { de } from "date-fns/locale"
@@ -50,7 +53,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, currentUserProfile, settings, recordPayment, upsertAttendance, resetClubhouseSeason, recordClubhousePayment, loading: storeLoading, expenses } = useStore()
+  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, totalBierkasse, currentUserProfile, settings, recordPayment, upsertAttendance, resetClubhouseSeason, recordClubhousePayment, loading: storeLoading, expenses } = useStore()
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentPlayerId, setPaymentPlayerId] = useState("")
@@ -190,6 +193,33 @@ export default function Dashboard() {
     )
   }
 
+  // Handle users who are logged in but have no profile in the 'players' collection
+  if (user && !currentUserProfile) {
+    return (
+      <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
+        <Sidebar userRoles={[]} />
+        <MobileNavTrigger userRoles={[]} />
+        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6">
+          <div className="p-6 bg-amber-100 dark:bg-amber-900/30 rounded-full text-amber-600">
+            <UserX className="h-16 w-16" />
+          </div>
+          <div className="max-w-md space-y-2">
+            <h1 className="text-2xl font-bold font-headline">Profil nicht gefunden</h1>
+            <p className="text-muted-foreground">
+              Dein Account wurde authentifiziert, aber es wurde kein Spieler-Profil für deine E-Mail (<strong>{user.email}</strong>) gefunden.
+            </p>
+            <p className="text-sm text-muted-foreground pt-4">
+              Bitte wende dich an einen Administrator, um deinen Account freizuschalten.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl">
+            Seite neu laden
+          </Button>
+        </main>
+      </div>
+    )
+  }
+
   if (!user || !currentUserProfile) return null
 
   const handleQuickRSVP = async (eventId: string, status: 'going' | 'declined') => {
@@ -279,9 +309,9 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col md:flex-row h-svh bg-background overflow-hidden">
-      <Sidebar userRoles={currentUserProfile.roles} />
+      <Sidebar userRoles={roles} />
       <MobileNavTrigger 
-        userRoles={currentUserProfile.roles} 
+        userRoles={roles} 
         rightElement={
           isKassenwart && (
             <Button 

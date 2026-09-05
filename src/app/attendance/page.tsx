@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -31,7 +30,7 @@ export default function AttendancePage() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  const filteredPlayers = useMemo(() => players.filter(p => p.email !== 'kasse@kickoff.de'), [players]);
+  const filteredPlayers = useMemo(() => players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury'), [players]);
 
   const seasonEvents = useMemo(() => {
     const seasonStart = new Date(parseInt(selectedSeason), 5, 1); // 1. Juni
@@ -69,7 +68,8 @@ export default function AttendancePage() {
     if (!isCoach) return;
     
     let nextStatus: 'going' | 'declined' | null = 'going';
-    if (currentStatus === 'going') nextStatus = 'declined';
+    // Logic: Default is going. If we toggle, it goes to declined, then back to default (null record)
+    if (currentStatus === 'going' || !currentStatus) nextStatus = 'declined';
     else if (currentStatus === 'declined') nextStatus = null;
     
     await updatePlayerAttendance(eventId, playerId, playerName, nextStatus);
@@ -83,7 +83,8 @@ export default function AttendancePage() {
     
     const count = pastSeasonEvents.filter(e => {
       const a = playerAttendance.find(att => att.eventId === e.id);
-      return a?.status === 'going';
+      // Logic: Default is going. So if no attendance record OR status is 'going', they were present.
+      return !a || a.status === 'going';
     }).length;
 
     return {
@@ -139,7 +140,7 @@ export default function AttendancePage() {
                     <BarChart3 className="h-6 w-6" />
                     Saison-Matrix
                   </CardTitle>
-                  <CardDescription>Klicke auf die Felder, um die Anwesenheit zu bearbeiten.</CardDescription>
+                  <CardDescription>Klicke auf die Felder, um die Anwesenheit zu bearbeiten (Default: Zusage).</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -187,6 +188,9 @@ export default function AttendancePage() {
                         {seasonEvents.map(event => {
                           const att = attendance.find(a => a.eventId === event.id && a.playerId === player.id);
                           const isPast = isBefore(new Date(event.date), new Date());
+                          const isDeclined = att?.status === 'declined';
+                          const isExplicitGoing = att?.status === 'going';
+                          const isDefaultGoing = !att;
                           
                           return (
                             <TableCell key={event.id} className="text-center p-1">
@@ -198,22 +202,22 @@ export default function AttendancePage() {
                                       size="sm" 
                                       className={cn(
                                         "rounded-lg h-9 w-9 p-0 transition-all",
-                                        att?.status === 'going' ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20" : 
-                                        att?.status === 'declined' ? "bg-destructive/10 text-destructive hover:bg-destructive/20" : 
+                                        isExplicitGoing ? "bg-emerald-500/20 text-emerald-600" : 
+                                        isDefaultGoing ? "text-emerald-600/30" :
+                                        isDeclined ? "bg-destructive/10 text-destructive hover:bg-destructive/20" : 
                                         "hover:bg-muted",
                                         !isPast && "opacity-40"
                                       )}
                                       onClick={() => handleToggleAttendance(event.id, player.id, player.name, att?.status)}
                                     >
-                                      {att?.status === 'going' ? <Check className="h-4 w-4" /> : 
-                                       att?.status === 'declined' ? <X className="h-4 w-4" /> : 
-                                       <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />}
+                                      {isDeclined ? <X className="h-4 w-4" /> : (isExplicitGoing || isDefaultGoing) ? <Check className={cn("h-4 w-4", isDefaultGoing && "opacity-30")} /> : <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />}
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <div className="text-xs space-y-1">
                                       <p className="font-bold">{event.title}</p>
-                                      <p>{player.name}: {att?.status === 'going' ? 'Anwesend' : att?.status === 'declined' ? 'Abgesagt' : 'Keine Info'}</p>
+                                      <p>{player.name}: {isDeclined ? 'Abgesagt' : (isExplicitGoing || isDefaultGoing) ? 'Anwesend' : 'Keine Info'}</p>
+                                      {isDefaultGoing && <p className="text-[10px] text-emerald-600 font-bold">Standard-Zusage</p>}
                                       {att?.reason && (
                                         <div className="flex items-start gap-1 text-[10px] text-muted-foreground italic border-t pt-1 mt-1">
                                           <MessageSquare className="h-2.5 w-2.5 mt-0.5" />

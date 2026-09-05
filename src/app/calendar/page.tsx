@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -9,9 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye, UserCircle, LayoutGrid, Radio } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2, Trophy, Users, Info, MapPin, Clock, CalendarDays, Pencil, Download, Check, X, MessageSquare, Eye, UserCircle, LayoutGrid, Radio, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore } from "date-fns"
+import { format, isAfter, startOfDay, addDays, getDay, parseISO, isBefore, subHours } from "date-fns"
 import { de } from "date-fns/locale"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -85,6 +84,19 @@ export default function CalendarPage() {
 
   const isEditor = currentUserProfile?.roles?.some(r => ['admin', 'coach', 'assistant_coach'].includes(r))
 
+  const isDeclineDeadlinePassed = (event: TeamEvent) => {
+    if (isEditor) return false;
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    if (event.type === 'match') {
+      return isAfter(now, subHours(eventDate, 48));
+    }
+    if (event.type === 'training') {
+      return isAfter(now, subHours(eventDate, 6));
+    }
+    return false;
+  };
+
   const handleExportAll = () => {
     if (upcomingEvents.length === 0) {
       toast({ variant: "destructive", title: "Keine Termine", description: "Es gibt keine anstehenden Termine zum Exportieren." })
@@ -92,11 +104,6 @@ export default function CalendarPage() {
     }
     downloadIcsFile(upcomingEvents, 'rws2-kalender.ics')
     toast({ title: "Export gestartet", description: "Die Kalender-Datei wird heruntergeladen." })
-  }
-
-  const handleExportSingle = (event: TeamEvent) => {
-    downloadIcsFile([event], `termin-${format(new Date(event.date), 'yyyy-MM-dd')}.ics`)
-    toast({ title: "Termin exportiert" })
   }
 
   const handleAddEvent = async () => {
@@ -198,7 +205,15 @@ export default function CalendarPage() {
     if (!weekdayTimes[id]) setWeekdayTimes(prev => ({ ...prev, [id]: "19:00" }))
   }
 
-  const handleDeclineClick = (eventId: string) => {
+  const handleDeclineClick = (eventId: string, event: TeamEvent) => {
+    if (isDeclineDeadlinePassed(event)) {
+      toast({ 
+        variant: "destructive", 
+        title: "Frist abgelaufen", 
+        description: event.type === 'match' ? "Absagen für Spiele sind nur bis 48h vorher möglich." : "Absagen für Trainings sind nur bis 6h vorher möglich." 
+      });
+      return;
+    }
     setDeclineEventId(eventId)
     setDeclineReason("")
     setIsDeclineOpen(true)
@@ -213,7 +228,7 @@ export default function CalendarPage() {
 
   const handleAdminStatusToggle = async (eventId: string, player: Player, currentStatus: string | undefined) => {
     if (!isEditor) return;
-    const nextStatus = currentStatus === 'going' ? 'declined' : 'going';
+    const nextStatus = currentStatus === 'going' || !currentStatus ? 'declined' : 'going';
     await updatePlayerAttendance(eventId, player.id, player.name, nextStatus);
   };
 
@@ -324,9 +339,15 @@ export default function CalendarPage() {
             ) : (
               upcomingEvents.map((event) => {
                 const userAttendance = attendance.find(a => a.eventId === event.id && a.playerId === currentUserProfile?.id)
-                const eventAttendance = attendance.filter(a => a.eventId === event.id)
-                const goingCount = eventAttendance.filter(a => a.status === 'going').length
-                const declinedCount = eventAttendance.filter(a => a.status === 'declined').length
+                const isDeclined = userAttendance?.status === 'declined'
+                const isExplicitlyGoing = userAttendance?.status === 'going'
+                const isDefaultGoing = !userAttendance
+                
+                const declinedCount = attendance.filter(a => a.eventId === event.id && a.status === 'declined').length
+                const totalActivePlayers = players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury').length
+                const goingCount = totalActivePlayers - declinedCount
+                
+                const deadlinePassed = isDeclineDeadlinePassed(event)
 
                 return (
                   <Card key={event.id} className="border-none shadow-md rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-card">
@@ -388,16 +409,37 @@ export default function CalendarPage() {
                             )}
                           </div>
                         </CardContent>
-                        <CardFooter className="px-4 md:px-6 pb-4 pt-4 border-t border-muted/30 flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-2 flex-1">
-                            <Button size="sm" className={cn("rounded-xl font-bold flex-1 md:flex-none", userAttendance?.status === 'going' ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground")} onClick={() => upsertAttendance(event.id, 'going')}><Check className="h-4 w-4 mr-1" /> Zusage</Button>
-                            <Button size="sm" variant="outline" className={cn("rounded-xl font-bold flex-1 md:flex-none", userAttendance?.status === 'declined' ? "bg-destructive text-white border-none" : "border-destructive text-destructive")} onClick={() => handleDeclineClick(event.id)}><X className="h-4 w-4 mr-1" /> Absage</Button>
+                        <CardFooter className="px-4 md:px-6 pb-4 pt-4 border-t border-muted/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                          <div className="flex items-center gap-2 w-full md:w-auto">
+                            <Button size="sm" className={cn("rounded-xl font-bold flex-1 md:flex-none", (isExplicitlyGoing || isDefaultGoing) ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground")} onClick={() => upsertAttendance(event.id, 'going')}>
+                              <Check className="h-4 w-4 mr-1" /> {isDefaultGoing ? "Standard-Zusage" : "Zusage"}
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              disabled={deadlinePassed && !isEditor}
+                              className={cn(
+                                "rounded-xl font-bold flex-1 md:flex-none", 
+                                isDeclined ? "bg-destructive text-white border-none" : "border-destructive text-destructive",
+                                deadlinePassed && !isEditor && "opacity-50 grayscale"
+                              )} 
+                              onClick={() => handleDeclineClick(event.id, event)}
+                            >
+                              <X className="h-4 w-4 mr-1" /> Absage
+                            </Button>
                           </div>
-                          {userAttendance?.status === 'declined' && userAttendance.reason && (
-                            <div className="hidden md:flex items-center gap-2 text-[10px] text-muted-foreground italic bg-muted/30 px-3 py-1.5 rounded-lg border">
-                              <MessageSquare className="h-3 w-3" /> {userAttendance.reason}
-                            </div>
-                          )}
+                          <div className="flex flex-col gap-1 w-full md:w-auto md:items-end">
+                            {isDeclined && userAttendance.reason && (
+                              <div className="flex items-center gap-2 text-[10px] text-muted-foreground italic bg-muted/30 px-3 py-1.5 rounded-lg border">
+                                <MessageSquare className="h-3 w-3" /> {userAttendance.reason}
+                              </div>
+                            )}
+                            {deadlinePassed && !isEditor && (
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold text-destructive uppercase tracking-wider">
+                                <AlertCircle className="h-3 w-3" /> Frist für Absage abgelaufen
+                              </div>
+                            )}
+                          </div>
                         </CardFooter>
                       </div>
                     </div>
@@ -440,8 +482,8 @@ export default function CalendarPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-2"><Label>Titel</Label><Input value={editTitle} onChange={e => setEditTitle(e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Datum</Label><Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} /></div>
-                <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Datum</Label><Input type="date" value={editDate} onChange={e => editDate && setEditDate(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={editTime} onChange={e => editTime && setEditTime(e.target.value)} /></div>
               </div>
               <div className="space-y-2">
                 <Label>Typ</Label>
@@ -476,13 +518,23 @@ export default function CalendarPage() {
                 <div>
                   <h4 className="text-sm font-bold text-emerald-600 flex items-center gap-2 mb-3"><Check className="h-4 w-4" /> Zusagen</h4>
                   <div className="grid gap-2">
-                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
+                    {players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury').map(player => {
                       const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
-                      if (att?.status !== 'going') return null;
+                      const isDeclined = att?.status === 'declined';
+                      if (isDeclined) return null;
+                      
+                      const isExplicit = att?.status === 'going';
+
                       return (
-                        <div key={player.id} className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900 text-sm font-medium flex items-center justify-between group">
-                          <span>{player.name}</span>
-                          {isEditor && <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, 'going')}><X className="h-3 w-3 text-destructive" /></Button>}
+                        <div key={player.id} className={cn(
+                          "p-2 px-3 rounded-xl border text-sm font-medium flex items-center justify-between group transition-colors",
+                          isExplicit ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900" : "bg-muted/30 border-muted/50 text-muted-foreground"
+                        )}>
+                          <div className="flex items-center gap-2">
+                            <span>{player.name}</span>
+                            {!isExplicit && <Badge variant="outline" className="text-[8px] h-4 bg-white/50 border-none font-bold text-emerald-600">AUTO</Badge>}
+                          </div>
+                          {isEditor && <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => handleAdminStatusToggle(detailsEvent!.id, player, att?.status)}><X className="h-3 w-3 text-destructive" /></Button>}
                         </div>
                       );
                     })}
@@ -492,7 +544,7 @@ export default function CalendarPage() {
                 <div>
                   <h4 className="text-sm font-bold text-destructive flex items-center gap-2 mb-3"><X className="h-4 w-4" /> Absagen</h4>
                   <div className="grid gap-2">
-                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(player => {
+                    {players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury').map(player => {
                       const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
                       if (att?.status !== 'declined') return null;
                       return (

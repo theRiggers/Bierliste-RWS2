@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -30,7 +29,7 @@ import {
   Sparkles,
   UserPlus
 } from "lucide-react"
-import { format, isAfter, isBefore, addDays, startOfDay, parseISO } from "date-fns"
+import { format, isAfter, isBefore, addDays, startOfDay, parseISO, subHours } from "date-fns"
 import { de } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/firebase"
@@ -90,10 +89,23 @@ export default function Dashboard() {
     return futureEvents[0] || null;
   }, [teamEvents]);
 
+  const isDeclineDeadlinePassed = (event: TeamEvent) => {
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    if (event.type === 'match') {
+      return isAfter(now, subHours(eventDate, 48));
+    }
+    if (event.type === 'training') {
+      return isAfter(now, subHours(eventDate, 6));
+    }
+    return false;
+  };
+
   const rsvpReminder = useMemo(() => {
     if (!nextEvent || !currentUserProfile) return null;
     
     const userAttendance = attendance.find(a => a.eventId === nextEvent.id && a.playerId === currentUserProfile.id);
+    // Reminder only if the user hasn't interacted yet (since they are 'Going' by default, we want them to confirm they know)
     if (userAttendance) return null;
 
     const eventDate = new Date(nextEvent.date);
@@ -164,7 +176,7 @@ export default function Dashboard() {
     const rankingMap = new Map<string, { id: string, name: string, total: number }>();
     
     players.forEach(p => {
-      if (p.email !== 'kasse@kickoff.de') {
+      if (p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury') {
         rankingMap.set(p.id, { id: p.id, name: p.name, total: 0 });
       }
     });
@@ -251,6 +263,15 @@ export default function Dashboard() {
       await upsertAttendance(eventId, 'going');
       toast({ title: "Zusage gespeichert", description: "Wir sehen uns beim Termin!" });
     } else {
+      const event = teamEvents.find(e => e.id === eventId);
+      if (event && isDeclineDeadlinePassed(event)) {
+        toast({ 
+          variant: "destructive", 
+          title: "Frist abgelaufen", 
+          description: event.type === 'match' ? "Absagen für Spiele sind nur bis 48h vorher möglich." : "Absagen für Trainings sind nur bis 6h vorher möglich." 
+        });
+        return;
+      }
       setQuickDeclineEventId(eventId);
       setQuickDeclineReason("");
       setIsQuickDeclineOpen(true);
@@ -375,9 +396,9 @@ export default function Dashboard() {
                     <CalendarDays className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <AlertTitle className="font-black text-primary uppercase text-xs tracking-wider">Erinnerung: Rückmeldung fehlt!</AlertTitle>
+                    <AlertTitle className="font-black text-primary uppercase text-xs tracking-wider">Erinnerung: Termin steht an!</AlertTitle>
                     <AlertDescription className="text-sm font-medium text-foreground">
-                      Du hast dich noch nicht fürs <strong className="text-primary">{rsvpReminder.title}</strong> am {format(new Date(rsvpReminder.date), 'dd.MM. HH:mm')} angemeldet!
+                      Du bist fürs <strong className="text-primary">{rsvpReminder.title}</strong> am {format(new Date(rsvpReminder.date), 'dd.MM. HH:mm')} eingeplant. Kannst du doch nicht kommen?
                     </AlertDescription>
                   </div>
                 </div>
@@ -574,7 +595,7 @@ export default function Dashboard() {
                 <Select value={paymentPlayerId} onValueChange={setPaymentPlayerId}>
                   <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Spieler wählen" /></SelectTrigger>
                   <SelectContent>
-                    {players.filter(p => p.email !== 'kasse@kickoff.de').map(p => (
+                    {players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury').map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
                   </SelectContent>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
-import { useStore, TeamEvent, Attendance } from "@/lib/store"
+import { useStore, TeamEvent, Attendance, Player } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +30,11 @@ export default function AttendancePage() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  const filteredPlayers = useMemo(() => players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury'), [players]);
+  const filteredPlayers = useMemo(() => players.filter(p => 
+    p.email !== 'kasse@kickoff.de' && 
+    p.id !== 'team_treasury' && 
+    !p.roles.includes('coach')
+  ), [players]);
 
   const seasonEvents = useMemo(() => {
     const seasonStart = new Date(parseInt(selectedSeason), 5, 1); // 1. Juni

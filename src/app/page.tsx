@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar, MobileNavTrigger } from "@/components/layout/sidebar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { useStore, FEE_MONTHS, Role, Player } from "@/lib/store"
+import { useStore, FEE_MONTHS, Role, Player, TeamEvent } from "@/lib/store"
 import { 
   Clock, 
   Loader2, 
@@ -43,7 +43,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { IntroDialog } from "@/components/layout/intro-dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 const MONTH_NAMES_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -53,7 +52,7 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { user, loading: authLoading } = useUser()
-  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, currentUserProfile, settings, recordPayment, upsertAttendance, resetClubhouseSeason, recordClubhousePayment, loading: storeLoading, expenses, addPlayer } = useStore()
+  const { players, membershipFees, fines, teamEvents, attendance, totalMannschaftskasse, currentUserProfile, settings, recordPayment, upsertAttendance, loading: storeLoading, addPlayer } = useStore()
   
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [paymentPlayerId, setPaymentPlayerId] = useState("")
@@ -104,8 +103,10 @@ export default function Dashboard() {
   const rsvpReminder = useMemo(() => {
     if (!nextEvent || !currentUserProfile) return null;
     
+    // Trainers don't need RSVP reminders
+    if (currentUserProfile.roles.includes('coach')) return null;
+
     const userAttendance = attendance.find(a => a.eventId === nextEvent.id && a.playerId === currentUserProfile.id);
-    // Reminder only if the user hasn't interacted yet (since they are 'Going' by default, we want them to confirm they know)
     if (userAttendance) return null;
 
     const eventDate = new Date(nextEvent.date);

@@ -88,8 +88,17 @@ export default function LineupPage() {
   const currentLineup = useMemo(() => lineups.find(l => l.eventId === eventId), [lineups, eventId]);
   
   const availablePlayers = useMemo(() => {
-    const goingIds = attendance.filter(a => a.eventId === eventId && a.status === 'going').map(a => a.playerId);
-    return players.filter(p => goingIds.includes(p.id));
+    // Going IDs automatically includes those who haven't responded yet (standard zusage)
+    // but we filter the player list below by attendance records to see who actually declined.
+    const declinedIds = attendance.filter(a => a.eventId === eventId && a.status === 'declined').map(a => a.playerId);
+    
+    // Eligible players: Not declined, not dummy, and not coach
+    return players.filter(p => 
+      !declinedIds.includes(p.id) && 
+      p.email !== 'kasse@kickoff.de' && 
+      p.id !== 'team_treasury' &&
+      !p.roles.includes('coach')
+    );
   }, [players, attendance, eventId]);
 
   useEffect(() => {
@@ -288,7 +297,7 @@ export default function LineupPage() {
               
               <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900 flex items-center gap-3">
                  <Info className="h-5 w-5 text-blue-600" />
-                 <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Es werden nur Spieler angezeigt, die für diesen Termin zugesagt haben.</p>
+                 <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Es werden nur Spieler angezeigt, die für diesen Termin zugesagt haben (inkl. Standard-Zusage).</p>
               </div>
             </div>
 

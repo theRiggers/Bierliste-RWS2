@@ -344,8 +344,15 @@ export default function CalendarPage() {
                 const isDefaultGoing = !userAttendance
                 
                 const declinedCount = attendance.filter(a => a.eventId === event.id && a.status === 'declined').length
-                const totalActivePlayers = players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury').length
-                const goingCount = totalActivePlayers - declinedCount
+                
+                // Exclude coaches from the total participant pool
+                const totalEligiblePlayers = players.filter(p => 
+                  p.email !== 'kasse@kickoff.de' && 
+                  p.id !== 'team_treasury' && 
+                  !p.roles.includes('coach')
+                ).length;
+                
+                const goingCount = totalEligiblePlayers - declinedCount
                 
                 const deadlinePassed = isDeclineDeadlinePassed(event)
 
@@ -496,7 +503,7 @@ export default function CalendarPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Ort (Optional)</Label><Input value={editLocation} onChange={e => setEditLocation(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Ort (Optional)</Label><Input value={editLocation} onChange={setEditLocation(e.target.value)} /></div>
             </div>
             <DialogFooter><Button onClick={handleEditEvent} disabled={isSubmitting} className="w-full rounded-xl">Speichern</Button></DialogFooter>
           </DialogContent>
@@ -518,7 +525,11 @@ export default function CalendarPage() {
                 <div>
                   <h4 className="text-sm font-bold text-emerald-600 flex items-center gap-2 mb-3"><Check className="h-4 w-4" /> Zusagen</h4>
                   <div className="grid gap-2">
-                    {players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury').map(player => {
+                    {players.filter(p => 
+                      p.email !== 'kasse@kickoff.de' && 
+                      p.id !== 'team_treasury' && 
+                      !p.roles.includes('coach')
+                    ).map(player => {
                       const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
                       const isDeclined = att?.status === 'declined';
                       if (isDeclined) return null;
@@ -544,7 +555,11 @@ export default function CalendarPage() {
                 <div>
                   <h4 className="text-sm font-bold text-destructive flex items-center gap-2 mb-3"><X className="h-4 w-4" /> Absagen</h4>
                   <div className="grid gap-2">
-                    {players.filter(p => p.email !== 'kasse@kickoff.de' && p.id !== 'team_treasury').map(player => {
+                    {players.filter(p => 
+                      p.email !== 'kasse@kickoff.de' && 
+                      p.id !== 'team_treasury' && 
+                      !p.roles.includes('coach')
+                    ).map(player => {
                       const att = attendance.find(a => a.eventId === detailsEvent?.id && a.playerId === player.id);
                       if (att?.status !== 'declined') return null;
                       return (

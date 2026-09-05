@@ -489,8 +489,8 @@ export default function CalendarPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-2"><Label>Titel</Label><Input value={editTitle} onChange={e => setEditTitle(e.target.value)} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Datum</Label><Input type="date" value={editDate} onChange={e => editDate && setEditDate(e.target.value)} /></div>
-                <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={editTime} onChange={e => editTime && setEditTime(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Datum</Label><Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Uhrzeit</Label><Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} /></div>
               </div>
               <div className="space-y-2">
                 <Label>Typ</Label>
@@ -503,7 +503,7 @@ export default function CalendarPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Ort (Optional)</Label><Input value={editLocation} onChange={setEditLocation(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Ort (Optional)</Label><Input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} /></div>
             </div>
             <DialogFooter><Button onClick={handleEditEvent} disabled={isSubmitting} className="w-full rounded-xl">Speichern</Button></DialogFooter>
           </DialogContent>
